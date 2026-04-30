@@ -49,6 +49,8 @@ const dispUrl = u => { try { const x = new URL(u); return x.hostname + (x.pathna
 const isProto = u => !u || u.startsWith('chrome') || u.startsWith('edge') || u.startsWith('about') || u.startsWith('view-source');
 const BLANK_FAV = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23444'/%3E%3C/svg%3E`;
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const INTENT_STATUS = ['active', 'paused', 'someday', 'done', 'reference'];
+const INTENT_TYPE = ['project', 'study', 'research', 'admin', 'life', 'reference', 'other'];
 
 function sanitizeHtml(html) {
   return String(html)
@@ -70,6 +72,33 @@ function fmtTimeRelative(ts) {
   if (mins < 60) return diff > 0 ? `in ${mins}m` : `${mins}m ago`;
   if (hours < 24) return diff > 0 ? `in ${hours}h` : `${hours}h ago`;
   return diff > 0 ? `in ${days}d` : `${days}d ago`;
+}
+
+function hasIntentMeta(entity) {
+  if (!entity || !entity.intent) return false;
+  const i = entity.intent;
+  return !!(i.purpose || i.nextAction || i.status || i.type);
+}
+function ensureIntentMeta(entity) {
+  if (!entity) return null;
+  if (!entity.intent) entity.intent = {};
+  if (!INTENT_STATUS.includes(entity.intent.status)) entity.intent.status = 'active';
+  if (!INTENT_TYPE.includes(entity.intent.type)) entity.intent.type = 'other';
+  return entity.intent;
+}
+function clearIntentMeta(entity) {
+  if (entity?.intent) delete entity.intent;
+}
+function renderIntentPills(entity) {
+  if (!hasIntentMeta(entity)) return '';
+  const i = ensureIntentMeta(entity);
+  const next = (i.nextAction || '').trim();
+  return `
+    <div class="intent-meta">
+      <span class="intent-pill status status-${esc(i.status)}">${esc(i.status)}</span>
+      <span class="intent-pill type">${esc(i.type)}</span>
+      ${next ? `<span class="intent-next">Next: ${esc(next.slice(0, 72))}${next.length > 72 ? '…' : ''}</span>` : ''}
+    </div>`;
 }
 
 const activeWs = () => State.get().workspaces.find(w => w.id === State.get().activeWsId);
@@ -684,6 +713,7 @@ function openGroupAll(gId) {
 // MODAL (group create/edit)
 // ════════════════════════════════════════════════════════════════
 let modalCtx = null;
+let intentEditorCtx = null;
 function openModal(kind, ctx) {
   modalCtx = { kind, ctx };
   const $t = document.getElementById('modal-title');
@@ -714,6 +744,74 @@ function selColor(c) {
   document.querySelectorAll('.csw').forEach(x => x.classList.toggle('active', x.dataset.c === c));
 }
 function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); modalCtx = null; }
+function openIntentEditor(targetKind, targetId) {
+  let entity = null;
+  let title = 'Edit Intention';
+  if (targetKind === 'group') {
+    const info = findGroup(targetId);
+    if (!info) return;
+    entity = info.group;
+    title = `Intention · ${info.group.name}`;
+  } else if (targetKind === 'stack') {
+    const info = findItem(targetId);
+    if (!info || info.item.type !== 'stack') return;
+    entity = info.item;
+    title = `Intention · ${info.item.name || 'Stack'}`;
+  }
+  intentEditorCtx = { targetKind, targetId };
+  const intent = entity.intent || {};
+  document.getElementById('intent-title').textContent = title;
+  document.getElementById('intent-purpose').value = intent.purpose || '';
+  document.getElementById('intent-next-action').value = intent.nextAction || '';
+  document.getElementById('intent-status').value = intent.status || 'active';
+  document.getElementById('intent-type').value = intent.type || 'other';
+  document.getElementById('intent-overlay').classList.remove('hidden');
+}
+function closeIntentEditor() {
+  document.getElementById('intent-overlay').classList.add('hidden');
+  intentEditorCtx = null;
+}
+function getIntentTarget(ctx = intentEditorCtx) {
+  if (!ctx) return null;
+  if (ctx.targetKind === 'group') return findGroup(ctx.targetId)?.group || null;
+  if (ctx.targetKind === 'stack') {
+    const info = findItem(ctx.targetId);
+    if (info?.item?.type === 'stack') return info.item;
+  }
+  return null;
+}
+function saveIntentEditor() {
+  const entity = getIntentTarget();
+  if (!entity) return closeIntentEditor();
+  const purpose = document.getElementById('intent-purpose').value.trim();
+  const nextAction = document.getElementById('intent-next-action').value.trim();
+  const status = document.getElementById('intent-status').value;
+  const type = document.getElementById('intent-type').value;
+  State.snapshot('Edit intention');
+  if (!purpose && !nextAction && status === 'active' && type === 'other') clearIntentMeta(entity);
+  else {
+    const i = ensureIntentMeta(entity);
+    i.purpose = purpose;
+    i.nextAction = nextAction;
+    i.status = INTENT_STATUS.includes(status) ? status : 'active';
+    i.type = INTENT_TYPE.includes(type) ? type : 'other';
+    i.updatedAt = Date.now();
+  }
+  State.persist();
+  renderBoard();
+  closeIntentEditor();
+  toast('Intention saved');
+}
+function clearIntentEditor() {
+  const entity = getIntentTarget();
+  if (!entity) return closeIntentEditor();
+  State.snapshot('Clear intention');
+  clearIntentMeta(entity);
+  State.persist();
+  renderBoard();
+  closeIntentEditor();
+  toast('Intention cleared', { undo: true });
+}
 function confirmModal() {
   if (!modalCtx) return;
   const name = document.getElementById('modal-input').value.trim();
@@ -1242,8 +1340,12 @@ function buildGroupCol(g) {
           <span>${itemCnt} ${itemCnt === 1 ? 'item' : 'items'}</span>
           ${todoStr}
         </div>
+        ${renderIntentPills(g)}
       </div>
       <div class="gcol-acts">
+        <button class="gcol-btn" data-act="intent" title="Edit intention">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1.5a3.6 3.6 0 013.6 3.6c0 2.2-1.5 3.2-3.1 3.8l-.2.1v1.5M6 10.8h.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        </button>
         <button class="gcol-btn focus" data-act="focus" title="Expand to full page">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4V2h2M10 4V2H8M2 8v2h2M10 8v2H8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
@@ -1300,6 +1402,7 @@ function buildGroupCol(g) {
     const items = [
       { text:'Edit group…', icon: cmIcons.edit, action: () => openModal('edit-group', g) },
       { text:'Change symbol…', icon: cmIcons.symbol, action: () => openEmojiPicker({ kind:'group', id: g.id }, hd.querySelector('.gcol-sym-wrap')) },
+      { text:'Edit intention…', icon: cmIcons.edit, action: () => openIntentEditor('group', g.id) },
       { text: g.collapsed ? 'Expand' : 'Collapse', icon: cmIcons.edit, action: () => { State.snapshot('Toggle'); g.collapsed = !g.collapsed; State.persist(); renderBoard(); } },
       { sep: true },
       { text:'Open all', icon: cmIcons.open, action: () => openGroupAll(g.id) },
@@ -1345,6 +1448,7 @@ function buildGroupCol(g) {
       else if (act === 'dup') duplicateGroup(g.id);
       else if (act === 'open-all') openGroupAll(g.id);
       else if (act === 'focus') openGroupFocus(g.id);
+      else if (act === 'intent') openIntentEditor('group', g.id);
     });
   });
 
@@ -1742,7 +1846,11 @@ function buildStack(it, parentItems, group) {
       <span class="stack-sym">${esc(it.symbol || '📚')}</span>
       <input class="stack-name" value="${esc(it.name || 'Stack')}" spellcheck="false">
       <span class="stack-cnt">${cnt}</span>
+      <button class="stack-intent-btn" title="Edit intention">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1.5a3.6 3.6 0 013.6 3.6c0 2.2-1.5 3.2-3.1 3.8l-.2.1v1.5M6 10.8h.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      </button>
     </div>
+    ${renderIntentPills(it)}
     <div class="stack-items"></div>`;
 
   const hd = el.querySelector('.stack-hd');
@@ -1758,12 +1866,14 @@ function buildStack(it, parentItems, group) {
     showContextMenu(e.pageX, e.pageY, [
       { text:'Rename stack', icon: cmIcons.edit, action: () => { const n = prompt('Name:', it.name); if (n) { State.snapshot('Rename stack'); it.name = n; State.persist(); renderBoard(); } } },
       { text:'Change symbol…', icon: cmIcons.symbol, action: () => openEmojiPicker({ kind:'stack', id: it.id }, hd.querySelector('.stack-sym')) },
+      { text:'Edit intention…', icon: cmIcons.edit, action: () => openIntentEditor('stack', it.id) },
       { text: it.expanded ? 'Collapse' : 'Expand', icon: cmIcons.edit, action: () => { State.snapshot('Toggle'); it.expanded = !it.expanded; State.persist(); renderBoard(); } },
       { sep: true },
       ...commonActs(it)
     ]);
   });
   el.querySelector('.stack-sym').addEventListener('click', e => { e.stopPropagation(); openEmojiPicker({ kind:'stack', id: it.id }, e.currentTarget); });
+  el.querySelector('.stack-intent-btn').addEventListener('click', e => { e.stopPropagation(); openIntentEditor('stack', it.id); });
   const nm = el.querySelector('.stack-name');
   nm.addEventListener('click', e => e.stopPropagation());
   nm.addEventListener('blur', () => { if (nm.value.trim() && nm.value.trim() !== it.name) { State.snapshot('Rename stack'); it.name = nm.value.trim(); State.persist(); } });
@@ -4594,6 +4704,11 @@ function bindStatic() {
   document.getElementById('modal-ok').onclick = confirmModal;
   document.getElementById('modal-overlay').onclick = e => { if (e.target.id === 'modal-overlay') closeModal(); };
   document.getElementById('modal-input').onkeydown = e => { if (e.key === 'Enter') confirmModal(); if (e.key === 'Escape') closeModal(); };
+  document.getElementById('intent-x').onclick = closeIntentEditor;
+  document.getElementById('intent-cancel').onclick = closeIntentEditor;
+  document.getElementById('intent-save').onclick = saveIntentEditor;
+  document.getElementById('intent-clear').onclick = clearIntentEditor;
+  document.getElementById('intent-overlay').onclick = e => { if (e.target.id === 'intent-overlay') closeIntentEditor(); };
   document.getElementById('emoji-trigger').onclick = e => { e.stopPropagation(); openEmojiPicker({ kind:'modal' }, e.currentTarget); };
   document.querySelectorAll('.csw').forEach(c => c.onclick = () => { document.querySelectorAll('.csw').forEach(x => x.classList.remove('active')); c.classList.add('active'); });
 
