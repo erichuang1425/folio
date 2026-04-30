@@ -125,23 +125,52 @@ function renderFutureNotePreview(entity) {
   return `<div class="future-preview">Future me: ${esc(t.slice(0, 110))}${t.length > 110 ? '…' : ''}</div>`;
 }
 function renderHeartbeat(entity) {
-  const i = entity?.intent || {};
+  const hb = computeHeartbeat(entity);
   const chips = [];
+  const details = [
+    hb.lastUpdatedAt ? `Updated: ${new Date(hb.lastUpdatedAt).toLocaleString()}` : 'Updated: unknown',
+    hb.lastOpenedAt ? `Opened: ${new Date(hb.lastOpenedAt).toLocaleString()}` : 'Opened: unknown',
+    `Tabs: ${hb.tabCount}`,
+    `Open todos: ${hb.unfinishedTodoCount}`,
+    `Notes: ${hb.noteCount}`,
+    `Future notes: ${hb.unresolvedFutureCount}`,
+    hb.hasPurpose ? 'Purpose: yes' : 'Purpose: no',
+    hb.hasNextAction ? 'Next action: yes' : 'Next action: no'
+  ].join(' • ');
+
+  if (!hb.hasNextAction) chips.push(`<span class="hb-chip warn" title="${esc(details)}">No next action</span>`);
+  if (hb.unfinishedTodoCount > 0) chips.push(`<span class="hb-chip todo" title="${esc(details)}">${hb.unfinishedTodoCount} to-do${hb.unfinishedTodoCount > 1 ? 's' : ''}</span>`);
+  if (hb.isReference) chips.push(`<span class="hb-chip ref" title="${esc(details)}">Reference</span>`);
+  if (hb.isStale) chips.push(`<span class="hb-chip stale" title="${esc(details)}">Stale</span>`);
+  else if (hb.isActive) chips.push(`<span class="hb-chip ok" title="${esc(details)}">Active</span>`);
+  return chips.length ? `<div class="heartbeat-row">${chips.join('')}</div>` : '';
+}
+function computeHeartbeat(entity) {
+  const i = entity?.intent || {};
   const staleDays = Number(State.get().settings?.heartbeatStaleDays) || 14;
   const staleMs = 1000 * 60 * 60 * 24 * staleDays;
   const tabCount = (entity?.items || []).filter(x => x.type === 'tab').length;
-  const todoCount = (entity?.items || []).filter(x => x.type === 'todo' && !x.done).length;
+  const unfinishedTodoCount = (entity?.items || []).filter(x => x.type === 'todo' && !x.done).length;
   const noteCount = (entity?.items || []).filter(x => x.type === 'note').length;
-  const unresolvedFuture = getFutureNotes(entity).filter(n => !n.resolvedAt).length;
-  const hasNext = !!(i.nextAction || '').trim();
-  if (!hasNext) chips.push('<span class="hb-chip warn">No next action</span>');
-  if (todoCount > 0) chips.push(`<span class="hb-chip todo">${todoCount} to-do${todoCount > 1 ? 's' : ''}</span>`);
-  if ((i.status || '') === 'reference' || (i.type || '') === 'reference') chips.push('<span class="hb-chip ref">Reference</span>');
-  const lastTouch = Math.max(i.updatedAt || 0, entity?.lastOpenedAt || 0);
-  if (lastTouch && (Date.now() - lastTouch) > staleMs) chips.push('<span class="hb-chip stale">Stale</span>');
-  else if (lastTouch) chips.push('<span class="hb-chip ok">Active</span>');
-  if (!lastTouch && (tabCount || todoCount || noteCount || unresolvedFuture)) chips.push('<span class="hb-chip">No activity timestamp</span>');
-  return chips.length ? `<div class="heartbeat-row">${chips.join('')}</div>` : '';
+  const unresolvedFutureCount = getFutureNotes(entity).filter(n => !n.resolvedAt).length;
+  const lastUpdatedAt = i.updatedAt || null;
+  const lastOpenedAt = entity?.lastOpenedAt || null;
+  const lastTouch = Math.max(lastUpdatedAt || 0, lastOpenedAt || 0);
+  const isStale = !!(lastTouch && (Date.now() - lastTouch) > staleMs);
+  const isActive = !!(lastTouch && !isStale);
+  return {
+    lastUpdatedAt,
+    lastOpenedAt,
+    tabCount,
+    unfinishedTodoCount,
+    noteCount,
+    hasPurpose: !!(i.purpose || '').trim(),
+    hasNextAction: !!(i.nextAction || '').trim(),
+    unresolvedFutureCount,
+    isStale,
+    isActive,
+    isReference: (i.status || '') === 'reference' || (i.type || '') === 'reference'
+  };
 }
 
 function collectTriageCandidates() {
