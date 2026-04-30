@@ -1089,7 +1089,7 @@ body[data-show-urls="off"] .item-url { display: none; }
 }
 
 /* ═══ MODAL ═══ */
-#modal-overlay, #reminder-overlay {
+#modal-overlay, #reminder-overlay, #intent-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.5);
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
@@ -1097,11 +1097,11 @@ body[data-show-urls="off"] .item-url { display: none; }
   z-index: 9999;
   animation: fadeIn 0.18s var(--trans);
 }
-[data-theme="light"] #modal-overlay, [data-theme="light"] #reminder-overlay,
+[data-theme="light"] #modal-overlay, [data-theme="light"] #reminder-overlay, [data-theme="light"] #intent-overlay,
 [data-theme="solarized-light"] #modal-overlay, [data-theme="sepia"] #modal-overlay {
   background: rgba(20,20,30,0.3);
 }
-#modal-overlay.hidden, #reminder-overlay.hidden { display: none; }
+#modal-overlay.hidden, #reminder-overlay.hidden, #intent-overlay.hidden { display: none; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 #modal, .rm-panel {
@@ -1140,6 +1140,60 @@ body[data-show-urls="off"] .item-url { display: none; }
   outline: none; width: 100%;
   transition: border-color var(--trans), background var(--trans);
 }
+#intent-purpose, #intent-next-action, #intent-status, #intent-type {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 11px;
+  background: var(--bg3);
+  color: var(--text);
+  font: 500 13px/1.4 var(--font);
+}
+#intent-purpose, #intent-next-action { resize: vertical; min-height: 56px; }
+
+.intent-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.intent-pill {
+  font: 700 10px/1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border: 1px solid var(--border);
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: var(--text2);
+  background: var(--bg3);
+}
+.intent-pill.status-active { color: #22c55e; border-color: #22c55e33; }
+.intent-pill.status-paused { color: #f59e0b; border-color: #f59e0b33; }
+.intent-pill.status-someday { color: #a78bfa; border-color: #a78bfa33; }
+.intent-pill.status-done { color: #14b8a6; border-color: #14b8a633; }
+.intent-pill.status-reference { color: #60a5fa; border-color: #60a5fa33; }
+.intent-next {
+  color: var(--text2);
+  font: 500 11px/1.2 var(--font);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.stack-intent-btn {
+  margin-left: auto;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text2);
+  border-radius: 7px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.stack-intent-btn:hover { color: var(--text); background: var(--bg4); border-color: var(--border); }
 #modal-input:focus, #rm-datetime:focus { border-color: var(--accent); background: var(--bg); }
 
 /* Emoji trigger button */

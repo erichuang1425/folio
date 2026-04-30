@@ -239,6 +239,46 @@
     </div>
   </div>
 
+  <div id="intent-overlay" class="hidden">
+    <div class="rm-panel">
+      <div class="modal-hd">
+        <h2 id="intent-title">Edit Intention</h2>
+        <button id="intent-x" class="icon-btn">
+          <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="modal-bd">
+        <label class="field-lbl">Purpose</label>
+        <textarea id="intent-purpose" rows="2" placeholder="Why does this group/stack exist?"></textarea>
+        <label class="field-lbl">Next action</label>
+        <textarea id="intent-next-action" rows="2" placeholder="When I come back, I should…"></textarea>
+        <label class="field-lbl">Status</label>
+        <select id="intent-status">
+          <option value="active">Active</option>
+          <option value="paused">Paused</option>
+          <option value="someday">Someday</option>
+          <option value="done">Done</option>
+          <option value="reference">Reference</option>
+        </select>
+        <label class="field-lbl">Type</label>
+        <select id="intent-type">
+          <option value="project">Project</option>
+          <option value="study">Study</option>
+          <option value="research">Research</option>
+          <option value="admin">Admin</option>
+          <option value="life">Life</option>
+          <option value="reference">Reference</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="modal-ft">
+        <button id="intent-clear" class="btn-secondary">Clear</button>
+        <button id="intent-cancel" class="btn-secondary">Cancel</button>
+        <button id="intent-save" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Settings drawer -->
   <div id="settings-drawer" class="hidden">
     <div class="drawer-bd">
