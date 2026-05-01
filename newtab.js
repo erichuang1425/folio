@@ -830,6 +830,109 @@ function openResumePanel(targetKind, targetId) {
 }
 function closeResumePanel() { document.getElementById('resume-overlay').classList.add('hidden'); }
 
+function collectContinuationTargets() {
+  const out = [];
+  for (const ws of State.get().workspaces || []) {
+    for (const cat of ws.categories || []) {
+      for (const group of cat.groups || []) {
+        out.push({ kind: 'group', entity: group, wsId: ws.id, wsName: ws.name });
+        for (const it of group.items || []) {
+          if (it.type === 'stack') out.push({ kind: 'stack', entity: it, wsId: ws.id, wsName: ws.name });
+        }
+      }
+    }
+  }
+  return out;
+}
+function getNextActionSuggestions() {
+  const suggestions = [];
+  const activeWsId = State.get().activeWsId;
+  const targets = collectContinuationTargets();
+  const inActive = targets.filter(t => t.wsId === activeWsId);
+  const isInboxGroup = t => t.kind === 'group' && (t.entity.name || '').trim().toLowerCase() === 'inbox';
+  const pushSuggestion = s => { if (s && suggestions.length < 3) suggestions.push(s); };
+
+  const actNext = inActive.find(t => {
+    const i = t.entity.intent || {};
+    return (i.status || 'active') === 'active' && !!(i.nextAction || '').trim();
+  });
+  pushSuggestion(actNext && {
+    title: `Resume ${actNext.entity.name || 'this project'}`,
+    reason: 'It has an active next action, so you can continue without context switching.',
+    actionLabel: 'Resume',
+    onAction: () => { closeWhatNowPanel(); openResumePanel(actNext.kind, actNext.entity.id); }
+  });
+
+  const unresolved = inActive.find(t => !!getLatestUnresolvedFutureNote(t.entity));
+  pushSuggestion(unresolved && {
+    title: `Review note for ${unresolved.entity.name || 'this project'}`,
+    reason: 'There is an unresolved Future Me note waiting for you.',
+    actionLabel: 'Resume',
+    onAction: () => { closeWhatNowPanel(); openResumePanel(unresolved.kind, unresolved.entity.id); }
+  });
+
+  const todoTarget = inActive.find(t => (t.entity.items || []).some(x => x.type === 'todo' && !x.done));
+  pushSuggestion(todoTarget && {
+    title: `Finish a to-do in ${todoTarget.entity.name || 'this project'}`,
+    reason: 'You already have unfinished to-dos in your current workspace.',
+    actionLabel: 'Resume',
+    onAction: () => { closeWhatNowPanel(); openResumePanel(todoTarget.kind, todoTarget.entity.id); }
+  });
+
+  const staleDays = Number(State.get().settings?.heartbeatStaleDays) || 14;
+  const staleTarget = inActive.find(t => {
+    const hb = computeHeartbeat(t.entity);
+    return hb.isStale && !hb.isReference && ((t.entity.intent || {}).status || 'active') === 'active' && hb.daysSinceTouch >= staleDays;
+  });
+  pushSuggestion(staleTarget && {
+    title: `Refresh ${staleTarget.entity.name || 'this project'}`,
+    reason: `It has been quiet for ${computeHeartbeat(staleTarget.entity).daysSinceTouch} days.`,
+    actionLabel: 'Edit intention',
+    onAction: () => { closeWhatNowPanel(); openIntentEditor(staleTarget.kind, staleTarget.entity.id); }
+  });
+
+  const inboxTarget = inActive.find(t => isInboxGroup(t) && (t.entity.items || []).some(x => x.type === 'tab'));
+  pushSuggestion(inboxTarget && {
+    title: 'Clean inbox tabs',
+    reason: 'Your Inbox has saved tabs that still need sorting.',
+    actionLabel: 'Start triage',
+    onAction: () => { closeWhatNowPanel(); openTriage(); }
+  });
+
+  const pomo = getPomo();
+  if (pomo.isRunning) pushSuggestion({
+    title: 'Continue focus session',
+    reason: pomo.currentTask ? `Current task: ${pomo.currentTask}` : 'A Pomodoro session is already running.',
+    actionLabel: 'Open Pomodoro',
+    onAction: () => { closeWhatNowPanel(); openPomo(); }
+  });
+
+  if (suggestions.length) return suggestions.slice(0, 3);
+  return [];
+}
+function openWhatNowPanel() {
+  const list = getNextActionSuggestions();
+  const body = document.getElementById('what-now-body');
+  if (!list.length) {
+    body.innerHTML = `<div class="what-now-empty">Nothing urgent found.<br>Add a next action to any group or stack to make this smarter.</div>`;
+  } else {
+    body.innerHTML = `<div class="what-now-list">${list.map((s, i) => `
+      <div class="what-now-item">
+        <h3>${esc(s.title)}</h3>
+        <div class="what-now-reason">${esc(s.reason)}</div>
+        <button class="what-now-act" data-idx="${i}">${esc(s.actionLabel)}</button>
+      </div>`).join('')}</div>`;
+    body.querySelectorAll('.what-now-act').forEach(btn => {
+      btn.onclick = () => {
+        const s = list[Number(btn.dataset.idx)];
+        if (s?.onAction) s.onAction();
+      };
+    });
+  }
+  document.getElementById('what-now-overlay').classList.remove('hidden');
+}
+function closeWhatNowPanel() { document.getElementById('what-now-overlay').classList.add('hidden'); }
+
 let triageQueue = [];
 let triageIndex = 0;
 function openTriage() {
@@ -4962,6 +5065,7 @@ function bindStatic() {
   document.getElementById('search-btn').onclick = () => toggleSearchBar();
   document.getElementById('undo-btn').onclick = performUndo;
   document.getElementById('triage-btn').onclick = openTriage;
+  document.getElementById('what-now-btn').onclick = openWhatNowPanel;
 
   document.getElementById('search-input').oninput = applySearchFilter;
   document.getElementById('search-input').onkeydown = e => { if (e.key === 'Escape') toggleSearchBar(false); };
@@ -4984,6 +5088,9 @@ function bindStatic() {
   document.getElementById('resume-x').onclick = closeResumePanel;
   document.getElementById('resume-close').onclick = closeResumePanel;
   document.getElementById('resume-overlay').onclick = e => { if (e.target.id === 'resume-overlay') closeResumePanel(); };
+  document.getElementById('what-now-x').onclick = closeWhatNowPanel;
+  document.getElementById('what-now-close').onclick = closeWhatNowPanel;
+  document.getElementById('what-now-overlay').onclick = e => { if (e.target.id === 'what-now-overlay') closeWhatNowPanel(); };
   document.getElementById('triage-x').onclick = closeTriage;
   document.getElementById('triage-overlay').onclick = e => { if (e.target.id === 'triage-overlay') closeTriage(); };
   document.getElementById('triage-skip').onclick = () => triageAdvance();

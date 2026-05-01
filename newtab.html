@@ -76,6 +76,9 @@
           <button id="triage-btn" class="icon-btn" title="Tab triage">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3.5h10M3 8h10M3 12.5h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="11.5" cy="12.5" r="1.5" fill="currentColor"/></svg>
           </button>
+          <button id="what-now-btn" class="icon-btn" title="What should I do now?">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8.8 1.8L3.7 8h3.4L6.7 14.2 12.3 7.5H8.9l-.1-5.7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          </button>
           <div class="topbar-divider"></div>
           <button id="view-mode-btn" class="icon-btn" title="Toggle list view" data-mode="board">
             <svg id="view-mode-icon-board" width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="5" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="3" width="5" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -334,6 +337,21 @@
         <button id="triage-todo" class="btn-secondary">To-do</button>
         <button id="triage-verb" class="btn-secondary">Add verb</button>
         <button id="triage-move" class="btn-primary">Move</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="what-now-overlay" class="hidden">
+    <div class="rm-panel">
+      <div class="modal-hd">
+        <h2 id="what-now-title">What now?</h2>
+        <button id="what-now-x" class="icon-btn">
+          <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="modal-bd" id="what-now-body"></div>
+      <div class="modal-ft">
+        <button id="what-now-close" class="btn-secondary">Close</button>
       </div>
     </div>
   </div>
