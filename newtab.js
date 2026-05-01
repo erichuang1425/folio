@@ -824,7 +824,7 @@ function openResumePanel(targetKind, targetId) {
     const act = btn.dataset.ract;
     if (act === 'open-key') openAllHibernated(keyTabs.map(t => t.url), keyTabs);
     else if (act === 'open-all') openAllHibernated(tabs.map(t => t.url), tabs);
-    else if (act === 'pomo') { openPomo(); if (i.nextAction) { getPomo().currentTask = i.nextAction; State.persist(); renderPomo(); } }
+    else if (act === 'pomo') { setPomoTarget(targetKind, targetId, { prefillTask: true }); openPomo(); renderPomo(); }
     else if (act === 'future') openFutureEditor(targetKind, targetId);
     else if (act === 'intent') openIntentEditor(targetKind, targetId);
     else if (act === 'clear-next') { State.snapshot('Clear next action'); if (entity.intent) entity.intent.nextAction = ''; State.persist(); renderBoard(); openResumePanel(targetKind, targetId); }
@@ -870,8 +870,8 @@ function getNextActionSuggestions() {
   if (actNext) pushSuggestion(actNext, {
     title: `Resume ${actNext.entity.name || 'this project'}`,
     reason: 'It has an active next action, so you can continue without context switching.',
-    actionLabel: 'Resume',
-    onAction: () => { closeWhatNowPanel(); openResumePanel(actNext.kind, actNext.entity.id); }
+    actionLabel: 'Focus now',
+    onAction: () => { closeWhatNowPanel(); setPomoTarget(actNext.kind, actNext.entity.id, { prefillTask: true }); openPomo(); renderPomo(); }
   });
 
   const unresolved = inActive.find(t => !usedTargetIds.has(t.entity.id) && !!getLatestUnresolvedFutureNote(t.entity));
@@ -4129,7 +4129,20 @@ function getPomo() {
   const s = State.get();
   if (!s.pomo) s.pomo = { settings: { ...POMO_DEFAULT }, stats: { total:0, perDay:{}, streak:0, lastDay:'' }, tasks: [] };
   if (!s.pomo.tasks) s.pomo.tasks = [];
+  if (!Array.isArray(s.pomo.sessions)) s.pomo.sessions = [];
   return s.pomo;
+}
+function setPomoTarget(targetKind, targetId, opts = {}) {
+  if (!targetKind || !targetId) return;
+  const p = getPomo();
+  p.targetKind = targetKind;
+  p.targetId = targetId;
+  if (opts.prefillTask) {
+    const entity = getEntityTarget(targetKind, targetId);
+    const next = ((entity && entity.intent && entity.intent.nextAction) || '').trim();
+    if (next) p.currentTask = next;
+  }
+  State.persist();
 }
 
 function openPomo() {
@@ -4280,6 +4293,14 @@ function onPomoFinish() {
       p.stats.streak = p.stats.lastDay === yesterday ? (p.stats.streak || 0) + 1 : 1;
       p.stats.lastDay = today;
     }
+    p.sessions.push({
+      id: uid(),
+      endedAt: new Date().toISOString(),
+      mode: 'focus',
+      task: p.currentTask || '',
+      targetKind: p.targetKind,
+      targetId: p.targetId
+    });
     pomoState.session++;
     State.persist();
     if (p.settings.sound) playBeep();
@@ -4778,6 +4799,26 @@ function getGoals() {
   if (!s.goals) s.goals = [];
   return s.goals;
 }
+function normalizeGoalLinks(g) {
+  if (!Array.isArray(g.linkedTargets)) g.linkedTargets = [];
+  g.linkedTargets = g.linkedTargets.filter(t => t && (t.kind === 'group' || t.kind === 'stack') && typeof t.id === 'string');
+}
+function resolveGoalLinkedTarget(ref) {
+  if (!ref || !ref.kind || !ref.id) return null;
+  const entity = getEntityTarget(ref.kind, ref.id);
+  return entity ? { kind: ref.kind, id: ref.id, entity } : null;
+}
+function collectTabsInGroupLike(entity) {
+  const tabs = [];
+  const walk = list => (list || []).forEach(x => { if (x.type === 'tab') tabs.push(x); else if (x.type === 'stack') walk(x.items); });
+  walk(entity.items || []);
+  return tabs;
+}
+function countFocusSessionsForTarget(kind, id) {
+  const p = getPomo();
+  const history = Array.isArray(p.sessions) ? p.sessions : [];
+  return history.filter(s => s && s.targetKind === kind && s.targetId === id && s.mode === 'focus').length;
+}
 function openGoals() { renderGoals(); document.getElementById('goals-overlay').classList.remove('hidden'); }
 function closeGoals() { document.getElementById('goals-overlay').classList.add('hidden'); }
 function renderGoals() {
@@ -4786,6 +4827,7 @@ function renderGoals() {
   $list.innerHTML = '';
   if (!goals.length) { $list.innerHTML = `<div class="fin-empty">No goals yet.</div>`; return; }
   goals.forEach(g => {
+    normalizeGoalLinks(g);
     const progress = Math.max(0, Math.min(100, g.progress || 0));
     const daysLeft = g.due ? Math.round((new Date(g.due) - Date.now()) / 86400000) : null;
     let dueCls = '', dueTxt = '';
@@ -4808,8 +4850,25 @@ function renderGoals() {
           <button data-act="-">−10%</button>
           <button data-act="+">+10%</button>
           <button data-act="100">Done</button>
+          <button data-act="link">Link</button>
           <button data-act="del" class="danger">✕</button>
         </div>
+      </div>
+      <div class="sub" style="margin-top:8px">Linked targets: ${g.linkedTargets.length}</div>
+      <div class="sub">
+        ${g.linkedTargets.map(ref => {
+          const resolved = resolveGoalLinkedTarget(ref);
+          if (!resolved) return `• Missing ${esc(ref.kind)}:${esc(ref.id)}`;
+          const e = resolved.entity;
+          const todos = (e.items || []).filter(x => x.type === 'todo' && !x.done).length;
+          const notes = (e.futureNotes || []).filter(n => !n.resolvedAt).length;
+          const touched = Math.max(Number(e.lastOpenedAt || 0), Number((e.intent || {}).updatedAt || 0));
+          const focusCount = countFocusSessionsForTarget(ref.kind, ref.id);
+          return `• ${esc(e.name || ref.kind)} · todos ${todos} · notes ${notes} · touched ${touched ? dateFmt(touched) : '—'}${focusCount ? ` · 🍅 ${focusCount}` : ''}
+            <button data-lact="open" data-lkind="${ref.kind}" data-lid="${ref.id}">Open</button>
+            <button data-lact="resume" data-lkind="${ref.kind}" data-lid="${ref.id}">Resume</button>
+            <button data-lact="remove" data-lkind="${ref.kind}" data-lid="${ref.id}">Unlink</button>`;
+        }).join('<br>') || 'No linked groups/stacks.'}
       </div>`;
     row.querySelector('.goal-bar').onclick = (e) => {
       const r = e.currentTarget.getBoundingClientRect();
@@ -4824,12 +4883,42 @@ function renderGoals() {
         if (act === '+') g.progress = Math.min(100, (g.progress || 0) + 10);
         else if (act === '-') g.progress = Math.max(0, (g.progress || 0) - 10);
         else if (act === '100') g.progress = 100;
+        else if (act === 'link') {
+          const raw = prompt('Link target id as group:<id> or stack:<id>', '');
+          if (!raw) return;
+          const m = raw.trim().match(/^(group|stack)\s*:\s*(.+)$/i);
+          if (!m) return toast('Use group:<id> or stack:<id>', { danger: true });
+          const kind = m[1].toLowerCase();
+          const id = m[2].trim();
+          if (!getEntityTarget(kind, id)) return toast('Target not found', { danger: true });
+          if (!g.linkedTargets.some(t => t.kind === kind && t.id === id)) g.linkedTargets.push({ kind, id });
+        }
         else if (act === 'del') {
           if (!confirm('Delete this goal?')) return;
           const all = getGoals(); const i = all.findIndex(x => x.id === g.id);
           if (i > -1) all.splice(i, 1);
         }
         State.persist(); renderGoals();
+      };
+    });
+    row.querySelectorAll('[data-lact]').forEach(btn => {
+      btn.onclick = () => {
+        const act = btn.dataset.lact;
+        const kind = btn.dataset.lkind;
+        const id = btn.dataset.lid;
+        if (act === 'open') {
+          const entity = getEntityTarget(kind, id);
+          if (!entity) return toast('Target not found', { danger: true });
+          const tabs = collectTabsInGroupLike(entity);
+          if (!tabs.length) return toast('No tabs to open');
+          openAllHibernated(tabs.map(t => t.url), tabs);
+        } else if (act === 'resume') {
+          openResumePanel(kind, id);
+        } else if (act === 'remove') {
+          State.snapshot('Unlink target');
+          g.linkedTargets = g.linkedTargets.filter(t => !(t.kind === kind && t.id === id));
+          State.persist(); renderGoals();
+        }
       };
     });
     $list.appendChild(row);
