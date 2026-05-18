@@ -3787,3 +3787,72 @@ body.blur-privacy .otab-title:hover { filter: blur(0); }
   }
   .gcol, .item, #modal, #settings-drawer { border: 1px solid CanvasText; }
 }
+
+/* ── Storage usage bar (Settings → Data) ─────────────────────────── */
+.storage-bar { display: flex; flex-direction: column; gap: 6px; padding: 4px 0; }
+.storage-bar-text { font: 500 12px var(--font); color: var(--text2); }
+.storage-bar-track {
+  height: 6px; border-radius: 3px;
+  background: var(--bg3); overflow: hidden;
+  border: 1px solid var(--border);
+}
+.storage-bar-fill {
+  height: 100%; width: 0%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+.storage-bar-fill.warn { background: var(--orange); }
+.storage-bar-fill.full { background: var(--red); }
+
+/* ── Schema-mismatch overlay ─────────────────────────────────────── */
+#schema-overlay, #quota-overlay, #cheatsheet-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9000;
+  padding: 16px;
+}
+#schema-overlay.hidden, #quota-overlay.hidden, #cheatsheet-overlay.hidden { display: none; }
+#schema-overlay .modal-bd p, #quota-overlay .modal-bd p {
+  margin: 0 0 10px 0; font: 400 13px var(--font); color: var(--text); line-height: 1.5;
+}
+#schema-overlay .modal-bd p.sub, #quota-overlay .modal-bd p.sub {
+  color: var(--text2); font-size: 12px;
+}
+.schema-ack-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 14px;
+  font: 400 13px var(--font); color: var(--text);
+  cursor: pointer;
+}
+.schema-ack-row input { cursor: pointer; }
+
+/* ── Cheatsheet ──────────────────────────────────────────────────── */
+.cheatsheet {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 10px 16px;
+  margin: 0;
+}
+.cheatsheet dt {
+  display: flex; align-items: center; gap: 4px;
+  white-space: nowrap;
+}
+.cheatsheet dd {
+  margin: 0;
+  font: 400 13px var(--font); color: var(--text);
+  align-self: center;
+}
+.cheatsheet kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  border: 1px solid var(--border2);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--bg3);
+  font: 500 11px var(--font);
+  color: var(--text);
+  min-width: 14px; text-align: center;
+}
+#cheatsheet-overlay .rm-panel { width: 460px; }
