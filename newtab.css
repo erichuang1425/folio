@@ -3707,3 +3707,28 @@ body.blur-privacy .otab-title:hover { filter: blur(0); }
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.06); }
 }
+
+/* ── Reduced motion: honor OS preference ─────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Forced colors / Windows high-contrast ───────────────────────── */
+@media (forced-colors: active) {
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:focus-visible,
+  .csw:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+  }
+  .gcol, .item, #modal, #settings-drawer { border: 1px solid CanvasText; }
+}

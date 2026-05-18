@@ -1389,7 +1389,7 @@ function buildGroupCol(g) {
 
   const itemCnt = g.items.length;
   col.innerHTML = `
-    <div class="gcol-hd">
+    <div class="gcol-hd" role="button" tabindex="0" aria-expanded="${!g.collapsed}" aria-label="Group ${esc(g.name)}">
       <div class="gcol-sym-wrap" style="background:${esc(g.color)}22">
         <span>${esc(g.symbol || '📁')}</span>
       </div>
@@ -1447,12 +1447,19 @@ function buildGroupCol(g) {
 
   // Header
   const hd = col.querySelector('.gcol-hd');
-  hd.addEventListener('click', e => {
-    if (e.target.closest('input') || e.target.closest('button') || e.target.closest('.gcol-sym-wrap')) return;
+  const toggleCollapse = () => {
     State.snapshot('Toggle collapse');
     g.collapsed = !g.collapsed;
     col.classList.toggle('collapsed');
+    hd.setAttribute('aria-expanded', String(!g.collapsed));
     State.persist();
+  };
+  hd.addEventListener('click', e => {
+    if (e.target.closest('input') || e.target.closest('button') || e.target.closest('.gcol-sym-wrap')) return;
+    toggleCollapse();
+  });
+  hd.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target === hd) { e.preventDefault(); toggleCollapse(); }
   });
   // Right-click on group
   hd.addEventListener('contextmenu', e => {
