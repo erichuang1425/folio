@@ -136,7 +136,7 @@
   </div>
 
   <!-- Modal -->
-  <div id="modal-overlay" class="hidden">
+  <div id="modal-overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div id="modal">
       <div class="modal-hd">
         <h2 id="modal-title">New Group</h2>
@@ -602,7 +602,7 @@
       </div>
     </div>
   </div>
-  <div id="toast" class="hidden">
+  <div id="toast" class="hidden" role="status" aria-live="polite" aria-atomic="true">
     <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7l3 3 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
     <span id="toast-msg">Saved</span>
     <button id="toast-undo" class="hidden">Undo</button>
