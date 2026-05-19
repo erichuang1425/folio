@@ -2,9 +2,15 @@
    TabExtend — newtab.js (v3)
    ═══════════════════════════════════════════════════════════════ */
 
+// Schema version of the in-storage state. Bump when state shape changes,
+// then add a forward-migration branch in migrate(). Older builds reading
+// data stamped with a higher value get a blocking "newer data" guard.
+const CURRENT_SCHEMA = 3;
+
 // ════════════════════════════════════════════════════════════════
 // STATE + UNDO
 // ════════════════════════════════════════════════════════════════
+let loadedSchema = 0;
 const State = (() => {
   let state = {
     workspaces: [], activeWsId: null, archive: [], recentEmoji: [],
@@ -23,22 +29,24 @@ const State = (() => {
     get: () => state,
     async load() {
       const d = await chrome.storage.local.get('te');
-      if (d.te) state = { ...state, ...d.te, settings: { ...state.settings, ...(d.te.settings || {}) } };
+      if (d.te) {
+        loadedSchema = Number(d.te.schema) || 0;
+        state = { ...state, ...d.te, settings: { ...state.settings, ...(d.te.settings || {}) } };
+      }
     },
     persist() {
       clearTimeout(persistTimer);
       persistTimer = setTimeout(() => {
-        chrome.storage.local.set({ te: state }).catch(err => {
-          try { toast('Storage error: ' + (err?.message || err), { danger: true, duration: 5000 }); } catch {}
-        });
+        chrome.storage.local.set({ te: state })
+          .then(() => { try { refreshStorageUsage(); } catch {} })
+          .catch(err => handleStorageError(err));
       }, 180);
     },
     persistNow() {
       clearTimeout(persistTimer);
       const p = chrome.storage.local.set({ te: state });
-      p.catch(err => {
-        try { toast('Storage error: ' + (err?.message || err), { danger: true, duration: 5000 }); } catch {}
-      });
+      p.then(() => { try { refreshStorageUsage(); } catch {} })
+       .catch(err => handleStorageError(err));
       return p;
     },
     snapshot(label) {
@@ -152,6 +160,20 @@ function findItem(itemId) {
 // ════════════════════════════════════════════════════════════════
 async function init() {
   await State.load();
+
+  if (loadedSchema > CURRENT_SCHEMA) {
+    // Older build opening newer data — refuse to clobber until the user
+    // explicitly acknowledges (or updates the extension).
+    applySettings();
+    bindSchemaMismatchOverlay();
+    showSchemaMismatch(loadedSchema);
+    return;
+  }
+
+  initAfterLoad();
+}
+
+function initAfterLoad() {
   migrate();
   ensureDefault();
 
@@ -161,6 +183,7 @@ async function init() {
   bindStatic();
 
   renderAll();
+  refreshStorageUsage();
 
   refreshOpenTabs();
   chrome.tabs.onCreated.addListener(refreshOpenTabs);
@@ -191,27 +214,241 @@ async function init() {
 
 function migrate() {
   const s = State.get();
-  (s.workspaces || []).forEach(ws => {
-    if (!ws.categories) {
-      ws.categories = [{ id: uid(), name: 'Quicklinks', groups: ws.groups || [] }];
-      delete ws.groups;
-    }
-    if (!ws.activeCatId && ws.categories.length) ws.activeCatId = ws.categories[0].id;
-    ws.categories.forEach(cat => {
-      (cat.groups = cat.groups || []).forEach(g => {
-        g.items = (g.items || []).map(it => {
-          if (it.type === 'note' && it.text != null && it.html == null) { it.html = esc(it.text); delete it.text; }
-          return it;
+  const from = Number(s.schema) || 0;
+
+  if (from < 3) {
+    // Legacy / unstamped data → schema 3. Covers the original release shape
+    // (workspaces had .groups, notes had .text) plus all post-v3.0 additive
+    // defaults the renderer assumes.
+    (s.workspaces || []).forEach(ws => {
+      if (!ws.categories) {
+        ws.categories = [{ id: uid(), name: 'Quicklinks', groups: ws.groups || [] }];
+        delete ws.groups;
+      }
+      if (!ws.activeCatId && ws.categories.length) ws.activeCatId = ws.categories[0].id;
+      ws.categories.forEach(cat => {
+        (cat.groups = cat.groups || []).forEach(g => {
+          g.items = (g.items || []).map(it => {
+            if (it.type === 'note' && it.text != null && it.html == null) { it.html = esc(it.text); delete it.text; }
+            return it;
+          });
+          g.symbol = g.symbol || '📁';
+          g.color = g.color || '#6366f1';
         });
-        g.symbol = g.symbol || '📁';
-        g.color = g.color || '#6366f1';
       });
+      ws.symbol = ws.symbol || '🏠';
     });
-    ws.symbol = ws.symbol || '🏠';
+    if (!s.archive) s.archive = [];
+    if (!s.recentEmoji) s.recentEmoji = [];
+    if (!s.columnWidths) s.columnWidths = {};
+  }
+
+  s.schema = CURRENT_SCHEMA;
+}
+
+// ════════════════════════════════════════════════════════════════
+// STORAGE QUOTA + ERROR HANDLING
+// ════════════════════════════════════════════════════════════════
+const STORAGE_QUOTA = (chrome.storage?.local?.QUOTA_BYTES) || 10485760;
+const STORAGE_WARN_PCT = 0.80;
+const STORAGE_FULL_PCT = 0.95;
+let _storageWarned = false;
+let _storageFullShown = false;
+const _formatBytes = (n) => {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+async function storageUsage() {
+  try {
+    const used = await chrome.storage.local.getBytesInUse(null);
+    const quota = STORAGE_QUOTA;
+    return { used, quota, pct: quota ? used / quota : 0 };
+  } catch {
+    return null;
+  }
+}
+
+async function refreshStorageUsage() {
+  const u = await storageUsage();
+  const bar = document.getElementById('storage-bar-fill');
+  const txt = document.getElementById('storage-bar-text');
+  if (!bar || !txt || !u) return;
+  const pctNum = Math.round(u.pct * 100);
+  bar.style.width = Math.min(100, pctNum) + '%';
+  bar.classList.toggle('warn', u.pct >= STORAGE_WARN_PCT && u.pct < STORAGE_FULL_PCT);
+  bar.classList.toggle('full', u.pct >= STORAGE_FULL_PCT);
+  txt.textContent = `Storage · ${_formatBytes(u.used)} of ${_formatBytes(u.quota)} (${pctNum}%)`;
+
+  if (u.pct < STORAGE_WARN_PCT) {
+    _storageWarned = false;
+  } else if (u.pct >= STORAGE_WARN_PCT && u.pct < STORAGE_FULL_PCT && !_storageWarned) {
+    _storageWarned = true;
+    try { toast(`Storage is ${pctNum}% full — consider exporting and pruning the archive.`, { duration: 5000 }); } catch {}
+  }
+}
+
+function handleStorageError(err) {
+  const msg = String(err?.message || err || '');
+  const quotaHit = /quota|QUOTA/i.test(msg);
+  if (quotaHit) {
+    showStorageFull(msg);
+  } else {
+    try { toast('Storage error: ' + msg, { danger: true, duration: 5000 }); } catch {}
+  }
+}
+
+function showStorageFull(msg) {
+  if (_storageFullShown) return;
+  _storageFullShown = true;
+  const overlay = document.getElementById('quota-overlay');
+  if (!overlay) {
+    try { toast('Storage full: ' + msg, { danger: true, duration: 6000 }); } catch {}
+    return;
+  }
+  const detail = document.getElementById('quota-detail');
+  if (detail) {
+    storageUsage().then(u => {
+      detail.textContent = u
+        ? `Using ${_formatBytes(u.used)} of ${_formatBytes(u.quota)} (${Math.round(u.pct * 100)}%).`
+        : 'Storage limit reached.';
+    });
+  }
+  rememberOpener(overlay);
+  overlay.classList.remove('hidden');
+  setTimeout(() => focusFirstIn(overlay), 50);
+}
+
+function closeStorageFull() {
+  const overlay = document.getElementById('quota-overlay');
+  if (!overlay) return;
+  overlay.classList.add('hidden');
+  restoreOpener(overlay);
+  _storageFullShown = false;
+}
+
+function bindQuotaOverlay() {
+  const overlay = document.getElementById('quota-overlay');
+  if (!overlay) return;
+  overlay.addEventListener('keydown', e => trapTabKey(e, overlay));
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeStorageFull(); });
+  const x = document.getElementById('quota-x');
+  if (x) x.onclick = closeStorageFull;
+  const dismiss = document.getElementById('quota-dismiss');
+  if (dismiss) dismiss.onclick = closeStorageFull;
+  const exp = document.getElementById('quota-export');
+  if (exp) exp.onclick = () => { exportJSON(); };
+  const arch = document.getElementById('quota-archive');
+  if (arch) arch.onclick = () => {
+    closeStorageFull();
+    document.querySelector('#drawer-tabs .dt[data-tab="archive"]')?.click();
+    document.getElementById('settings-drawer')?.classList.remove('hidden');
+  };
+}
+
+// ════════════════════════════════════════════════════════════════
+// SCHEMA-MISMATCH OVERLAY (older build opening newer data)
+// ════════════════════════════════════════════════════════════════
+function showSchemaMismatch(found) {
+  const overlay = document.getElementById('schema-overlay');
+  if (!overlay) {
+    alert(`This data was created by a newer TabExtend (schema ${found}). Update the extension before opening.`);
+    return;
+  }
+  const det = document.getElementById('schema-detail');
+  if (det) det.textContent = `Found schema ${found}; this build understands up to ${CURRENT_SCHEMA}.`;
+  overlay.classList.remove('hidden');
+  setTimeout(() => focusFirstIn(overlay), 50);
+}
+
+function bindSchemaMismatchOverlay() {
+  const overlay = document.getElementById('schema-overlay');
+  if (!overlay) return;
+  overlay.addEventListener('keydown', e => trapTabKey(e, overlay));
+  const exp = document.getElementById('schema-export');
+  if (exp) exp.onclick = () => { exportJSON(); };
+  const cont = document.getElementById('schema-continue');
+  const ack = document.getElementById('schema-ack');
+  if (cont && ack) {
+    cont.disabled = true;
+    ack.addEventListener('change', () => { cont.disabled = !ack.checked; });
+    cont.onclick = () => {
+      overlay.classList.add('hidden');
+      initAfterLoad();
+    };
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// KEYBOARD: CHEATSHEET + BOARD ARROW NAV
+// ════════════════════════════════════════════════════════════════
+function openCheatsheet() {
+  const overlay = document.getElementById('cheatsheet-overlay');
+  if (!overlay) return;
+  rememberOpener(overlay);
+  overlay.classList.remove('hidden');
+  setTimeout(() => focusFirstIn(overlay), 50);
+}
+
+function closeCheatsheet() {
+  const overlay = document.getElementById('cheatsheet-overlay');
+  if (!overlay) return;
+  overlay.classList.add('hidden');
+  restoreOpener(overlay);
+}
+
+function bindCheatsheetOverlay() {
+  const overlay = document.getElementById('cheatsheet-overlay');
+  if (!overlay) return;
+  overlay.addEventListener('keydown', e => trapTabKey(e, overlay));
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeCheatsheet(); });
+  const x = document.getElementById('cheatsheet-x');
+  if (x) x.onclick = closeCheatsheet;
+  const close = document.getElementById('cheatsheet-close');
+  if (close) close.onclick = closeCheatsheet;
+}
+
+function bindBoardArrowNav() {
+  const board = document.getElementById('board');
+  if (!board) return;
+  board.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const item = e.target.closest && e.target.closest('.item');
+    if (!item || !board.contains(item)) return;
+    // Ignore arrows when focus is inside an editable child (e.g. note editor).
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) {
+      if (ae !== item) return;
+    }
+    const siblings = Array.from(item.parentElement?.querySelectorAll(':scope > .item') || []);
+    const idx = siblings.indexOf(item);
+    if (idx < 0) return;
+    e.preventDefault();
+    const nextIdx = e.key === 'ArrowDown'
+      ? (idx + 1) % siblings.length
+      : (idx - 1 + siblings.length) % siblings.length;
+    const target = siblings[nextIdx];
+    if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '0');
+    target.focus();
   });
-  if (!s.archive) s.archive = [];
-  if (!s.recentEmoji) s.recentEmoji = [];
-  if (!s.columnWidths) s.columnWidths = {};
+  board.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const item = e.target.closest && e.target.closest('.item');
+    if (!item || e.target !== item) return;
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+    if (item.classList.contains('tab')) {
+      const open = item.querySelector('[data-act="open"]');
+      if (open) { e.preventDefault(); open.click(); }
+    } else if (item.classList.contains('todo')) {
+      const chk = item.querySelector('input[type="checkbox"]');
+      if (chk) { e.preventDefault(); chk.click(); }
+    } else if (item.classList.contains('stack')) {
+      const hd = item.querySelector('.stack-hd') || item;
+      e.preventDefault(); hd.click();
+    }
+  });
 }
 
 function ensureDefault() {
@@ -1739,6 +1976,7 @@ function buildTab(it, parentItems, group) {
   const el = document.createElement('div');
   el.className = 'item tab';
   el.dataset.id = it.id;
+  el.tabIndex = 0;
   if (it.color) el.dataset.color = it.color;
   el.draggable = true;
 
@@ -1786,6 +2024,7 @@ function buildNote(it, parentItems, group) {
   const el = document.createElement('div');
   el.className = 'item note';
   el.dataset.id = it.id;
+  el.tabIndex = 0;
   if (it.color) el.dataset.color = it.color;
   el.draggable = true;
 
@@ -1859,6 +2098,7 @@ function buildTodo(it, parentItems, group) {
   const el = document.createElement('div');
   el.className = 'item todo' + (it.done ? ' done' : '');
   el.dataset.id = it.id;
+  el.tabIndex = 0;
   if (it.color) el.dataset.color = it.color;
   el.draggable = true;
 
@@ -1903,6 +2143,7 @@ function buildStack(it, parentItems, group) {
   const el = document.createElement('div');
   el.className = 'item stack' + (it.expanded ? ' expanded' : '');
   el.dataset.id = it.id;
+  el.tabIndex = 0;
   if (it.color) el.dataset.color = it.color;
   el.draggable = true;
 
@@ -2626,7 +2867,7 @@ function exportJSON() {
   const counts = countState(data);
   const payload = {
     app: 'tabextend',
-    schema: 3,
+    schema: CURRENT_SCHEMA,
     exportedAt: new Date().toISOString(),
     counts,
     data
@@ -4973,6 +5214,7 @@ function bindStatic() {
         document.getElementById('dp-' + t).classList.toggle('hidden', t !== b.dataset.tab);
       });
       if (b.dataset.tab === 'archive') renderArchiveList();
+      if (b.dataset.tab === 'data') refreshStorageUsage();
     };
   });
 
@@ -5002,6 +5244,7 @@ function bindStatic() {
     else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !inField) { e.preventDefault(); performUndo(); }
     else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z' && !inField) { e.preventDefault(); performRedo(); }
     else if (e.key === 's' && !inField) { e.preventDefault(); document.getElementById('tab-filter').focus(); }
+    else if (e.key === '?' && !inField && !e.ctrlKey && !e.metaKey) { e.preventDefault(); openCheatsheet(); }
     else if (e.key === 'Escape') {
       toggleSearchBar(false);
       closeModal();
@@ -5013,6 +5256,10 @@ function bindStatic() {
       document.getElementById('subs-overlay')?.classList.add('hidden');
       const _imp = document.getElementById('import-overlay');
       if (_imp && !_imp.classList.contains('hidden')) closeImportPreview();
+      const _cs = document.getElementById('cheatsheet-overlay');
+      if (_cs && !_cs.classList.contains('hidden')) closeCheatsheet();
+      const _qf = document.getElementById('quota-overlay');
+      if (_qf && !_qf.classList.contains('hidden')) closeStorageFull();
       const tourEl = document.getElementById('tour-overlay');
       if (tourEl && !tourEl.classList.contains('hidden')) endTour(true);
       const focusEl = document.getElementById('group-focus-overlay');
@@ -5034,6 +5281,9 @@ function bindStatic() {
   bindRtToolbar();
   bindReminderUI();
   bindImportUI();
+  bindQuotaOverlay();
+  bindCheatsheetOverlay();
+  bindBoardArrowNav();
   bindSubs();
   bindToolsHub();
   bindPomo();
