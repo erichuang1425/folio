@@ -409,6 +409,15 @@ function bindCheatsheetOverlay() {
   if (close) close.onclick = closeCheatsheet;
 }
 
+function focusItem(id) {
+  if (!id) return;
+  const el = document.querySelector(`.item[data-id="${CSS.escape(id)}"]`);
+  if (!el) return;
+  if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+  el.focus();
+  el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
 function bindBoardArrowNav() {
   const board = document.getElementById('board');
   if (!board) return;
@@ -448,6 +457,24 @@ function bindBoardArrowNav() {
       const hd = item.querySelector('.stack-hd') || item;
       e.preventDefault(); hd.click();
     }
+  });
+  // 'm' on a focused item opens the move-target picker. Falls back to the
+  // current multi-selection if one is active.
+  board.addEventListener('keydown', e => {
+    if (e.key !== 'm' && e.key !== 'M') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const item = e.target.closest && e.target.closest('.item');
+    if (!item || e.target !== item) return;
+    e.preventDefault();
+    let infos;
+    if (selectedItemIds.size) {
+      infos = getSelectedItemsInfo();
+    } else {
+      const info = findItem(item.dataset.id);
+      if (!info) return;
+      infos = [info];
+    }
+    if (infos.length) openMoveTargetPicker(infos);
   });
 }
 
@@ -830,7 +857,7 @@ function selectEmoji(e) {
 // ════════════════════════════════════════════════════════════════
 // CONTEXT MENU
 // ════════════════════════════════════════════════════════════════
-function showContextMenu(x, y, items) {
+function showContextMenu(x, y, items, opts) {
   const menu = document.getElementById('context-menu');
   menu.innerHTML = '';
   items.forEach(it => {
@@ -839,6 +866,8 @@ function showContextMenu(x, y, items) {
     else {
       const el = document.createElement('div');
       el.className = 'cm-item' + (it.danger ? ' danger' : '');
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('role', 'menuitem');
       el.innerHTML = `${it.icon || ''}<span>${esc(it.text)}</span>${it.sub ? `<span class="cm-sub">${esc(it.sub)}</span>` : ''}`;
       el.onclick = ev => { ev.stopPropagation(); hideContextMenu(); it.action && it.action(); };
       menu.appendChild(el);
@@ -850,8 +879,30 @@ function showContextMenu(x, y, items) {
   if (x + mw > window.innerWidth) mx = window.innerWidth - mw - 8;
   if (y + mh > window.innerHeight) my = window.innerHeight - mh - 8;
   menu.style.left = mx + 'px'; menu.style.top = my + 'px';
+  const menuOpener = document.activeElement;
+  const menuKey = e => {
+    if (menu.classList.contains('hidden')) return;
+    const entries = [...menu.querySelectorAll('.cm-item')];
+    if (!entries.length) return;
+    const cur = entries.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); entries[(cur + 1 + entries.length) % entries.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); entries[(cur - 1 + entries.length) % entries.length].focus(); }
+    else if (e.key === 'Home') { e.preventDefault(); entries[0].focus(); }
+    else if (e.key === 'End') { e.preventDefault(); entries[entries.length - 1].focus(); }
+    else if (e.key === 'Enter' || e.key === ' ') {
+      if (cur >= 0) { e.preventDefault(); entries[cur].click(); }
+    } else if (e.key === 'Escape') {
+      e.preventDefault(); hideContextMenu();
+      if (menuOpener && menuOpener.focus) menuOpener.focus();
+    }
+  };
+  menu.addEventListener('keydown', menuKey);
   setTimeout(() => {
-    const close = e => { if (!menu.contains(e.target)) { hideContextMenu(); document.removeEventListener('click', close); document.removeEventListener('contextmenu', close); } };
+    if (opts && opts.focusFirst) {
+      const first = menu.querySelector('.cm-item');
+      if (first) first.focus();
+    }
+    const close = e => { if (!menu.contains(e.target)) { hideContextMenu(); document.removeEventListener('click', close); document.removeEventListener('contextmenu', close); menu.removeEventListener('keydown', menuKey); } };
     document.addEventListener('click', close);
     document.addEventListener('contextmenu', close);
   }, 50);
@@ -2430,39 +2481,59 @@ function runBatchAction(act) {
 }
 
 function openMoveTargetPicker(infos) {
-  // Show a context-menu-style list of all groups as targets
-  const items = [{ label: 'MOVE TO…' }];
+  if (!infos || !infos.length) return;
+  const ids = infos.map(i => i.item.id);
+  const sourceGroups = new Set(infos.map(i => i.group));
+  const noun = ids.length === 1 ? 'item' : 'items';
+  const items = [{ label: `MOVE ${ids.length} ${noun.toUpperCase()} TO…` }];
   State.get().workspaces.forEach(ws => {
     ws.categories.forEach(cat => {
       cat.groups.forEach(g => {
+        if (sourceGroups.has(g)) return; // hide source as a destination
         items.push({
           text: `${ws.symbol || '🏠'} ${ws.name} / ${cat.name} / ${g.name}`,
           icon: cmIcons.folder || cmIcons.open,
           action: () => {
-            State.snapshot(`Move ${infos.length} items`);
-            const ids = [...selectedItemIds];
-            // Walk and remove maintaining order
-            const moved = [];
+            State.snapshot(`Move ${ids.length} ${noun}`);
+            // Walk in doc order to preserve relative order; splice in reverse
+            // so indices stay stable.
+            const idSet = new Set(ids);
             const orderedIds = [];
-            const walk = (list) => { for (const it of list) { if (ids.includes(it.id)) orderedIds.push(it.id); if (it.type === 'stack' && it.items) walk(it.items); } };
+            const walk = list => { for (const it of list) { if (idSet.has(it.id)) orderedIds.push(it.id); if (it.type === 'stack' && it.items) walk(it.items); } };
             State.get().workspaces.forEach(w => w.categories.forEach(c => c.groups.forEach(gr => walk(gr.items))));
+            const moved = [];
             for (let i = orderedIds.length - 1; i >= 0; i--) {
               const info = findItem(orderedIds[i]);
               if (info) moved.unshift(...info.parent.splice(info.index, 1));
             }
             g.items.push(...moved);
             State.persist();
-            clearItemSelection();
-            toast(`Moved ${moved.length} items`, { undo: true });
+            const focusId = moved[0]?.id;
+            clearItemSelection(); // also re-renders the board
+            if (focusId) requestAnimationFrame(() => focusItem(focusId));
+            toast(`Moved ${moved.length} ${moved.length === 1 ? 'item' : 'items'}`, { undo: true });
           }
         });
       });
     });
   });
-  // Position at toolbar
+  // Anchor: above the multi-select toolbar if present; otherwise next to the
+  // focused item card; otherwise centered near the top.
+  let x, y;
   const bar = document.getElementById('item-sel-toolbar');
-  const r = bar ? bar.getBoundingClientRect() : { left: window.innerWidth/2 - 100, top: window.innerHeight/2 };
-  showContextMenu(r.left, r.top - 300, items);
+  if (bar) {
+    const r = bar.getBoundingClientRect();
+    x = r.left; y = r.top - 300;
+  } else {
+    const ae = document.activeElement;
+    if (ae && ae.classList && ae.classList.contains('item')) {
+      const r = ae.getBoundingClientRect();
+      x = r.right + 8; y = r.top;
+    } else {
+      x = window.innerWidth / 2 - 150; y = 80;
+    }
+  }
+  showContextMenu(x, y, items, { focusFirst: true });
 }
 
 function attachItemDrag(el, it, parentItems, group) {
@@ -2679,6 +2750,71 @@ function applySearchFilter() {
     const any = col.querySelectorAll('.item:not(.hidden)').length > 0;
     col.style.display = (!q || any) ? '' : 'none';
   });
+  renderArchiveSearchResults(q, needle, isExact);
+}
+// Build a normalized search blob for an archive entry (group or item).
+function archiveEntryText(entry) {
+  const parts = [];
+  const pushItem = it => {
+    if (!it) return;
+    if (it.title) parts.push(it.title);
+    if (it.url) parts.push(it.url);
+    if (it.text) parts.push(it.text);
+    if (it.html) parts.push(it.html.replace(/<[^>]+>/g, ' '));
+    if (it.name) parts.push(it.name);
+    if (it.type === 'stack' && Array.isArray(it.items)) it.items.forEach(pushItem);
+  };
+  if (entry.kind === 'group') {
+    parts.push(entry.data.name || '');
+    (entry.data.items || []).forEach(pushItem);
+  } else {
+    pushItem(entry.data);
+  }
+  return parts.join(' ').toLowerCase();
+}
+function renderArchiveSearchResults(q, needle, isExact) {
+  const $r = document.getElementById('search-archive-results');
+  if (!$r) return;
+  if (!q) { $r.classList.add('hidden'); $r.innerHTML = ''; return; }
+  const arr = State.get().archive || [];
+  const matches = [];
+  arr.forEach((e, i) => {
+    const text = archiveEntryText(e);
+    const hit = isExact ? text.includes(needle) : needle.split(/\s+/).every(w => text.includes(w));
+    if (hit) matches.push({ entry: e, idx: i });
+  });
+  if (!matches.length) { $r.classList.add('hidden'); $r.innerHTML = ''; return; }
+  const cap = 20;
+  const shown = matches.slice(0, cap);
+  const overflow = matches.length - shown.length;
+  const head = `<div class="sar-hd">From archive · ${matches.length} result${matches.length === 1 ? '' : 's'}${overflow ? ` (showing ${shown.length})` : ''}</div>`;
+  const rows = shown.map(({ entry, idx }) => {
+    const name = entry.kind === 'group'
+      ? (entry.data.name || 'Group')
+      : (entry.data.title || (entry.data.html ? entry.data.html.replace(/<[^>]+>/g, ' ').slice(0, 60) : entry.data.text) || 'Item');
+    const icon = entry.kind === 'group' ? '📁' : (entry.data.type === 'note' ? '📝' : entry.data.type === 'todo' ? '✓' : '🔗');
+    return `<div class="ar-entry sar-row" data-idx="${idx}">
+      <span>${icon}</span>
+      <span class="ar-t">${esc(name)}</span>
+      <span class="ar-d">${esc(fmtTimeRelative(entry.at))}</span>
+      <button class="sar-view" title="Open in archive"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 6h7M6 3l3 3-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="restore" title="Restore"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 5.5L5.5 3l2.5 2.5M5.5 3v6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>`;
+  }).join('');
+  $r.innerHTML = head + rows;
+  $r.classList.remove('hidden');
+  $r.querySelectorAll('.sar-row').forEach(row => {
+    const idx = +row.dataset.idx;
+    row.querySelector('.restore').onclick = () => {
+      restoreArchive(idx);
+      toggleSearchBar(false);
+    };
+    row.querySelector('.sar-view').onclick = () => {
+      toggleSearchBar(false);
+      document.querySelector('#drawer-tabs .dt[data-tab="archive"]')?.click();
+      document.getElementById('settings-drawer')?.classList.remove('hidden');
+    };
+  });
 }
 function toggleSearchBar(force) {
   const bar = document.getElementById('search-bar');
@@ -2825,19 +2961,23 @@ async function importBookmarks() {
   const tree = await chrome.bookmarks.getTree();
   const cat = activeCat(); if (!cat) return;
   State.snapshot('Import bookmarks');
+  const MAX_BOOKMARK_DEPTH = 50;
   let imported = 0;
-  function walk(nodes, folderName) {
+  let skipped = 0;
+  function walk(nodes, folderName, depth) {
+    if (depth >= MAX_BOOKMARK_DEPTH) { skipped++; return; }
     const g = { id: uid(), name: folderName || 'Bookmarks', symbol:'🔖', color:'#eab308', collapsed:false, items:[] };
     let has = false;
     for (const n of nodes) {
       if (n.url && !isProto(n.url)) { g.items.push({ id: uid(), type:'tab', title:n.title||n.url, url:n.url, fav:'' }); has = true; imported++; }
-      else if (n.children) walk(n.children, n.title);
+      else if (n.children) walk(n.children, n.title, depth + 1);
     }
     if (has) cat.groups.push(g);
   }
-  tree.forEach(r => (r.children || []).forEach(c => walk(c.children || [], c.title)));
+  tree.forEach(r => (r.children || []).forEach(c => walk(c.children || [], c.title, 0)));
   State.persist(); renderBoard();
-  toast(`Imported ${imported}`, { undo: true });
+  const suffix = skipped ? ` · ${skipped} folder${skipped === 1 ? '' : 's'} too deep` : '';
+  toast(`Imported ${imported}${suffix}`, { undo: true });
 }
 function countState(s) {
   let workspaces = 0, categories = 0, groups = 0, items = 0;

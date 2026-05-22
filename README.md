@@ -128,6 +128,8 @@ No host permissions — the extension does not read web page content.
 | `Cmd/Ctrl + Shift + E` | Open extension popup |
 | `Cmd/Ctrl + Z / Shift+Z` | Undo / Redo |
 | `S` | Focus tab filter in sidebar |
+| `M` | Move focused item (or current selection) to another group |
+| `?` | Show keyboard cheatsheet |
 | `Esc` | Close overlays, clear selections |
 | `/todo` `/done` | Convert note → todo, mark done |
 | `/red` `/green` `/blue` `/yellow` `/orange` | Set item color |
@@ -158,9 +160,7 @@ Dark, Light, Dracula, Nord, Rosé Pine, Tokyo Night, Solarized Dark/Light, Gruvb
 
 ## Known limitations / TODO
 
-- Drag-and-drop has no keyboard-only equivalent for moving items between groups or stacks. Keyboard nav within a group landed in PR #20, but cross-group moves remain mouse-only.
-- Global search (`Cmd/Ctrl+K`) does not scope into the `archive` array — archived items are unreachable until restored.
-- Bookmark import recurses without an explicit depth guard; pathologically deep folder trees could overflow the call stack.
+- The keyboard move picker (`M`) lists groups as destinations only — dropping into a specific stack still requires a mouse drag.
 - The MV3 service worker may be idle-evicted in low-memory states, so reminders and subscription alerts can fire late (Chromium-side limitation).
 
 ## Development notes for Claude Code
