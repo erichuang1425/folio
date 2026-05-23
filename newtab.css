@@ -3871,3 +3871,23 @@ body.blur-privacy .otab-title:hover { filter: blur(0); }
   min-width: 14px; text-align: center;
 }
 #cheatsheet-overlay .rm-panel { width: 460px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PERFORMANCE: off-screen culling for high-density lists.
+   `content-visibility: auto` lets the browser skip rendering,
+   layout, and paint for elements outside the viewport. The
+   intrinsic-size hint keeps scrollbars stable while culled.
+   Big win with 200+ open tabs / 500+ saved items.
+   ═══════════════════════════════════════════════════════════════ */
+.otab {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 36px;
+}
+.item {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 60px;
+}
+.ar-entry {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 40px;
+}

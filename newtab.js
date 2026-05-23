@@ -24,7 +24,11 @@ const State = (() => {
   };
   let history = [], future = [];
   let persistTimer = null;
-  const deepClone = o => JSON.parse(JSON.stringify(o));
+  // structuredClone is ~3× faster than JSON round-tripping and handles
+  // Dates/Maps/etc. Falls back to JSON for ancient browsers.
+  const deepClone = typeof structuredClone === 'function'
+    ? (o => structuredClone(o))
+    : (o => JSON.parse(JSON.stringify(o)));
   return {
     get: () => state,
     async load() {
@@ -66,11 +70,26 @@ const State = (() => {
 // ════════════════════════════════════════════════════════════════
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const favUrl = u => { try { return `https://www.google.com/s2/favicons?domain=${new URL(u).hostname}&sz=32`; } catch { return ''; } };
+const _favCache = new Map();
+const favUrl = u => {
+  if (!u) return '';
+  try {
+    const host = new URL(u).hostname;
+    let v = _favCache.get(host);
+    if (v === undefined) { v = `https://www.google.com/s2/favicons?domain=${host}&sz=32`; _favCache.set(host, v); }
+    return v;
+  } catch { return ''; }
+};
 const dispUrl = u => { try { const x = new URL(u); return x.hostname + (x.pathname.length > 1 ? x.pathname.slice(0, 40) : ''); } catch { return u; } };
 const isProto = u => !u || u.startsWith('chrome') || u.startsWith('edge') || u.startsWith('about') || u.startsWith('view-source');
 const BLANK_FAV = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23444'/%3E%3C/svg%3E`;
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+// Coalesce multiple calls per frame into one rAF-scheduled invocation.
+const rafThrottle = fn => { let q = null, lastArgs; return (...a) => { lastArgs = a; if (q != null) return; q = requestAnimationFrame(() => { q = null; fn(...lastArgs); }); }; };
+// Cached node list for the board; invalidated whenever renderBoard runs.
+let _itemNodeCache = null;
+const invalidateItemCache = () => { _itemNodeCache = null; };
+const getItemNodes = () => { if (!_itemNodeCache) _itemNodeCache = document.querySelectorAll('.item'); return _itemNodeCache; };
 const INTENT_STATUS = ['active', 'paused', 'someday', 'done', 'reference'];
 const INTENT_TYPE = ['project', 'study', 'research', 'admin', 'life', 'reference', 'other'];
 
@@ -1245,7 +1264,7 @@ function renderOpenTabs() {
     const fav = t.favIconUrl || favUrl(t.url);
     el.innerHTML = `
       <span class="otab-check" aria-label="Select"></span>
-      <img src="${esc(fav)}" alt="" onerror="this.src='${BLANK_FAV}'">
+      <img src="${esc(fav)}" alt="" loading="lazy" decoding="async" onerror="this.src='${BLANK_FAV}'">
       <span class="otab-title">${esc(t.title || t.url)}</span>`;
 
     // Checkbox area click — toggles selection without switching tab
@@ -1396,8 +1415,11 @@ async function saveSelectedToInbox() {
 }
 function applyFilter() {
   const q = document.getElementById('tab-filter').value.toLowerCase().trim();
+  // Build id→tab map once instead of O(n²) find() per row.
+  const byId = new Map();
+  for (const t of allOpenTabs) byId.set(String(t.id), t);
   document.querySelectorAll('#open-tabs .otab').forEach(el => {
-    const t = allOpenTabs.find(x => x.id == el.dataset.tid);
+    const t = byId.get(el.dataset.tid);
     if (!t) return;
     const match = !q || (t.title||'').toLowerCase().includes(q) || (t.url||'').toLowerCase().includes(q);
     el.classList.toggle('hidden', !match);
@@ -1615,6 +1637,7 @@ function renderCategoryTabs() {
 }
 
 function renderBoard() {
+  invalidateItemCache();
   if (getViewMode() === 'list') return renderListView();
   if (getViewMode() === 'canvas') return renderCanvasView();
   const $b = document.getElementById('board');
@@ -1916,7 +1939,7 @@ function buildGroupCol(g) {
   resizerH.addEventListener('mousedown', e => beginResize('h', e));
   if (resizerCorner) resizerCorner.addEventListener('mousedown', e => beginResize('corner', e));
 
-  document.addEventListener('mousemove', e => {
+  const onMove = rafThrottle(e => {
     if (!resizing) return;
     if (resizing === 'h' || resizing === 'corner') {
       const w = Math.max(200, Math.min(900, startW + (e.clientX - startX)));
@@ -1928,6 +1951,7 @@ function buildGroupCol(g) {
       cardsEl2.style.height = h + 'px';
     }
   });
+  document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', () => {
     if (!resizing) return;
     document.body.classList.remove('resizing');
@@ -2035,7 +2059,7 @@ function buildTab(it, parentItems, group) {
   el.innerHTML = `
     ${renderReminderBadge(it)}
     <div class="item-top">
-      <img class="item-fav" src="${esc(fav)}" alt="" onerror="this.src='${BLANK_FAV}'">
+      <img class="item-fav" src="${esc(fav)}" alt="" loading="lazy" decoding="async" onerror="this.src='${BLANK_FAV}'">
       <span class="item-title">${esc(it.title)}</span>
       <div class="item-acts">
         <button class="item-btn" data-act="open" title="Open in new tab">
@@ -2728,8 +2752,9 @@ function bindRtToolbar() {
     };
   });
   document.addEventListener('selectionchange', debounce(maybeShowRtToolbar, 50));
-  document.addEventListener('mouseup', () => setTimeout(maybeShowRtToolbar, 10));
-  document.addEventListener('keyup', () => setTimeout(maybeShowRtToolbar, 10));
+  const rtToolbarTick = rafThrottle(maybeShowRtToolbar);
+  document.addEventListener('mouseup', rtToolbarTick);
+  document.addEventListener('keyup', rtToolbarTick);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -2740,10 +2765,11 @@ function applySearchFilter() {
   // Support exact match with quotes
   const isExact = /^".+"$/.test(q);
   const needle = isExact ? q.slice(1, -1) : q;
-  document.querySelectorAll('.item').forEach(el => {
+  const tokens = !isExact && q ? needle.split(/\s+/) : null;
+  getItemNodes().forEach(el => {
     if (!q) { el.classList.remove('hidden'); return; }
     const text = el.textContent.toLowerCase();
-    const match = isExact ? text.includes(needle) : needle.split(/\s+/).every(w => text.includes(w));
+    const match = isExact ? text.includes(needle) : tokens.every(w => text.includes(w));
     el.classList.toggle('hidden', !match);
   });
   document.querySelectorAll('.gcol').forEach(col => {
@@ -2753,7 +2779,11 @@ function applySearchFilter() {
   renderArchiveSearchResults(q, needle, isExact);
 }
 // Build a normalized search blob for an archive entry (group or item).
+// Memoized in a WeakMap so we don't strip HTML on every keystroke.
+const _archiveBlobCache = new WeakMap();
 function archiveEntryText(entry) {
+  const cached = _archiveBlobCache.get(entry);
+  if (cached !== undefined) return cached;
   const parts = [];
   const pushItem = it => {
     if (!it) return;
@@ -2770,7 +2800,9 @@ function archiveEntryText(entry) {
   } else {
     pushItem(entry.data);
   }
-  return parts.join(' ').toLowerCase();
+  const blob = parts.join(' ').toLowerCase();
+  _archiveBlobCache.set(entry, blob);
+  return blob;
 }
 function renderArchiveSearchResults(q, needle, isExact) {
   const $r = document.getElementById('search-archive-results');
@@ -2879,7 +2911,7 @@ async function openWsGrid() {
         // Mini stack of favicons
         const favs = tabs.slice(0, 5).map(t => {
           const f = t.favIconUrl || favUrl(t.url);
-          return `<img src="${esc(f)}" onerror="this.style.visibility='hidden'">`;
+          return `<img src="${esc(f)}" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">`;
         }).join('');
         card.innerHTML = `
           <div class="wsg-win-label">
@@ -3782,12 +3814,19 @@ function renderFloatingPomo(c) {
     else if (a === 'skip') onPomoFinish();
     setTimeout(() => renderFloatingBody('pomodoro', c), 50);
   });
-  // Update title every second when running
+  // Tick: only update the time text — full re-render only on state changes.
   if (pomoState.running && !c._pomoUpdater) {
     c._pomoUpdater = setInterval(() => {
-      if (!document.contains(c)) { clearInterval(c._pomoUpdater); return; }
-      renderFloatingBody('pomodoro', c);
+      if (!document.contains(c)) { clearInterval(c._pomoUpdater); c._pomoUpdater = null; return; }
+      const timeEl = c.querySelector('.fw-pomo-time');
+      if (!timeEl) { clearInterval(c._pomoUpdater); c._pomoUpdater = null; return; }
+      const mm = Math.floor(pomoState.remaining / 60);
+      const ss = pomoState.remaining % 60;
+      timeEl.textContent = `${mm}:${String(ss).padStart(2,'0')}`;
     }, 1000);
+  } else if (!pomoState.running && c._pomoUpdater) {
+    clearInterval(c._pomoUpdater);
+    c._pomoUpdater = null;
   }
 }
 
@@ -4465,13 +4504,28 @@ function renderPomoTasks() {
   });
 }
 
+// Per-second updates for an active Pomodoro session. Only mutates the
+// ring, time text, and document title — anything else (mode, phase,
+// stats, tasks) needs an explicit renderPomo() call from a state change.
+function tickPomo() {
+  const p = getPomo();
+  const total = (pomoState.mode === 'focus' ? p.settings.focus : pomoState.mode === 'short' ? p.settings.short : p.settings.long) * 60;
+  const pct = total ? pomoState.remaining / total : 0;
+  const ring = document.querySelector('.pomo-ring-fg');
+  if (ring) ring.style.strokeDashoffset = String(2 * Math.PI * 144 * (1 - pct));
+  const m = Math.floor(pomoState.remaining / 60);
+  const s = pomoState.remaining % 60;
+  const timeEl = document.getElementById('pomo-time');
+  if (timeEl) timeEl.textContent = `${m}:${String(s).padStart(2, '0')}`;
+  document.title = pomoState.running ? `${m}:${String(s).padStart(2,'0')} · TabExtend` : 'New tabExtend';
+}
 function startPomoTimer() {
   if (pomoState.running) return;
   pomoState.running = true;
   pomoTimer = setInterval(() => {
     pomoState.remaining--;
-    if (pomoState.remaining <= 0) onPomoFinish();
-    renderPomo();
+    if (pomoState.remaining <= 0) { onPomoFinish(); return; }
+    tickPomo();
   }, 1000);
   renderPomo();
 }
@@ -5297,7 +5351,8 @@ function bindStatic() {
   document.getElementById('sidebar-toggle').onclick = () => { State.get().settings.sidebarCollapsed = !State.get().settings.sidebarCollapsed; applySettings(); State.persist(); };
   document.getElementById('add-cat-btn').onclick = () => openModal('new-cat');
 
-  document.getElementById('tab-filter').oninput = applyFilter;
+  const _debouncedApplyFilter = debounce(applyFilter, 80);
+  document.getElementById('tab-filter').oninput = _debouncedApplyFilter;
   document.getElementById('tab-filter').onkeydown = e => { if (e.key === 'Escape') { e.target.value = ''; applyFilter(); e.target.blur(); } };
 
   document.getElementById('theme-btn').onclick = () => {
@@ -5321,7 +5376,7 @@ function bindStatic() {
   document.getElementById('search-btn').onclick = () => toggleSearchBar();
   document.getElementById('undo-btn').onclick = performUndo;
 
-  document.getElementById('search-input').oninput = applySearchFilter;
+  document.getElementById('search-input').oninput = debounce(applySearchFilter, 90);
   document.getElementById('search-input').onkeydown = e => { if (e.key === 'Escape') toggleSearchBar(false); };
 
   // Modal
