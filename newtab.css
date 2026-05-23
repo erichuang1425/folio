@@ -621,6 +621,21 @@ textarea:focus-visible {
   border: 1px solid var(--border); border-radius: 3px;
   padding: 1px 5px; color: var(--text3);
 }
+#search-archive-results {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 18px 10px;
+  max-height: 30vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 5px;
+}
+#search-archive-results .sar-hd {
+  font: 10px var(--font); color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 2px 0 4px;
+}
+#search-archive-results .sar-row { font-size: 12px; }
+#search-archive-results .sar-view { background: none; border: none; color: var(--text3); cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: all var(--trans); }
+#search-archive-results .sar-view:hover { color: var(--accent); background: var(--bg4); }
 
 /* ═══ BOARD ═══ */
 #board {
