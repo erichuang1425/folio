@@ -3845,6 +3845,7 @@ function buildFloatingWidget(w) {
         else if (w.tool === 'habits') openHabits();
         else if (w.tool === 'water') openWater();
         else if (w.tool === 'goals') openGoals();
+        else if (w.tool === 'subs') openSubsTracker();
       }
     };
   });
@@ -4569,9 +4570,13 @@ function getPomo() {
 
 function openPomo() {
   const p = getPomo();
-  pomoState.mode = 'focus';
-  pomoState.remaining = p.settings.focus * 60;
-  pomoState.running = false;
+  // Preserve any in-progress (or paused) session so popping the overlay back
+  // open doesn't snap a running timer back to a fresh focus block.
+  if (!pomoState.remaining) {
+    pomoState.mode = 'focus';
+    pomoState.remaining = p.settings.focus * 60;
+    pomoState.running = false;
+  }
   const ov = document.getElementById('pomo-overlay');
   rememberOpener(ov);
   renderPomo();
@@ -4915,7 +4920,8 @@ function renderFin() {
   document.getElementById('fin-spent').textContent = fmt(total);
   document.getElementById('fin-count').textContent = txns.length;
   const _r = getFinRange();
-  const days = _r === 'today' ? 1 : _r === 'week' ? 7 : _r === 'month' ? new Date().getDate() : Math.max(1, Math.ceil((Date.now() - (f.txns[0] ? new Date(f.txns[f.txns.length-1].date).getTime() : Date.now()))/86400000));
+  // For 'all' range, span = days from the oldest tx (txns are insertion-ordered).
+  const days = _r === 'today' ? 1 : _r === 'week' ? 7 : _r === 'month' ? new Date().getDate() : Math.max(1, Math.ceil((Date.now() - (f.txns[0] ? new Date(f.txns[0].date).getTime() : Date.now()))/86400000));
   document.getElementById('fin-avg').textContent = fmt(total / days);
   const top = Object.entries(byCat).sort((a,b) => b[1]-a[1])[0];
   document.getElementById('fin-top').textContent = top ? FIN_CATS.find(c => c.id === top[0])?.icon + ' ' + FIN_CATS.find(c => c.id === top[0])?.label : '—';
