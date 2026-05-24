@@ -3731,7 +3731,9 @@ const FLOATING_TOOLS = {
   habits:   { title: 'Habits',   icon: '🔁' },
   water:    { title: 'Water',    icon: '💧' },
   goals:    { title: 'Goals',    icon: '🎯' },
-  subs:     { title: 'Subs',     icon: '💳' }
+  subs:     { title: 'Subs',     icon: '💳' },
+  books:    { title: 'Reading',  icon: '📚' },
+  workout:  { title: 'Workout',  icon: '💪' }
 };
 
 function getFloating() {
@@ -3761,7 +3763,9 @@ function popOutTool(toolKey) {
     habits:   'habit-overlay',
     water:    'water-overlay',
     goals:    'goals-overlay',
-    subs:     'subs-overlay'
+    subs:     'subs-overlay',
+    books:    'books-overlay',
+    workout:  'workout-overlay'
   };
   const ovId = overlayMap[toolKey];
   const ovEl = ovId ? document.getElementById(ovId) : null;
@@ -3846,6 +3850,8 @@ function buildFloatingWidget(w) {
         else if (w.tool === 'water') openWater();
         else if (w.tool === 'goals') openGoals();
         else if (w.tool === 'subs') openSubsTracker();
+        else if (w.tool === 'books') openBooks();
+        else if (w.tool === 'workout') openWorkout();
       }
     };
   });
@@ -3922,6 +3928,46 @@ function renderFloatingBody(tool, container) {
   else if (tool === 'water') renderFloatingWater(container);
   else if (tool === 'goals') renderFloatingGoals(container);
   else if (tool === 'subs') renderFloatingSubs(container);
+  else if (tool === 'books') renderFloatingBooks(container);
+  else if (tool === 'workout') renderFloatingWorkout(container);
+}
+
+function renderFloatingBooks(c) {
+  const books = getBooks();
+  const reading = books.filter(b => b.status === 'reading').length;
+  const finishedYr = books.filter(b => {
+    if (b.status !== 'finished' || !b.date) return false;
+    return new Date(b.date).getFullYear() === new Date().getFullYear();
+  }).length;
+  const goal = getBooksCfg().yearlyGoal || 12;
+  c.innerHTML = `
+    <div class="fw-fin">
+      <div class="fw-fin-stat">
+        <div class="fw-fin-lbl">Currently reading</div>
+        <div class="fw-fin-val">${reading}</div>
+        <div class="fw-fin-sub">${finishedYr}/${goal} done this year</div>
+      </div>
+      <button class="fw-quickadd-btn" data-a="add">📖 Open shelves</button>
+    </div>`;
+  c.querySelector('[data-a=add]').onclick = () => { closeFloating('books'); openBooks(); };
+}
+
+function renderFloatingWorkout(c) {
+  const wos = getWorkouts();
+  const now = Date.now();
+  const weekMs = 7 * 86400000;
+  const weekCt = wos.filter(w => now - new Date(w.date).getTime() < weekMs);
+  const weekMin = weekCt.reduce((a, w) => a + (Number(w.duration) || 0), 0);
+  c.innerHTML = `
+    <div class="fw-fin">
+      <div class="fw-fin-stat">
+        <div class="fw-fin-lbl">This week</div>
+        <div class="fw-fin-val">${weekCt.length} · ${weekMin}m</div>
+        <div class="fw-fin-sub">🔥 ${computeWorkoutStreak()} day streak</div>
+      </div>
+      <button class="fw-quickadd-btn" data-a="add">+ Log workout</button>
+    </div>`;
+  c.querySelector('[data-a=add]').onclick = () => { closeFloating('workout'); openWorkout(); };
 }
 
 function renderFloatingPomo(c) {
@@ -4987,6 +5033,88 @@ function renderFin() {
 
   const _activeRange = getFinRange();
   document.querySelectorAll('.fin-tab').forEach(b => b.classList.toggle('active', b.dataset.range === _activeRange));
+  renderFinSidebar(byCat, total, fmt);
+}
+
+function renderFinSidebar(byCat, total, fmt) {
+  const f = getFin();
+  // Donut (conic-gradient) using top categories
+  const $donut = document.getElementById('fin-donut');
+  const $legend = document.getElementById('fin-donut-legend');
+  if ($donut && $legend) {
+    const entries = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+    if (!total || !entries.length) {
+      $donut.style.background = 'conic-gradient(var(--bg3) 0 360deg)';
+      $legend.innerHTML = '<div style="font:11px var(--font);color:var(--text3);text-align:center;">No spending yet</div>';
+    } else {
+      let acc = 0;
+      const stops = [];
+      const legendRows = [];
+      // Top 5 categories + Other bucket
+      const top = entries.slice(0, 5);
+      const otherSum = entries.slice(5).reduce((a, [, v]) => a + v, 0);
+      top.forEach(([cid, val]) => {
+        const cat = FIN_CATS.find(c => c.id === cid) || FIN_CATS[FIN_CATS.length - 1];
+        const start = (acc / total) * 360;
+        acc += val;
+        const end = (acc / total) * 360;
+        stops.push(`${cat.color} ${start}deg ${end}deg`);
+        const pct = (val / total * 100).toFixed(0);
+        legendRows.push(`<div class="row"><span class="swatch" style="background:${cat.color}"></span><span>${cat.icon} ${esc(cat.label)}</span><span class="pct">${pct}%</span></div>`);
+      });
+      if (otherSum > 0.001) {
+        const start = (acc / total) * 360;
+        acc += otherSum;
+        const end = (acc / total) * 360;
+        stops.push(`var(--text3) ${start}deg ${end}deg`);
+        const pct = (otherSum / total * 100).toFixed(0);
+        legendRows.push(`<div class="row"><span class="swatch" style="background:var(--text3)"></span><span>… other</span><span class="pct">${pct}%</span></div>`);
+      }
+      $donut.style.background = `conic-gradient(${stops.join(', ')})`;
+      $legend.innerHTML = legendRows.join('');
+    }
+  }
+  // Donut center & period label
+  const $dt = document.getElementById('fin-donut-total');
+  if ($dt) $dt.textContent = fmt(total).replace(/\.00$/, '');
+  const $dp = document.getElementById('fin-donut-period');
+  if ($dp) {
+    const r = getFinRange();
+    $dp.textContent = r === 'today' ? 'Today' : r === 'week' ? 'This week' : r === 'month' ? 'This month' : 'All time';
+  }
+  // 7-day sparkline (based on ALL transactions, not the filtered range, so it always shows the trend)
+  const now = new Date(); now.setHours(0,0,0,0);
+  const cur = f.settings.defaultCurrency || 'TWD';
+  const FX = { USD:1, EUR:1.09, GBP:1.28, TWD:0.031, JPY:0.0067, CNY:0.14, KRW:0.00074 };
+  const toDefault = (amt, c) => amt * (FX[c] || 1) / (FX[cur] || 1);
+  const buckets = new Array(7).fill(0);
+  f.txns.forEach(t => {
+    const d = new Date(t.date); d.setHours(0,0,0,0);
+    const ago = Math.round((now - d) / 86400000);
+    if (ago >= 0 && ago < 7) buckets[6 - ago] += toDefault(Number(t.amount) || 0, t.currency || 'USD');
+  });
+  const max = Math.max(...buckets, 0.001);
+  const $line = document.getElementById('fin-spark-line');
+  const $fill = document.getElementById('fin-spark-fill');
+  if ($line && $fill) {
+    const w = 200, h = 44, pad = 2;
+    const xs = buckets.map((_, i) => pad + (w - 2 * pad) * (i / 6));
+    const ys = buckets.map(v => pad + (h - 2 * pad) * (1 - v / max));
+    const linePath = xs.map((x, i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+    const fillPath = `${linePath} L${xs[6].toFixed(1)},${h - pad} L${xs[0].toFixed(1)},${h - pad} Z`;
+    $line.setAttribute('d', linePath);
+    $fill.setAttribute('d', fillPath);
+  }
+  const $sparkLbl = document.getElementById('fin-spark-lbl');
+  if ($sparkLbl) {
+    const sum7 = buckets.reduce((a, b) => a + b, 0);
+    $sparkLbl.textContent = `${fmt(sum7)} · 7 days`;
+  }
+  // Settings inputs
+  const $cur = document.getElementById('fin-default-cur');
+  if ($cur && $cur !== document.activeElement) $cur.value = f.settings.defaultCurrency || 'TWD';
+  const $bud = document.getElementById('fin-budget');
+  if ($bud && $bud !== document.activeElement) $bud.value = f.settings.monthlyBudget || 0;
 }
 
 function addFinTxn() {
@@ -5044,6 +5172,20 @@ function bindFin() {
     if (i > -1) all.splice(i, 1);
     State.persist(); renderFin();
   });
+  // Sidebar settings
+  const $cur = document.getElementById('fin-default-cur');
+  if ($cur) $cur.addEventListener('change', () => {
+    const f = getFin(); f.settings.defaultCurrency = $cur.value;
+    const $qc = document.getElementById('fin-q-cur');
+    if ($qc) $qc.value = $cur.value;
+    State.persist(); renderFin();
+  });
+  const $bud = document.getElementById('fin-budget');
+  if ($bud) $bud.addEventListener('change', () => {
+    const v = Math.max(0, parseFloat($bud.value) || 0);
+    getFin().settings.monthlyBudget = v;
+    State.persist();
+  });
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5053,6 +5195,11 @@ function getHabits() {
   const s = State.get();
   if (!s.habits) s.habits = [];
   return s.habits;
+}
+function getHabitsCfg() {
+  const s = State.get();
+  if (!s.habitsCfg) s.habitsCfg = { weeklyTarget: 7, selectedId: null };
+  return s.habitsCfg;
 }
 
 function openHabits() {
@@ -5072,37 +5219,130 @@ function closeHabits() {
 
 function renderHabits() {
   const habits = getHabits();
+  const cfg = getHabitsCfg();
   const $list = document.getElementById('habit-list');
-  $list.innerHTML = '';
-  if (!habits.length) { $list.innerHTML = `<div class="fin-empty">No habits yet. Add one above.</div>`; return; }
+  if (!$list) return;
   const today = new Date().toISOString().slice(0,10);
-  // Build last 7 days
-  const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    days.push(d.toISOString().slice(0,10));
+  if (!habits.length) {
+    $list.innerHTML = `<div class="fin-empty">No habits yet. Add one above.</div>`;
+  } else {
+    // Build last 7 days
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      days.push(d.toISOString().slice(0,10));
+    }
+    const frag = document.createDocumentFragment();
+    habits.forEach(h => {
+      const doneSet = new Set(h.dates || []);
+      const streak = computeHabitStreak(h);
+      const row = document.createElement('div');
+      row.className = 'habit-row';
+      row.dataset.habitId = h.id;
+      row.innerHTML = `
+        <div class="hab-icon">${esc(h.icon || '✅')}</div>
+        <div class="hab-info">
+          <div class="hab-name">${esc(h.name)}</div>
+          <div class="hab-streak">🔥 ${streak} day streak · Last 7 days</div>
+        </div>
+        <div class="hab-grid">
+          ${days.map(d => `<div class="hab-cell ${doneSet.has(d) ? 'done':''} ${d === today ? 'today':''}" title="${d}"></div>`).join('')}
+        </div>
+        <button class="hab-toggle ${doneSet.has(today) ? 'done':''}">${doneSet.has(today) ? '✓ Done' : 'Mark done'}</button>
+        <button class="hab-del" title="Delete"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M4.5 3V1.5h3V3M3 3v7a1 1 0 001 1h4a1 1 0 001-1V3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+      frag.appendChild(row);
+    });
+    $list.innerHTML = '';
+    $list.appendChild(frag);
   }
-  const frag = document.createDocumentFragment();
+  renderHabitsSidebar();
+}
+
+function renderHabitsSidebar() {
+  const habits = getHabits();
+  const cfg = getHabitsCfg();
+  // Stats
+  const setVal = (id, v) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.textContent !== String(v)) {
+      el.textContent = v;
+      el.classList.remove('tool-num-pop');
+      void el.offsetWidth;
+      el.classList.add('tool-num-pop');
+    }
+  };
+  let bestStreak = 0, totalChecks = 0, perfectDays = 0;
   habits.forEach(h => {
-    const doneSet = new Set(h.dates || []);
-    const streak = computeHabitStreak(h);
-    const row = document.createElement('div');
-    row.className = 'habit-row';
-    row.dataset.habitId = h.id;
-    row.innerHTML = `
-      <div class="hab-icon">${esc(h.icon || '✅')}</div>
-      <div class="hab-info">
-        <div class="hab-name">${esc(h.name)}</div>
-        <div class="hab-streak">🔥 ${streak} day streak · Last 7 days</div>
-      </div>
-      <div class="hab-grid">
-        ${days.map(d => `<div class="hab-cell ${doneSet.has(d) ? 'done':''} ${d === today ? 'today':''}" title="${d}"></div>`).join('')}
-      </div>
-      <button class="hab-toggle ${doneSet.has(today) ? 'done':''}">${doneSet.has(today) ? '✓ Done' : 'Mark done'}</button>
-      <button class="hab-del" title="Delete"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M4.5 3V1.5h3V3M3 3v7a1 1 0 001 1h4a1 1 0 001-1V3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
-    frag.appendChild(row);
+    const set = new Set(h.dates || []);
+    totalChecks += set.size;
+    // Compute longest streak by scanning sorted unique dates
+    const sorted = [...set].sort();
+    let cur = 0, best = 0, prev = null;
+    sorted.forEach(d => {
+      const dt = new Date(d);
+      if (prev && (dt - prev) === 86400000) cur++;
+      else cur = 1;
+      best = Math.max(best, cur);
+      prev = dt;
+    });
+    if (best > bestStreak) bestStreak = best;
   });
-  $list.appendChild(frag);
+  // Perfect days = days in last 7 where ALL habits are checked
+  if (habits.length) {
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0,10);
+      if (habits.every(h => (h.dates || []).includes(key))) perfectDays++;
+    }
+  }
+  setVal('hab-total', habits.length);
+  setVal('hab-best', bestStreak);
+  setVal('hab-perfect', perfectDays);
+  setVal('hab-checks', totalChecks);
+
+  // Heatmap select options
+  const $sel = document.getElementById('hab-hm-select');
+  if ($sel) {
+    if (!habits.length) {
+      $sel.innerHTML = '<option>No habits</option>';
+    } else {
+      let selectedId = cfg.selectedId && habits.find(h => h.id === cfg.selectedId) ? cfg.selectedId : habits[0].id;
+      cfg.selectedId = selectedId;
+      $sel.innerHTML = habits.map(h => `<option value="${esc(h.id)}" ${h.id === selectedId ? 'selected':''}>${esc(h.icon || '✅')} ${esc(h.name)}</option>`).join('');
+    }
+  }
+
+  // 12-week heatmap (84 days, organized as 12 columns × 7 rows)
+  const $hm = document.getElementById('hab-heatmap');
+  if ($hm) {
+    const selected = habits.find(h => h.id === cfg.selectedId) || habits[0];
+    const doneSet = new Set((selected && selected.dates) || []);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dow = today.getDay(); // Sunday=0
+    // End column is current week. Go back 11 weeks.
+    const cols = [];
+    for (let c = 11; c >= 0; c--) {
+      const colCells = [];
+      for (let r = 0; r < 7; r++) {
+        const offset = c * 7 + (6 - r); // newest row at bottom-right? actually want chronological
+        // Simpler: start = (84 - 1) - (c*7 + r)  in days ago
+        const daysAgo = (11 - c) * 7 + (6 - r);
+        // Wait, want most recent at bottom right. Let's compute date.
+        const d = new Date(today);
+        d.setDate(d.getDate() - daysAgo);
+        const key = d.toISOString().slice(0,10);
+        const isFuture = d > today;
+        colCells.push(`<div class="hab-hm-cell ${doneSet.has(key) ? 'done':''} ${isFuture?'future':''}" title="${key}"></div>`);
+      }
+      cols.push(`<div class="hab-hm-col">${colCells.join('')}</div>`);
+    }
+    $hm.innerHTML = cols.join('');
+  }
+
+  // Settings input value
+  const $wt = document.getElementById('hab-weekly-target');
+  if ($wt && $wt !== document.activeElement) $wt.value = cfg.weeklyTarget;
 }
 
 function computeHabitStreak(h) {
@@ -5158,6 +5398,21 @@ function bindHabits() {
       State.persist(); renderHabits();
     }
   });
+  // Sidebar: heatmap habit selector
+  const $sel = document.getElementById('hab-hm-select');
+  if ($sel) $sel.addEventListener('change', () => {
+    getHabitsCfg().selectedId = $sel.value;
+    State.persist();
+    renderHabitsSidebar();
+  });
+  // Sidebar: weekly target
+  const $wt = document.getElementById('hab-weekly-target');
+  if ($wt) $wt.addEventListener('change', () => {
+    const v = Math.max(1, Math.min(7, parseInt($wt.value, 10) || 7));
+    getHabitsCfg().weeklyTarget = v;
+    $wt.value = v;
+    State.persist();
+  });
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5166,6 +5421,8 @@ function bindHabits() {
 function getWater() {
   const s = State.get();
   if (!s.water) s.water = { goal: 8, days: {}, total: 0 };
+  if (!s.water.glassSize) s.water.glassSize = 250;
+  if (!s.water.unit) s.water.unit = 'ml';
   return s.water;
 }
 
@@ -5188,15 +5445,69 @@ function renderWater() {
   const w = getWater();
   const today = new Date().toISOString().slice(0,10);
   const cnt = w.days[today] || 0;
-  document.getElementById('water-val').textContent = `${cnt} / ${w.goal}`;
+  const $val = document.getElementById('water-val');
+  if ($val) $val.textContent = `${cnt} / ${w.goal}`;
   const pct = Math.min(1, cnt / w.goal);
   const circ = 2 * Math.PI * 88;
-  document.getElementById('water-ring-fg').style.strokeDasharray = String(circ);
-  document.getElementById('water-ring-fg').style.strokeDashoffset = String(circ * (1 - pct));
+  const $fg = document.getElementById('water-ring-fg');
+  if ($fg) { $fg.style.strokeDasharray = String(circ); $fg.style.strokeDashoffset = String(circ * (1 - pct)); }
+  // Label includes total volume if glass-size set
+  const $lbl = document.getElementById('water-lbl');
+  if ($lbl) {
+    const vol = cnt * w.glassSize;
+    const volStr = w.unit === 'oz' ? `${(vol / 29.5735).toFixed(1)} oz` : `${vol} ml`;
+    $lbl.textContent = `glasses today · ${volStr}`;
+  }
+  renderWaterSidebar();
+}
 
-  document.getElementById('water-goal').value = w.goal;
-  document.getElementById('water-streak-val').textContent = computeWaterStreak();
-  document.getElementById('water-total-val').textContent = w.total || 0;
+function renderWaterSidebar() {
+  const w = getWater();
+  const today = new Date(); today.setHours(0,0,0,0);
+  // Build last 7 days, oldest first
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    days.push({ key: d.toISOString().slice(0,10), label: d.toLocaleDateString('en', { weekday: 'narrow' }), count: w.days[d.toISOString().slice(0,10)] || 0 });
+  }
+  // Bars
+  const $bars = document.getElementById('water-week');
+  const $dayLbls = document.getElementById('water-week-days');
+  if ($bars) {
+    const max = Math.max(w.goal, ...days.map(d => d.count));
+    $bars.innerHTML = days.map(d => {
+      const pct = max ? d.count / max : 0;
+      const h = Math.max(4, Math.round(pct * 80));
+      return `<div class="water-week-bar ${d.count ? '' : 'empty'}" style="height:${h}px" title="${d.key}: ${d.count} glasses"><span class="ct">${d.count || ''}</span></div>`;
+    }).join('');
+  }
+  if ($dayLbls) {
+    $dayLbls.innerHTML = days.map(d => `<div class="water-week-day" style="flex:1">${d.label}</div>`).join('');
+  }
+  // Stats
+  const setVal = (id, v) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.textContent !== String(v)) {
+      el.textContent = v;
+      el.classList.remove('tool-num-pop');
+      void el.offsetWidth;
+      el.classList.add('tool-num-pop');
+    }
+  };
+  const weekTotal = days.reduce((a, d) => a + d.count, 0);
+  const weekAvg = (weekTotal / 7).toFixed(1).replace(/\.0$/, '');
+  const best = days.reduce((m, d) => Math.max(m, d.count), 0);
+  setVal('water-streak-val', computeWaterStreak());
+  setVal('water-total-val', w.total || 0);
+  setVal('water-week-avg', weekAvg);
+  setVal('water-best', best);
+  // Settings inputs
+  const $goal = document.getElementById('water-goal');
+  if ($goal && $goal !== document.activeElement) $goal.value = w.goal;
+  const $gs = document.getElementById('water-glass-size');
+  if ($gs && $gs !== document.activeElement) $gs.value = w.glassSize;
+  document.querySelectorAll('#water-unit-seg button').forEach(b => b.classList.toggle('active', b.dataset.unit === w.unit));
 }
 function computeWaterStreak() {
   const w = getWater();
@@ -5241,6 +5552,18 @@ function bindWater() {
     const v = parseInt(e.target.value);
     if (v >= 1 && v <= 20) { getWater().goal = v; State.persist(); renderWater(); }
   });
+  const $gs = document.getElementById('water-glass-size');
+  if ($gs) $gs.addEventListener('change', () => {
+    const v = Math.max(50, Math.min(1000, parseInt($gs.value, 10) || 250));
+    getWater().glassSize = v; $gs.value = v;
+    State.persist(); renderWater();
+  });
+  document.querySelectorAll('#water-unit-seg button').forEach(b => {
+    b.addEventListener('click', () => {
+      getWater().unit = b.dataset.unit;
+      State.persist(); renderWater();
+    });
+  });
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5251,6 +5574,11 @@ function getBooks() {
   const s = State.get();
   if (!s.books) s.books = [];
   return s.books;
+}
+function getBooksCfg() {
+  const s = State.get();
+  if (!s.booksCfg) s.booksCfg = { yearlyGoal: 12 };
+  return s.booksCfg;
 }
 function openBooks() {
   const ov = document.getElementById('books-overlay');
@@ -5269,24 +5597,26 @@ function closeBooks() {
 function renderBooks() {
   const books = getBooks().filter(b => b.status === booksFilter);
   const $list = document.getElementById('books-list');
+  if (!$list) return;
   $list.innerHTML = '';
-  if (!books.length) { $list.innerHTML = `<div class="fin-empty">No books in this shelf yet.</div>`; }
-  else {
+  if (!books.length) {
+    $list.innerHTML = `<div class="fin-empty">No books in this shelf yet.</div>`;
+  } else {
+    const grid = document.createElement('div');
+    grid.className = 'bk-grid';
     books.forEach(b => {
-      const row = document.createElement('div');
-      row.className = 'book-row';
-      row.innerHTML = `
-        <div class="bk-info">
-          <div class="bk-title">${esc(b.title)}</div>
-          <div class="bk-author">${esc(b.author || 'Unknown author')}${b.date ? ' · ' + new Date(b.date).toLocaleDateString('en', { month:'short', year:'numeric' }) : ''}</div>
-        </div>
+      const card = document.createElement('div');
+      card.className = 'bk-card';
+      card.innerHTML = `
+        <div class="bk-title">${esc(b.title)}</div>
+        <div class="bk-author">${esc(b.author || 'Unknown author')}${b.date && b.status === 'finished' ? ' · ' + new Date(b.date).toLocaleDateString('en', { month:'short', year:'numeric' }) : ''}</div>
         <div class="bk-actions">
           ${b.status !== 'reading' ? `<button data-act="reading">📖 Reading</button>` : ''}
           ${b.status !== 'finished' ? `<button data-act="finished">✅ Done</button>` : ''}
           ${b.status !== 'want' ? `<button data-act="want">🔖 Wishlist</button>` : ''}
           <button data-act="del" class="danger">Delete</button>
         </div>`;
-      row.querySelectorAll('button').forEach(btn => {
+      card.querySelectorAll('button').forEach(btn => {
         btn.onclick = () => {
           const act = btn.dataset.act;
           if (act === 'del') {
@@ -5302,10 +5632,51 @@ function renderBooks() {
           State.persist(); renderBooks();
         };
       });
-      $list.appendChild(row);
+      grid.appendChild(card);
     });
+    $list.appendChild(grid);
   }
   document.querySelectorAll('.books-tab').forEach(t => t.classList.toggle('active', t.dataset.st === booksFilter));
+  renderBooksSidebar();
+}
+function renderBooksSidebar() {
+  const books = getBooks();
+  const cfg = getBooksCfg();
+  const setVal = (id, v) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.textContent !== String(v)) {
+      el.textContent = v;
+      el.classList.remove('tool-num-pop');
+      void el.offsetWidth;
+      el.classList.add('tool-num-pop');
+    }
+  };
+  // Shelf counts
+  setVal('bk-reading-ct',  books.filter(b => b.status === 'reading').length);
+  setVal('bk-finished-ct', books.filter(b => b.status === 'finished').length);
+  setVal('bk-want-ct',     books.filter(b => b.status === 'want').length);
+  // This month finished
+  const now = new Date();
+  const moStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthCt = books.filter(b => b.status === 'finished' && b.date && new Date(b.date) >= moStart).length;
+  setVal('bk-mo-ct', monthCt);
+  // Yearly goal ring
+  const yrStart = new Date(now.getFullYear(), 0, 1);
+  const yrCt = books.filter(b => b.status === 'finished' && b.date && new Date(b.date) >= yrStart).length;
+  const goal = Math.max(1, cfg.yearlyGoal || 12);
+  const pct = Math.min(1, yrCt / goal);
+  const $ring = document.getElementById('bk-goal-ring-fg');
+  if ($ring) {
+    const circ = 2 * Math.PI * 56;
+    $ring.style.strokeDasharray = String(circ);
+    $ring.style.strokeDashoffset = String(circ * (1 - pct));
+  }
+  setVal('bk-goal-n', `${yrCt}/${goal}`);
+  const $d = document.getElementById('bk-goal-d');
+  if ($d) $d.textContent = `${now.getFullYear()} reading goal`;
+  const $inp = document.getElementById('bk-goal-input');
+  if ($inp && $inp !== document.activeElement) $inp.value = cfg.yearlyGoal;
 }
 function bindBooks() {
   document.getElementById('books-close').onclick = closeBooks;
@@ -5324,6 +5695,12 @@ function bindBooks() {
   };
   document.getElementById('book-title').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('book-add').click(); });
   document.getElementById('book-author').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('book-add').click(); });
+  const $g = document.getElementById('bk-goal-input');
+  if ($g) $g.addEventListener('change', () => {
+    const v = Math.max(0, Math.min(999, parseInt($g.value, 10) || 0));
+    getBooksCfg().yearlyGoal = v; $g.value = v;
+    State.persist(); renderBooksSidebar();
+  });
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5333,6 +5710,11 @@ function getGoals() {
   const s = State.get();
   if (!s.goals) s.goals = [];
   return s.goals;
+}
+function getGoalsCfg() {
+  const s = State.get();
+  if (!s.goalsCfg) s.goalsCfg = { sort: 'due', showDone: true };
+  return s.goalsCfg;
 }
 function openGoals() {
   const ov = document.getElementById('goals-overlay');
@@ -5349,59 +5731,100 @@ function closeGoals() {
   restoreOpener(ov);
 }
 function renderGoals() {
-  const goals = getGoals();
-  const $list = document.getElementById('goals-list');
-  $list.innerHTML = '';
-  if (!goals.length) { $list.innerHTML = `<div class="fin-empty">No goals yet.</div>`; return; }
-  goals.forEach(g => {
-    const progress = Math.max(0, Math.min(100, g.progress || 0));
-    const daysLeft = g.due ? Math.round((new Date(g.due) - Date.now()) / 86400000) : null;
-    let dueCls = '', dueTxt = '';
-    if (daysLeft != null) {
-      if (daysLeft < 0) { dueCls = 'overdue'; dueTxt = `${-daysLeft}d overdue`; }
-      else if (daysLeft <= 7) { dueCls = 'soon'; dueTxt = `${daysLeft}d left`; }
-      else { dueTxt = new Date(g.due).toLocaleDateString('en', { month:'short', day:'numeric', year:'numeric' }); }
-    }
-    const row = document.createElement('div');
-    row.className = 'goal-row';
-    row.innerHTML = `
-      <div class="goal-row-top">
-        <span class="goal-name">${esc(g.name)}</span>
-        ${dueTxt ? `<span class="goal-due ${dueCls}">${dueTxt}</span>` : ''}
-      </div>
-      <div class="goal-bar" title="Click to set progress"><div class="goal-bar-fill" style="width:${progress}%"></div></div>
-      <div class="goal-meta">
-        <span>${progress}% complete</span>
-        <div class="goal-actions">
-          <button data-act="-">−10%</button>
-          <button data-act="+">+10%</button>
-          <button data-act="100">Done</button>
-          <button data-act="del" class="danger">✕</button>
-        </div>
-      </div>`;
-    row.querySelector('.goal-bar').onclick = (e) => {
-      const r = e.currentTarget.getBoundingClientRect();
-      const pct = Math.max(0, Math.min(100, Math.round((e.clientX - r.left) / r.width * 100)));
-      State.snapshot('Goal progress');
-      g.progress = pct; State.persist(); renderGoals();
-    };
-    row.querySelectorAll('.goal-actions button').forEach(btn => {
-      btn.onclick = () => {
-        const act = btn.dataset.act;
-        State.snapshot('Goal');
-        if (act === '+') g.progress = Math.min(100, (g.progress || 0) + 10);
-        else if (act === '-') g.progress = Math.max(0, (g.progress || 0) - 10);
-        else if (act === '100') g.progress = 100;
-        else if (act === 'del') {
-          if (!confirm('Delete this goal?')) return;
-          const all = getGoals(); const i = all.findIndex(x => x.id === g.id);
-          if (i > -1) all.splice(i, 1);
-        }
-        State.persist(); renderGoals();
-      };
-    });
-    $list.appendChild(row);
+  const all = getGoals();
+  const cfg = getGoalsCfg();
+  let goals = all.slice();
+  if (!cfg.showDone) goals = goals.filter(g => (g.progress || 0) < 100);
+  if (cfg.sort === 'due') goals.sort((a, b) => {
+    if (!a.due && !b.due) return 0;
+    if (!a.due) return 1;
+    if (!b.due) return -1;
+    return new Date(a.due) - new Date(b.due);
   });
+  else if (cfg.sort === 'progress') goals.sort((a, b) => (b.progress || 0) - (a.progress || 0));
+  else if (cfg.sort === 'created') goals.sort((a, b) => new Date(b.created || 0) - new Date(a.created || 0));
+  const $list = document.getElementById('goals-list');
+  if (!$list) return;
+  $list.innerHTML = '';
+  if (!goals.length) {
+    $list.innerHTML = `<div class="fin-empty">No goals yet.</div>`;
+  } else {
+    goals.forEach(g => {
+      const progress = Math.max(0, Math.min(100, g.progress || 0));
+      const daysLeft = g.due ? Math.round((new Date(g.due) - Date.now()) / 86400000) : null;
+      let dueCls = '', dueTxt = '';
+      if (daysLeft != null) {
+        if (daysLeft < 0) { dueCls = 'overdue'; dueTxt = `${-daysLeft}d overdue`; }
+        else if (daysLeft <= 7) { dueCls = 'soon'; dueTxt = `${daysLeft}d left`; }
+        else { dueTxt = new Date(g.due).toLocaleDateString('en', { month:'short', day:'numeric', year:'numeric' }); }
+      }
+      const row = document.createElement('div');
+      row.className = 'goal-row';
+      row.innerHTML = `
+        <div class="goal-row-top">
+          <span class="goal-name">${esc(g.name)}</span>
+          ${dueTxt ? `<span class="goal-due ${dueCls}">${dueTxt}</span>` : ''}
+        </div>
+        <div class="goal-bar" title="Click to set progress"><div class="goal-bar-fill" style="width:${progress}%"></div></div>
+        <div class="goal-meta">
+          <span>${progress}% complete</span>
+          <div class="goal-actions">
+            <button data-act="-">−10%</button>
+            <button data-act="+">+10%</button>
+            <button data-act="100">Done</button>
+            <button data-act="del" class="danger">✕</button>
+          </div>
+        </div>`;
+      row.querySelector('.goal-bar').onclick = (e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        const pct = Math.max(0, Math.min(100, Math.round((e.clientX - r.left) / r.width * 100)));
+        State.snapshot('Goal progress');
+        g.progress = pct; State.persist(); renderGoals();
+      };
+      row.querySelectorAll('.goal-actions button').forEach(btn => {
+        btn.onclick = () => {
+          const act = btn.dataset.act;
+          State.snapshot('Goal');
+          if (act === '+') g.progress = Math.min(100, (g.progress || 0) + 10);
+          else if (act === '-') g.progress = Math.max(0, (g.progress || 0) - 10);
+          else if (act === '100') g.progress = 100;
+          else if (act === 'del') {
+            if (!confirm('Delete this goal?')) return;
+            const arr = getGoals(); const i = arr.findIndex(x => x.id === g.id);
+            if (i > -1) arr.splice(i, 1);
+          }
+          State.persist(); renderGoals();
+        };
+      });
+      $list.appendChild(row);
+    });
+  }
+  renderGoalsSidebar();
+}
+function renderGoalsSidebar() {
+  const goals = getGoals();
+  const cfg = getGoalsCfg();
+  const setVal = (id, v) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.textContent !== String(v)) {
+      el.textContent = v;
+      el.classList.remove('tool-num-pop');
+      void el.offsetWidth;
+      el.classList.add('tool-num-pop');
+    }
+  };
+  const active = goals.filter(g => (g.progress || 0) < 100);
+  const done   = goals.filter(g => (g.progress || 0) >= 100);
+  const overdue = active.filter(g => g.due && new Date(g.due) < Date.now());
+  const avg = goals.length ? Math.round(goals.reduce((a, g) => a + (g.progress || 0), 0) / goals.length) : 0;
+  setVal('go-active', active.length);
+  setVal('go-done', done.length);
+  setVal('go-overdue', overdue.length);
+  setVal('go-avg', avg + '%');
+  const $sort = document.getElementById('go-sort');
+  if ($sort && $sort !== document.activeElement) $sort.value = cfg.sort;
+  document.querySelectorAll('#go-show-done-seg button').forEach(b => b.classList.toggle('active', String(cfg.showDone ? 1 : 0) === b.dataset.v));
 }
 function bindGoals() {
   document.getElementById('goals-close').onclick = closeGoals;
@@ -5418,15 +5841,33 @@ function bindGoals() {
     renderGoals();
   };
   document.getElementById('goal-name').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('goal-add').click(); });
+  const $sort = document.getElementById('go-sort');
+  if ($sort) $sort.addEventListener('change', () => {
+    getGoalsCfg().sort = $sort.value;
+    State.persist(); renderGoals();
+  });
+  document.querySelectorAll('#go-show-done-seg button').forEach(b => {
+    b.addEventListener('click', () => {
+      getGoalsCfg().showDone = b.dataset.v === '1';
+      State.persist(); renderGoals();
+    });
+  });
 }
 
 // ════════════════════════════════════════════════════════════════
 // WORKOUT
 // ════════════════════════════════════════════════════════════════
+const WO_TYPES_DEFAULT = ['Run', 'Strength', 'Yoga', 'Cycling', 'Swim', 'Walk', 'HIIT', 'Stretch'];
 function getWorkouts() {
   const s = State.get();
   if (!s.workouts) s.workouts = [];
   return s.workouts;
+}
+function getWorkoutCfg() {
+  const s = State.get();
+  if (!s.workoutCfg) s.workoutCfg = { weeklyMin: 150, types: WO_TYPES_DEFAULT.slice() };
+  if (!s.workoutCfg.types) s.workoutCfg.types = WO_TYPES_DEFAULT.slice();
+  return s.workoutCfg;
 }
 function openWorkout() {
   const ov = document.getElementById('workout-overlay');
@@ -5444,7 +5885,38 @@ function closeWorkout() {
 }
 function renderWorkout() {
   const wos = getWorkouts().slice().sort((a,b) => new Date(b.date) - new Date(a.date));
-  // Stats: this week minutes, count, this month
+  const $list = document.getElementById('wo-list');
+  if (!$list) return;
+  $list.innerHTML = '';
+  if (!wos.length) {
+    $list.innerHTML = `<div class="fin-empty">No workouts logged yet.</div>`;
+  } else {
+    wos.forEach(w => {
+      const d = new Date(w.date);
+      const row = document.createElement('div');
+      row.className = 'wo-row';
+      row.innerHTML = `
+        <div class="wo-icon">💪</div>
+        <div class="wo-info">
+          <div class="wo-name">${esc(w.name)}</div>
+          <div class="wo-meta">${d.toLocaleDateString('en', { weekday:'short', month:'short', day:'numeric' })} · ${w.duration || '?'} min${w.note ? ' · ' + esc(w.note) : ''}</div>
+        </div>
+        <button class="wo-del"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M4.5 3V1.5h3V3M3 3v7a1 1 0 001 1h4a1 1 0 001-1V3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+      row.querySelector('.wo-del').onclick = () => {
+        if (!confirm('Delete this workout?')) return;
+        State.snapshot('Delete workout');
+        const all = getWorkouts(); const i = all.findIndex(x => x.id === w.id);
+        if (i > -1) all.splice(i, 1);
+        State.persist(); renderWorkout();
+      };
+      $list.appendChild(row);
+    });
+  }
+  renderWorkoutSidebar();
+}
+function renderWorkoutSidebar() {
+  const wos = getWorkouts();
+  const cfg = getWorkoutCfg();
   const now = Date.now();
   const weekMs = 7 * 86400000;
   const monthMs = 30 * 86400000;
@@ -5452,35 +5924,44 @@ function renderWorkout() {
   const weekMin = weekCt.reduce((a, w) => a + (Number(w.duration) || 0), 0);
   const monthCt = wos.filter(w => now - new Date(w.date).getTime() < monthMs);
   const streak = computeWorkoutStreak();
+  const goalPct = cfg.weeklyMin ? Math.min(100, Math.round(weekMin / cfg.weeklyMin * 100)) : 0;
   const $stats = document.getElementById('wo-stats');
-  $stats.innerHTML = `
-    <div class="fin-stat"><div class="fin-stat-lbl">This week</div><div class="fin-stat-val">${weekCt.length}</div></div>
-    <div class="fin-stat"><div class="fin-stat-lbl">Minutes</div><div class="fin-stat-val">${weekMin}</div></div>
-    <div class="fin-stat"><div class="fin-stat-lbl">Month total</div><div class="fin-stat-val">${monthCt.length}</div></div>
-    <div class="fin-stat"><div class="fin-stat-lbl">Streak</div><div class="fin-stat-val">${streak}d</div></div>`;
-  const $list = document.getElementById('wo-list');
-  $list.innerHTML = '';
-  if (!wos.length) { $list.innerHTML = `<div class="fin-empty">No workouts logged yet.</div>`; return; }
-  wos.forEach(w => {
-    const d = new Date(w.date);
-    const row = document.createElement('div');
-    row.className = 'wo-row';
-    row.innerHTML = `
-      <div class="wo-icon">💪</div>
-      <div class="wo-info">
-        <div class="wo-name">${esc(w.name)}</div>
-        <div class="wo-meta">${d.toLocaleDateString('en', { weekday:'short', month:'short', day:'numeric' })} · ${w.duration || '?'} min${w.note ? ' · ' + esc(w.note) : ''}</div>
-      </div>
-      <button class="wo-del"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M4.5 3V1.5h3V3M3 3v7a1 1 0 001 1h4a1 1 0 001-1V3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
-    row.querySelector('.wo-del').onclick = () => {
-      if (!confirm('Delete this workout?')) return;
-      State.snapshot('Delete workout');
-      const all = getWorkouts(); const i = all.findIndex(x => x.id === w.id);
-      if (i > -1) all.splice(i, 1);
-      State.persist(); renderWorkout();
-    };
-    $list.appendChild(row);
-  });
+  if ($stats) {
+    $stats.innerHTML = `
+      <div class="tool-mini-stat"><div class="lbl">This week</div><div class="val">${weekCt.length}</div></div>
+      <div class="tool-mini-stat"><div class="lbl">Minutes</div><div class="val">${weekMin}</div></div>
+      <div class="tool-mini-stat"><div class="lbl">Month total</div><div class="val">${monthCt.length}</div></div>
+      <div class="tool-mini-stat"><div class="lbl">Streak</div><div class="val">${streak}d</div></div>
+      <div class="tool-mini-stat" style="grid-column:1/-1"><div class="lbl">Weekly goal</div><div class="val">${goalPct}%</div></div>`;
+  }
+  // 30-day heatmap (10 columns × 3 rows)
+  const $hm = document.getElementById('wo-heatmap');
+  if ($hm) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayKey = today.toISOString().slice(0,10);
+    const daySet = new Set(wos.map(w => new Date(w.date).toISOString().slice(0,10)));
+    const cells = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0,10);
+      cells.push(`<div class="wo-hm-cell ${daySet.has(key) ? 'done':''} ${key === todayKey ? 'today':''}" title="${key}"></div>`);
+    }
+    $hm.innerHTML = cells.join('');
+  }
+  // Workout type chips
+  const $types = document.getElementById('wo-types');
+  if ($types) {
+    $types.innerHTML = cfg.types.map(t => `<button class="wo-type-chip" data-t="${esc(t)}">${esc(t)}</button>`).join('');
+    $types.querySelectorAll('button').forEach(b => {
+      b.onclick = () => {
+        const $n = document.getElementById('wo-name');
+        if ($n) { $n.value = b.dataset.t; $n.focus(); }
+      };
+    });
+  }
+  // Settings input
+  const $wm = document.getElementById('wo-weekly-min');
+  if ($wm && $wm !== document.activeElement) $wm.value = cfg.weeklyMin;
 }
 function computeWorkoutStreak() {
   const wos = getWorkouts();
@@ -5511,6 +5992,12 @@ function bindWorkout() {
     renderWorkout();
   };
   document.getElementById('wo-name').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('wo-add').click(); });
+  const $wm = document.getElementById('wo-weekly-min');
+  if ($wm) $wm.addEventListener('change', () => {
+    const v = Math.max(0, Math.min(2000, parseInt($wm.value, 10) || 0));
+    getWorkoutCfg().weeklyMin = v; $wm.value = v;
+    State.persist(); renderWorkoutSidebar();
+  });
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5819,7 +6306,7 @@ function bindStatic() {
   };
 
   // Floating tool widgets - pop-out buttons
-  ['pomodoro:pomo-popout', 'finance:fin-popout', 'habits:habit-popout', 'water:water-popout', 'goals:goals-popout', 'subs:subs-popout']
+  ['pomodoro:pomo-popout', 'finance:fin-popout', 'habits:habit-popout', 'water:water-popout', 'goals:goals-popout', 'subs:subs-popout', 'books:books-popout', 'workout:workout-popout']
     .forEach(p => {
       const [tool, btnId] = p.split(':');
       const btn = document.getElementById(btnId);

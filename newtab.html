@@ -935,7 +935,7 @@
 
   <!-- ══════ FINANCE DIARY ══════ -->
   <div id="fin-overlay" class="hidden">
-    <div class="fin-panel">
+    <div class="fin-panel tool-wide">
       <div class="fin-hd">
         <div class="fin-title">
           <div class="fin-icon">💰</div>
@@ -951,47 +951,83 @@
         </div>
       </div>
 
-      <div class="fin-quick">
-        <div class="fin-quick-row">
-          <select id="fin-q-cat" class="fin-input"></select>
-          <div class="fin-q-cost">
-            <select id="fin-q-cur" class="fin-input fin-cur">
-              <option>USD</option><option>EUR</option><option>GBP</option><option selected>TWD</option><option>JPY</option><option>CNY</option><option>KRW</option>
-            </select>
-            <input type="number" id="fin-q-amt" class="fin-input" step="0.01" min="0" placeholder="Amount">
+      <div class="tool-body">
+        <div class="tool-main">
+          <div class="fin-quick">
+            <div class="fin-quick-row">
+              <select id="fin-q-cat" class="fin-input"></select>
+              <div class="fin-q-cost">
+                <select id="fin-q-cur" class="fin-input fin-cur">
+                  <option>USD</option><option>EUR</option><option>GBP</option><option selected>TWD</option><option>JPY</option><option>CNY</option><option>KRW</option>
+                </select>
+                <input type="number" id="fin-q-amt" class="fin-input" step="0.01" min="0" placeholder="Amount">
+              </div>
+              <input type="text" id="fin-q-note" class="fin-input" placeholder="Note (optional)">
+              <button id="fin-q-add" class="btn-primary">+ Log</button>
+            </div>
           </div>
-          <input type="text" id="fin-q-note" class="fin-input" placeholder="Note (optional)">
-          <button id="fin-q-add" class="btn-primary">+ Log</button>
+
+          <div class="fin-tabs">
+            <button class="fin-tab active" data-range="today">Today</button>
+            <button class="fin-tab" data-range="week">This week</button>
+            <button class="fin-tab" data-range="month">This month</button>
+            <button class="fin-tab" data-range="all">All</button>
+            <div class="fin-tabs-spacer"></div>
+            <button id="fin-export" class="fin-tab-action" title="Export CSV">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v7.5m0 0l3-3m-3 3l-3-3M2 10.5v1a1 1 0 001 1h7a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" transform="rotate(180 6.5 6.5)"/></svg>
+              Export
+            </button>
+          </div>
+
+          <div class="fin-stats">
+            <div class="fin-stat"><div class="fin-stat-lbl">Spent</div><div class="fin-stat-val" id="fin-spent">0</div></div>
+            <div class="fin-stat"><div class="fin-stat-lbl">Transactions</div><div class="fin-stat-val" id="fin-count">0</div></div>
+            <div class="fin-stat"><div class="fin-stat-lbl">Avg / day</div><div class="fin-stat-val" id="fin-avg">0</div></div>
+            <div class="fin-stat"><div class="fin-stat-lbl">Top category</div><div class="fin-stat-val" id="fin-top">—</div></div>
+          </div>
+
+          <div class="fin-content">
+            <div class="fin-col-left">
+              <h3>By category</h3>
+              <div id="fin-cats"></div>
+            </div>
+            <div class="fin-col-right">
+              <h3>Transactions</h3>
+              <div id="fin-list"></div>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div class="fin-tabs">
-        <button class="fin-tab active" data-range="today">Today</button>
-        <button class="fin-tab" data-range="week">This week</button>
-        <button class="fin-tab" data-range="month">This month</button>
-        <button class="fin-tab" data-range="all">All</button>
-        <div class="fin-tabs-spacer"></div>
-        <button id="fin-export" class="fin-tab-action" title="Export CSV">
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v7.5m0 0l3-3m-3 3l-3-3M2 10.5v1a1 1 0 001 1h7a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" transform="rotate(180 6.5 6.5)"/></svg>
-          Export
-        </button>
-      </div>
-
-      <div class="fin-stats">
-        <div class="fin-stat"><div class="fin-stat-lbl">Spent</div><div class="fin-stat-val" id="fin-spent">0</div></div>
-        <div class="fin-stat"><div class="fin-stat-lbl">Transactions</div><div class="fin-stat-val" id="fin-count">0</div></div>
-        <div class="fin-stat"><div class="fin-stat-lbl">Avg / day</div><div class="fin-stat-val" id="fin-avg">0</div></div>
-        <div class="fin-stat"><div class="fin-stat-lbl">Top category</div><div class="fin-stat-val" id="fin-top">—</div></div>
-      </div>
-
-      <div class="fin-content">
-        <div class="fin-col-left">
-          <h3>By category</h3>
-          <div id="fin-cats"></div>
-        </div>
-        <div class="fin-col-right">
-          <h3>Transactions</h3>
-          <div id="fin-list"></div>
+        <div class="tool-side">
+          <div class="tool-side-sec">
+            <h3>Breakdown</h3>
+            <div class="fin-donut-wrap">
+              <div id="fin-donut" class="fin-donut"></div>
+              <div class="fin-donut-center">
+                <div class="n" id="fin-donut-total">0</div>
+                <div class="d" id="fin-donut-period">Today</div>
+              </div>
+            </div>
+            <div id="fin-donut-legend" class="fin-donut-legend"></div>
+          </div>
+          <div class="tool-side-sec">
+            <h3>Last 7 days</h3>
+            <svg id="fin-spark" class="fin-spark" viewBox="0 0 200 44" preserveAspectRatio="none">
+              <path id="fin-spark-fill" class="fin-spark-fill" d=""/>
+              <path id="fin-spark-line" class="fin-spark-line" d=""/>
+            </svg>
+            <div id="fin-spark-lbl" style="font:11px var(--font);color:var(--text3);text-align:center;margin-top:4px;"></div>
+          </div>
+          <div class="tool-side-sec">
+            <h3>Settings</h3>
+            <label class="row"><span>Default currency</span>
+              <select id="fin-default-cur">
+                <option>USD</option><option>EUR</option><option>GBP</option><option>TWD</option><option>JPY</option><option>CNY</option><option>KRW</option>
+              </select>
+            </label>
+            <label class="row"><span>Monthly budget</span>
+              <input type="number" id="fin-budget" min="0" step="10" value="0">
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -1001,7 +1037,7 @@
 
   <!-- ══════ HABITS ══════ -->
   <div id="habit-overlay" class="hidden">
-    <div class="fin-panel">
+    <div class="fin-panel tool-wide">
       <div class="fin-hd">
         <div class="fin-title">
           <div class="fin-icon">🔁</div>
@@ -1016,18 +1052,44 @@
         </button>
         </div>
       </div>
-      <div class="habit-add">
-        <input type="text" id="habit-new-name" class="fin-input" placeholder="e.g. Read 20 minutes" autocomplete="off">
-        <button id="habit-new-icon" class="emoji-trigger" style="padding:6px 11px"><span id="habit-new-icon-val">✅</span></button>
-        <button id="habit-add-btn" class="btn-primary">+ Habit</button>
+      <div class="tool-body">
+        <div class="tool-main">
+          <div class="habit-add">
+            <input type="text" id="habit-new-name" class="fin-input" placeholder="e.g. Read 20 minutes" autocomplete="off">
+            <button id="habit-new-icon" class="emoji-trigger" style="padding:6px 11px"><span id="habit-new-icon-val">✅</span></button>
+            <button id="habit-add-btn" class="btn-primary">+ Habit</button>
+          </div>
+          <div id="habit-list"></div>
+        </div>
+        <div class="tool-side">
+          <div class="tool-side-sec">
+            <h3>Overview</h3>
+            <div class="tool-mini-stats">
+              <div class="tool-mini-stat"><div class="lbl">Habits</div><div class="val" id="hab-total">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">Best streak</div><div class="val" id="hab-best">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">Perfect days</div><div class="val" id="hab-perfect">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">Total checks</div><div class="val" id="hab-checks">0</div></div>
+            </div>
+          </div>
+          <div class="tool-side-sec">
+            <h3>Activity · 12 weeks</h3>
+            <select id="hab-hm-select" class="hab-hm-select"></select>
+            <div id="hab-heatmap" class="hab-heatmap"></div>
+          </div>
+          <div class="tool-side-sec">
+            <h3>Settings</h3>
+            <label class="row"><span>Weekly target days</span>
+              <input type="number" id="hab-weekly-target" min="1" max="7" step="1" value="7">
+            </label>
+          </div>
+        </div>
       </div>
-      <div id="habit-list"></div>
     </div>
   </div>
 
   <!-- ══════ HYDRATION ══════ -->
   <div id="water-overlay" class="hidden">
-    <div class="fin-panel" style="max-width:540px">
+    <div class="fin-panel tool-wide">
       <div class="fin-hd">
         <div class="fin-title">
           <div class="fin-icon">💧</div>
@@ -1042,35 +1104,62 @@
         </button>
         </div>
       </div>
-      <div class="water-stats">
-        <div class="water-ring-wrap">
-          <svg class="water-ring" viewBox="0 0 200 200">
-            <circle cx="100" cy="100" r="88" fill="none" stroke="var(--bg3)" stroke-width="10"/>
-            <circle id="water-ring-fg" cx="100" cy="100" r="88" fill="none" stroke="url(#water-grad)" stroke-width="10" stroke-linecap="round" transform="rotate(-90 100 100)"/>
-            <defs>
-              <linearGradient id="water-grad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#06b6d4"/>
-                <stop offset="100%" stop-color="#3b82f6"/>
-              </linearGradient>
-            </defs>
-          </svg>
-          <div class="water-center">
-            <div class="water-val" id="water-val">0 / 8</div>
-            <div class="water-lbl">glasses today</div>
+      <div class="tool-body">
+        <div class="tool-main">
+          <div class="water-stats">
+            <div class="water-ring-wrap">
+              <svg class="water-ring" viewBox="0 0 200 200">
+                <circle cx="100" cy="100" r="88" fill="none" stroke="var(--bg3)" stroke-width="10"/>
+                <circle id="water-ring-fg" cx="100" cy="100" r="88" fill="none" stroke="url(#water-grad)" stroke-width="10" stroke-linecap="round" transform="rotate(-90 100 100)"/>
+                <defs>
+                  <linearGradient id="water-grad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#06b6d4"/>
+                    <stop offset="100%" stop-color="#3b82f6"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="water-center">
+                <div class="water-val" id="water-val">0 / 8</div>
+                <div class="water-lbl" id="water-lbl">glasses today</div>
+              </div>
+            </div>
+            <div class="water-ctrls">
+              <button id="water-minus" class="btn-secondary"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+              <button id="water-plus" class="btn-primary"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Add glass</button>
+              <button id="water-reset" class="btn-secondary">Reset</button>
+            </div>
           </div>
         </div>
-        <div class="water-ctrls">
-          <button id="water-minus" class="btn-secondary"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-          <button id="water-plus" class="btn-primary"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Add glass</button>
-          <button id="water-reset" class="btn-secondary">Reset</button>
-        </div>
-        <label class="pomo-dur-row">
-          <span>Daily goal</span>
-          <input type="number" id="water-goal" min="1" max="20" step="1"> glasses
-        </label>
-        <div class="water-streak">
-          <div>🔥 <strong id="water-streak-val">0</strong> day streak</div>
-          <div>🏆 Total: <strong id="water-total-val">0</strong> glasses</div>
+        <div class="tool-side">
+          <div class="tool-side-sec">
+            <h3>This week</h3>
+            <div id="water-week" class="water-week"></div>
+            <div id="water-week-days" style="display:flex;gap:6px;"></div>
+          </div>
+          <div class="tool-side-sec">
+            <h3>Overview</h3>
+            <div class="tool-mini-stats">
+              <div class="tool-mini-stat"><div class="lbl">Streak</div><div class="val" id="water-streak-val">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">Total glasses</div><div class="val" id="water-total-val">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">7-day avg</div><div class="val" id="water-week-avg">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">Best day</div><div class="val" id="water-best">0</div></div>
+            </div>
+          </div>
+          <div class="tool-side-sec">
+            <h3>Settings</h3>
+            <label class="row"><span>Daily goal</span>
+              <input type="number" id="water-goal" min="1" max="20" step="1">
+            </label>
+            <label class="row"><span>Glass size</span>
+              <input type="number" id="water-glass-size" min="50" max="1000" step="10" value="250">
+            </label>
+            <label class="row"><span>Unit</span>
+              <div class="seg" id="water-unit-seg">
+                <button data-unit="ml" class="active">ml</button>
+                <button data-unit="oz">oz</button>
+              </div>
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -1078,33 +1167,69 @@
 
   <!-- ══════ READING ══════ -->
   <div id="books-overlay" class="hidden">
-    <div class="fin-panel">
+    <div class="fin-panel tool-wide">
       <div class="fin-hd">
         <div class="fin-title">
           <div class="fin-icon">📚</div>
           <div><h2>Reading</h2><div class="fin-sub">Books you've read, reading &amp; want to read</div></div>
         </div>
-        <button id="books-close" class="icon-btn">
-          <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        </button>
+        <div style="display:flex;align-items:center">
+          <button id="books-popout" class="tool-popout-btn" title="Pop out as floating widget">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9 2h3v3M12 2L7 7M11 9v2.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5v-7a.5.5 0 01.5-.5H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button id="books-close" class="icon-btn">
+            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
       </div>
-      <div class="fin-tabs">
-        <button class="books-tab active" data-st="reading">📖 Reading</button>
-        <button class="books-tab" data-st="finished">✅ Finished</button>
-        <button class="books-tab" data-st="want">🔖 Want to read</button>
+      <div class="tool-body">
+        <div class="tool-main">
+          <div class="fin-tabs">
+            <button class="books-tab active" data-st="reading">📖 Reading</button>
+            <button class="books-tab" data-st="finished">✅ Finished</button>
+            <button class="books-tab" data-st="want">🔖 Want to read</button>
+          </div>
+          <div class="habit-add">
+            <input type="text" id="book-title" class="fin-input" placeholder="Book title" autocomplete="off">
+            <input type="text" id="book-author" class="fin-input" placeholder="Author" autocomplete="off">
+            <button id="book-add" class="btn-primary">+ Add</button>
+          </div>
+          <div id="books-list"></div>
+        </div>
+        <div class="tool-side">
+          <div class="tool-side-sec">
+            <h3>Yearly goal</h3>
+            <div class="bk-goal-ring-wrap">
+              <svg class="bk-goal-ring" viewBox="0 0 124 124">
+                <circle class="bk-goal-ring-bg" cx="62" cy="62" r="56" fill="none" stroke-width="9"/>
+                <circle id="bk-goal-ring-fg" class="bk-goal-ring-fg" cx="62" cy="62" r="56" fill="none" stroke-width="9" stroke-linecap="round" transform="rotate(-90 62 62)"/>
+              </svg>
+              <div class="bk-goal-center">
+                <div class="n" id="bk-goal-n">0/0</div>
+                <div class="d" id="bk-goal-d">this year</div>
+              </div>
+            </div>
+            <label class="row"><span>Books per year</span>
+              <input type="number" id="bk-goal-input" min="0" max="999" step="1" value="12">
+            </label>
+          </div>
+          <div class="tool-side-sec">
+            <h3>Shelves</h3>
+            <div class="tool-mini-stats">
+              <div class="tool-mini-stat"><div class="lbl">Reading</div><div class="val" id="bk-reading-ct">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">Finished</div><div class="val" id="bk-finished-ct">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">Want to read</div><div class="val" id="bk-want-ct">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">This month</div><div class="val" id="bk-mo-ct">0</div></div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="habit-add">
-        <input type="text" id="book-title" class="fin-input" placeholder="Book title" autocomplete="off">
-        <input type="text" id="book-author" class="fin-input" placeholder="Author" autocomplete="off">
-        <button id="book-add" class="btn-primary">+ Add</button>
-      </div>
-      <div id="books-list"></div>
     </div>
   </div>
 
   <!-- ══════ GOALS ══════ -->
   <div id="goals-overlay" class="hidden">
-    <div class="fin-panel">
+    <div class="fin-panel tool-wide">
       <div class="fin-hd">
         <div class="fin-title">
           <div class="fin-icon">🎯</div>
@@ -1119,35 +1244,91 @@
         </button>
         </div>
       </div>
-      <div class="habit-add">
-        <input type="text" id="goal-name" class="fin-input" placeholder="Goal name" autocomplete="off">
-        <input type="date" id="goal-due" class="fin-input">
-        <button id="goal-add" class="btn-primary">+ Goal</button>
+      <div class="tool-body">
+        <div class="tool-main">
+          <div class="habit-add">
+            <input type="text" id="goal-name" class="fin-input" placeholder="Goal name" autocomplete="off">
+            <input type="date" id="goal-due" class="fin-input">
+            <button id="goal-add" class="btn-primary">+ Goal</button>
+          </div>
+          <div id="goals-list"></div>
+        </div>
+        <div class="tool-side">
+          <div class="tool-side-sec">
+            <h3>Overview</h3>
+            <div class="tool-mini-stats">
+              <div class="tool-mini-stat"><div class="lbl">Active</div><div class="val" id="go-active">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">Done</div><div class="val" id="go-done">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">Overdue</div><div class="val" id="go-overdue">0</div></div>
+              <div class="tool-mini-stat"><div class="lbl">Avg progress</div><div class="val" id="go-avg">0%</div></div>
+            </div>
+          </div>
+          <div class="tool-side-sec">
+            <h3>Settings</h3>
+            <label class="row"><span>Sort by</span>
+              <select id="go-sort">
+                <option value="due">Due date</option>
+                <option value="progress">Progress</option>
+                <option value="created">Created</option>
+              </select>
+            </label>
+            <label class="row"><span>Show completed</span>
+              <div class="seg" id="go-show-done-seg">
+                <button data-v="1" class="active">Yes</button>
+                <button data-v="0">No</button>
+              </div>
+            </label>
+          </div>
+        </div>
       </div>
-      <div id="goals-list"></div>
     </div>
   </div>
 
   <!-- ══════ WORKOUT ══════ -->
   <div id="workout-overlay" class="hidden">
-    <div class="fin-panel">
+    <div class="fin-panel tool-wide">
       <div class="fin-hd">
         <div class="fin-title">
           <div class="fin-icon">💪</div>
           <div><h2>Workout Log</h2><div class="fin-sub">Training sessions &amp; exercises</div></div>
         </div>
-        <button id="workout-close" class="icon-btn">
-          <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        </button>
+        <div style="display:flex;align-items:center">
+          <button id="workout-popout" class="tool-popout-btn" title="Pop out as floating widget">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9 2h3v3M12 2L7 7M11 9v2.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5v-7a.5.5 0 01.5-.5H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button id="workout-close" class="icon-btn">
+            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
       </div>
-      <div class="habit-add">
-        <input type="text" id="wo-name" class="fin-input" placeholder="Workout (e.g. Leg day)" autocomplete="off">
-        <input type="number" id="wo-dur" class="fin-input" placeholder="Minutes" step="1" min="1">
-        <input type="text" id="wo-note" class="fin-input" placeholder="Notes (optional)">
-        <button id="wo-add" class="btn-primary">+ Log</button>
+      <div class="tool-body">
+        <div class="tool-main">
+          <div class="habit-add">
+            <input type="text" id="wo-name" class="fin-input" placeholder="Workout (e.g. Leg day)" autocomplete="off">
+            <input type="number" id="wo-dur" class="fin-input" placeholder="Minutes" step="1" min="1">
+            <input type="text" id="wo-note" class="fin-input" placeholder="Notes (optional)">
+            <button id="wo-add" class="btn-primary">+ Log</button>
+          </div>
+          <div id="wo-types" class="wo-types"></div>
+          <div id="wo-list"></div>
+        </div>
+        <div class="tool-side">
+          <div class="tool-side-sec">
+            <h3>Overview</h3>
+            <div class="tool-mini-stats" id="wo-stats"></div>
+          </div>
+          <div class="tool-side-sec">
+            <h3>Last 30 days</h3>
+            <div id="wo-heatmap" class="wo-heatmap"></div>
+          </div>
+          <div class="tool-side-sec">
+            <h3>Settings</h3>
+            <label class="row"><span>Weekly goal (min)</span>
+              <input type="number" id="wo-weekly-min" min="0" max="2000" step="10" value="150">
+            </label>
+          </div>
+        </div>
       </div>
-      <div id="wo-stats" class="fin-stats" style="margin:12px 0"></div>
-      <div id="wo-list"></div>
     </div>
   </div>
 
