@@ -1309,6 +1309,9 @@ function renderOpenTabs() {
   // Clean stale selections
   const validIds = new Set(allOpenTabs.map(t => t.id));
   for (const id of [...selectedTabIds]) if (!validIds.has(id)) selectedTabIds.delete(id);
+  // Drop the shift-range anchor once nothing is selected so the next
+  // shift-click starts a fresh range instead of spanning from a stale tab.
+  if (!selectedTabIds.size) lastClickedTabId = null;
 
   if (!allOpenTabs.length) {
     $el.innerHTML = `<div class="otab-empty">No saveable tabs in this window.</div>`;
@@ -1450,7 +1453,7 @@ function updateSelectedBadge() {
         const act = btn.dataset.act;
         if (act === 'save') saveSelectedAsGroup();
         else if (act === 'inbox') saveSelectedToInbox();
-        else if (act === 'clear') { selectedTabIds.clear(); updateSelectedBadge(); renderOpenTabs(); }
+        else if (act === 'clear') { selectedTabIds.clear(); lastClickedTabId = null; updateSelectedBadge(); renderOpenTabs(); }
       };
     });
   } else {
@@ -2162,8 +2165,8 @@ function selectRangeTo(itemId) {
   if (!a || !b || a.parent !== b.parent) { toggleItemSelect(itemId); lastSelectedItemId = itemId; return; }
   const [lo, hi] = a.index < b.index ? [a.index, b.index] : [b.index, a.index];
   for (let i = lo; i <= hi; i++) selectedItemIds.add(a.parent[i].id);
-  itemSelMode = true;
-  document.body.classList.add('item-sel-mode');
+  lastSelectedItemId = itemId;
+  syncItemSelMode();
   renderBoard();
   renderItemSelToolbar();
 }
@@ -2483,21 +2486,31 @@ let drag = null;
 
 // ─── Item selection (for groups/stacks batch actions) ───
 let selectedItemIds = new Set();
-let itemSelMode = false;
+let itemSelMode = false;       // derived: explicit mode on, OR something is selected
+let explicitSelMode = false;   // sticky mode toggled via the select-mode button
 let lastSelectedItemId = null;
+// Single source of truth: keep the derived flag, the body class, and the
+// toolbar button's active state in lockstep. Previously these were mutated in
+// several places independently, so deselecting the last item (or toggling the
+// button) could leave the flag and the button visually out of sync.
+function syncItemSelMode() {
+  itemSelMode = explicitSelMode || selectedItemIds.size > 0;
+  document.body.classList.toggle('item-sel-mode', itemSelMode);
+  document.getElementById('select-mode-btn')?.classList.toggle('active', itemSelMode);
+}
 function toggleItemSelect(itemId) {
   if (selectedItemIds.has(itemId)) selectedItemIds.delete(itemId);
   else selectedItemIds.add(itemId);
   lastSelectedItemId = itemId;
-  itemSelMode = selectedItemIds.size > 0;
-  document.body.classList.toggle('item-sel-mode', itemSelMode);
+  syncItemSelMode();
   renderBoard();
   renderItemSelToolbar();
 }
 function clearItemSelection() {
   selectedItemIds.clear();
-  itemSelMode = false;
-  document.body.classList.remove('item-sel-mode');
+  explicitSelMode = false;
+  lastSelectedItemId = null;
+  syncItemSelMode();
   renderBoard();
   renderItemSelToolbar();
 }
@@ -4706,10 +4719,14 @@ function cycleViewMode() {
 }
 
 function toggleSelectMode() {
-  itemSelMode = !itemSelMode;
-  document.body.classList.toggle('item-sel-mode', itemSelMode);
-  if (!itemSelMode) clearItemSelection();
-  document.getElementById('select-mode-btn').classList.toggle('active', itemSelMode);
+  explicitSelMode = !explicitSelMode;
+  if (!explicitSelMode) {
+    // Turning the mode off also drops any pending selection + toolbar.
+    selectedItemIds.clear();
+    lastSelectedItemId = null;
+    renderItemSelToolbar();
+  }
+  syncItemSelMode();
   renderBoard();
 }
 
@@ -6500,16 +6517,13 @@ function bindStatic() {
       if (tourEl && !tourEl.classList.contains('hidden')) endTour(true);
       const focusEl = document.getElementById('group-focus-overlay');
       if (focusEl && !focusEl.classList.contains('hidden')) closeGroupFocus();
-      selectedTabIds.clear(); updateSelectedBadge(); renderOpenTabs();
-      if (selectedItemIds.size) clearItemSelection();
+      if (selectedTabIds.size) { selectedTabIds.clear(); lastClickedTabId = null; updateSelectedBadge(); renderOpenTabs(); }
+      // clearItemSelection() resets the selection, the sticky mode, the body
+      // class, and the button — so it covers an empty-but-active select mode too.
+      if (itemSelMode || selectedItemIds.size) clearItemSelection();
       if (document.body.classList.contains('reorder-mode')) {
         document.body.classList.remove('reorder-mode');
         document.getElementById('reorder-mode-btn').classList.remove('active');
-      }
-      if (itemSelMode) {
-        itemSelMode = false;
-        document.body.classList.remove('item-sel-mode');
-        document.getElementById('select-mode-btn').classList.remove('active');
       }
     }
   });
