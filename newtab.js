@@ -2646,6 +2646,7 @@ function openMoveTargetPicker(infos) {
   const ids = infos.map(i => i.item.id);
   const idSet = new Set(ids);
   const sourceGroups = new Set(infos.map(i => i.group));
+  const sourceParents = new Set(infos.map(i => i.parent)); // immediate lists items already live in
   const noun = ids.length === 1 ? 'item' : 'items';
   const items = [{ label: `MOVE ${ids.length} ${noun.toUpperCase()} TO…` }];
 
@@ -2689,13 +2690,17 @@ function openMoveTargetPicker(infos) {
         const addStacks = (list, path) => {
           for (const it of list) {
             if (it.type !== 'stack' || !it.items) continue;
-            if (idSet.has(it.id)) continue; // can't move a stack into itself/descendants
+            if (idSet.has(it.id)) continue; // can't move a stack into itself/descendants (skip subtree)
             const stackPath = `${path} ▸ ${it.symbol || '📚'} ${it.name}`;
-            items.push({
-              text: stackPath,
-              icon: cmIcons.stack,
-              action: () => moveInto(it.items)
-            });
+            // Skip a stack an item already lives directly in — moving there is a
+            // no-op reorder, not a real move. Still descend for nested stacks.
+            if (!sourceParents.has(it.items)) {
+              items.push({
+                text: stackPath,
+                icon: cmIcons.stack,
+                action: () => moveInto(it.items)
+              });
+            }
             addStacks(it.items, stackPath);
           }
         };
