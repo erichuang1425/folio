@@ -2657,7 +2657,9 @@ function openMoveTargetPicker(infos) {
     // Walk in doc order to preserve relative order; splice in reverse so
     // indices stay stable.
     const orderedIds = [];
-    const walk = list => { for (const it of list) { if (idSet.has(it.id)) orderedIds.push(it.id); if (it.type === 'stack' && it.items) walk(it.items); } };
+    // Stop descending into a selected stack: its children travel inside it, so
+    // recording them separately would splice them out and flatten the subtree.
+    const walk = list => { for (const it of list) { if (idSet.has(it.id)) { orderedIds.push(it.id); continue; } if (it.type === 'stack' && it.items) walk(it.items); } };
     State.get().workspaces.forEach(w => w.categories.forEach(c => c.groups.forEach(gr => walk(gr.items))));
     const moved = [];
     for (let i = orderedIds.length - 1; i >= 0; i--) {
