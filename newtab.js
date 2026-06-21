@@ -2931,24 +2931,55 @@ function bindRtToolbar() {
 // SEARCH
 // ════════════════════════════════════════════════════════════════
 const SEARCH_COLORS = ['red','orange','yellow','green','blue'];
+// type: operator vocabulary → canonical item type (singular/plural + synonyms).
+const SEARCH_TYPES = {
+  tab:'tab', tabs:'tab', link:'tab', links:'tab',
+  note:'note', notes:'note',
+  todo:'todo', todos:'todo', task:'todo', tasks:'todo',
+  stack:'stack', stacks:'stack', group:'stack', groups:'stack',
+};
+// Canonical DOM type of an item node (mirrors the build* classNames).
+function itemNodeType(el) {
+  const c = el.classList;
+  if (c.contains('stack')) return 'stack';
+  if (c.contains('todo')) return 'todo';
+  if (c.contains('note')) return 'note';
+  if (c.contains('tab')) return 'tab';
+  return '';
+}
 function applySearchFilter() {
   const raw = document.getElementById('search-input').value.toLowerCase().trim();
   // Support exact match with quotes
   const isExact = /^".+"$/.test(raw);
-  // Pull out color:NAME filters (e.g. "color:red", "color:red,blue") — the plan's
-  // color search. Skipped inside quoted exact searches so literals match verbatim.
+  // Pull out structured operators (the plan's borrowed-from-Refern search operators).
+  // Skipped inside quoted exact searches so literals match verbatim.
+  //   color:red[,blue]   — filter by item color
+  //   type:tab[,note]    — filter by item kind (tab/note/todo/stack, plus synonyms)
+  //   is:done | is:open  — filter todos by completion state
   const colorFilters = [];
+  const typeFilters = [];
+  const stateFilters = [];
   let q = raw;
   if (!isExact && raw) {
     const kept = [];
     raw.split(/\s+/).forEach(w => {
-      const m = /^colou?r:(.+)$/.exec(w);
-      if (m) m[1].split(',').forEach(c => { if (SEARCH_COLORS.includes(c)) colorFilters.push(c); });
-      else kept.push(w);
+      let m;
+      if ((m = /^colou?r:(.+)$/.exec(w))) {
+        m[1].split(',').forEach(c => { if (SEARCH_COLORS.includes(c)) colorFilters.push(c); });
+      } else if ((m = /^type:(.+)$/.exec(w))) {
+        m[1].split(',').forEach(t => { const ct = SEARCH_TYPES[t]; if (ct && !typeFilters.includes(ct)) typeFilters.push(ct); });
+      } else if ((m = /^is:(.+)$/.exec(w))) {
+        m[1].split(',').forEach(s => {
+          if (s === 'done' || s === 'checked' || s === 'complete') stateFilters.push('done');
+          else if (s === 'open' || s === 'undone' || s === 'todo' || s === 'incomplete') stateFilters.push('open');
+        });
+      } else kept.push(w);
     });
     q = kept.join(' ');
   }
   const hasColor = colorFilters.length > 0;
+  const hasType = typeFilters.length > 0;
+  const hasState = stateFilters.length > 0;
   const hasText = isExact || !!q;
   const needle = isExact ? raw.slice(1, -1) : q;
   const tokens = !isExact && q ? needle.split(/\s+/) : null;
@@ -2956,6 +2987,13 @@ function applySearchFilter() {
     if (!raw) { el.classList.remove('hidden'); return; }
     let match = true;
     if (hasColor) match = colorFilters.includes(el.dataset.color);
+    if (match && hasType) match = typeFilters.includes(itemNodeType(el));
+    if (match && hasState) {
+      // Completion state only applies to todos; non-todos can't satisfy is:done/is:open.
+      const isTodo = el.classList.contains('todo');
+      const done = isTodo && el.classList.contains('done');
+      match = stateFilters.some(s => isTodo && (s === 'done' ? done : !done));
+    }
     if (match && hasText) {
       const text = el.textContent.toLowerCase();
       match = isExact ? text.includes(needle) : tokens.every(w => text.includes(w));
