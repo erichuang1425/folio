@@ -282,11 +282,16 @@ textarea:focus-visible {
 /* ═══ SIDEBAR ═══ */
 #sidebar {
   width: var(--sidebar); flex-shrink: 0;
-  background: var(--panel);
+  background:
+    linear-gradient(to bottom,
+      color-mix(in srgb, var(--accent-bg) 4%, var(--panel)),
+      var(--panel) 140px);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
   overflow: hidden;
   transition: width var(--trans);
+  box-shadow: 1px 0 12px -8px rgba(0,0,0,0.5);
+  position: relative; z-index: 6;
 }
 #sidebar.collapsed { width: var(--sidebar-min); }
 #sidebar.collapsed .side-hd div,
@@ -566,7 +571,12 @@ textarea:focus-visible {
   height: var(--topbar); flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 0 18px;
-  border-bottom: 1px solid var(--border); background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: 0 1px 0 var(--border), 0 6px 18px -14px rgba(0,0,0,0.5);
+  position: relative; z-index: 5;
 }
 
 .tb-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
@@ -668,7 +678,13 @@ body[data-anim="off"] .cat-tabs-wrap::after {
   border-radius: 2px;
 }
 
-.tb-right { display: flex; gap: 3px; align-items: center; flex-shrink: 0; }
+.tb-right {
+  display: flex; gap: 2px; align-items: center; flex-shrink: 0;
+  padding: 3px 4px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--bg2) 55%, transparent);
+  border: 1px solid var(--border);
+}
 
 [data-theme="dark"] .ic-light, [data-theme="dracula"] .ic-light, [data-theme="nord"] .ic-light,
 [data-theme="rose-pine"] .ic-light, [data-theme="tokyo-night"] .ic-light, [data-theme="solarized-dark"] .ic-light,
