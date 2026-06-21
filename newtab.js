@@ -3019,24 +3019,27 @@ function applySearchFilter() {
     if (match && hasText) match = matchText(hd);
     hd.classList.toggle('hidden', !match);
   });
-  // Reveal ancestor stacks of every matching item so the match is actually visible,
-  // even if the stack itself didn't match or is collapsed.
+  // Reveal the ancestor stacks of every visible match so it's actually shown, even when
+  // an ancestor didn't match or is collapsed. Matches live on two kinds of node: board/
+  // list .item nodes AND list-view .lv-stack-hd headers (a nested stack whose own name
+  // matches, e.g. type:stack alpha) — headers aren't .item nodes, so walk both sets.
   if (raw) {
-    getItemNodes().forEach(el => {
-      if (el.classList.contains('hidden')) return;
-      // Board: the .item.stack is an ancestor wrapping its children — unhide it and
-      // force it open (collapsed stacks clip children to max-height:0 via CSS).
-      let bp = el.parentElement?.closest('.item.stack');
+    const revealAncestors = node => {
+      // Board: the .item.stack wraps its children — unhide it and force it open
+      // (collapsed stacks clip children to max-height:0 via CSS).
+      let bp = node.parentElement?.closest('.item.stack');
       while (bp) { bp.classList.remove('hidden'); bp.classList.add('search-expand'); bp = bp.parentElement?.closest('.item.stack'); }
-      // List view: header and children are siblings inside .lv-stack — keep the header
-      // visible and open the (otherwise collapsed) children container.
-      let lp = el.closest('.lv-stack');
+      // List view: open each ancestor .lv-stack and keep its header visible so the whole
+      // path down to the match is shown (header & children are siblings inside .lv-stack).
+      let lp = node.closest('.lv-stack');
       while (lp) {
         lp.classList.add('search-expand');
         lp.querySelector(':scope > .lv-stack-hd')?.classList.remove('hidden');
         lp = lp.parentElement?.closest('.lv-stack');
       }
-    });
+    };
+    getItemNodes().forEach(el => { if (!el.classList.contains('hidden')) revealAncestors(el); });
+    document.querySelectorAll('.lv-stack-hd:not(.hidden)').forEach(revealAncestors);
   }
   document.querySelectorAll('.gcol').forEach(col => {
     const any = col.querySelectorAll('.item:not(.hidden)').length > 0;
