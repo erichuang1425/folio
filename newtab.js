@@ -3062,8 +3062,12 @@ function applySearchFilter() {
     const any = col.querySelectorAll('.item:not(.hidden)').length > 0;
     col.style.display = (!raw || any) ? '' : 'none';
   });
-  // Archive results match on text only; an operator-only query has no text to match.
-  renderArchiveSearchResults(hasText ? textNeedles : null);
+  // Archive matches on text only. Structured operators (color/type/is) can't be applied
+  // faithfully to heterogeneous archive entries — especially whole-group entries — so when
+  // any operator is active, suppress archive results rather than surface false positives
+  // (e.g. type:todo urgent must not list archived notes/tabs/groups containing "urgent").
+  const hasOps = hasColor || hasType || hasState;
+  renderArchiveSearchResults(hasText && !hasOps ? textNeedles : null);
 }
 // Build a normalized search blob for an archive entry (group or item).
 // Memoized in a WeakMap so we don't strip HTML on every keystroke.
