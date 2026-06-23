@@ -2178,6 +2178,13 @@ function buildTab(it, parentItems, group) {
   el.dataset.id = it.id;
   el.tabIndex = 0;
   if (it.color) el.dataset.color = it.color;
+  // Expose the URL for the domain:/site:/url: search operators. dataset.host is the
+  // bare hostname (matched by domain:/site:), dataset.url the full URL (matched by url:).
+  // Stored lowercase so the operator parse (which lowercases the query) can substring-match.
+  if (it.url) {
+    el.dataset.url = it.url.toLowerCase();
+    try { el.dataset.host = new URL(it.url).hostname.toLowerCase(); } catch {}
+  }
   el.draggable = true;
 
   const fav = it.fav || favUrl(it.url);
@@ -2959,11 +2966,15 @@ function applySearchFilter() {
   //   color:red[,blue]   — filter by item color
   //   type:tab[,note]    — filter by item kind (tab/note/todo/stack, plus synonyms)
   //   is:done | is:open  — filter todos by completion state
+  //   domain:host[,host] — filter tabs by hostname substring (alias site:)
+  //   url:frag[,frag]    — filter tabs by full-URL substring
   // Everything else (bare words and quoted phrases) becomes a text needle that must
   // appear as a substring; a quoted phrase is one needle so its spaces match verbatim.
   const colorFilters = [];
   const typeFilters = [];
   const stateFilters = [];
+  const domainFilters = [];
+  const urlFilters = [];
   const textNeedles = [];
   (raw.match(/"[^"]*"|\S+/g) || []).forEach(tok => {
     if (tok.length > 1 && tok[0] === '"' && tok[tok.length - 1] === '"') {
@@ -2981,6 +2992,10 @@ function applySearchFilter() {
         if (s === 'done' || s === 'checked' || s === 'complete') stateFilters.push('done');
         else if (s === 'open' || s === 'undone' || s === 'todo' || s === 'incomplete') stateFilters.push('open');
       });
+    } else if ((m = /^(?:domain|site|host):(.+)$/.exec(tok))) {
+      m[1].split(',').forEach(d => { const v = d.trim(); if (v) domainFilters.push(v); });
+    } else if ((m = /^url:(.+)$/.exec(tok))) {
+      m[1].split(',').forEach(u => { const v = u.trim(); if (v) urlFilters.push(v); });
     } else {
       textNeedles.push(tok);
     }
@@ -2988,6 +3003,8 @@ function applySearchFilter() {
   const hasColor = colorFilters.length > 0;
   const hasType = typeFilters.length > 0;
   const hasState = stateFilters.length > 0;
+  const hasDomain = domainFilters.length > 0;
+  const hasUrl = urlFilters.length > 0;
   const hasText = textNeedles.length > 0;
   // Text to match an element against. For a board/canvas stack, match ONLY its own
   // header/name — not descendant cards, which surface on their own as .item matches and
@@ -3018,6 +3035,9 @@ function applySearchFilter() {
       const done = isTodo && el.classList.contains('done');
       match = stateFilters.some(s => isTodo && (s === 'done' ? done : !done));
     }
+    // domain:/url: only apply to tabs (the only items with a URL); other kinds can't satisfy them.
+    if (match && hasDomain) { const h = el.dataset.host || ''; match = !!h && domainFilters.some(d => h.includes(d)); }
+    if (match && hasUrl) { const u = el.dataset.url || ''; match = !!u && urlFilters.some(f => u.includes(f)); }
     if (match && hasText) match = matchText(el);
     el.classList.toggle('hidden', !match);
   });
@@ -3033,6 +3053,7 @@ function applySearchFilter() {
     if (hasColor) match = colorFilters.includes(st.dataset.color);
     if (match && hasType) match = typeFilters.includes('stack');
     if (match && hasState) match = false; // a stack has no completion state
+    if (match && (hasDomain || hasUrl)) match = false; // a stack has no URL
     if (match && hasText) match = matchText(hd);
     hd.classList.toggle('hidden', !match);
   });
@@ -3066,7 +3087,7 @@ function applySearchFilter() {
   // faithfully to heterogeneous archive entries — especially whole-group entries — so when
   // any operator is active, suppress archive results rather than surface false positives
   // (e.g. type:todo urgent must not list archived notes/tabs/groups containing "urgent").
-  const hasOps = hasColor || hasType || hasState;
+  const hasOps = hasColor || hasType || hasState || hasDomain || hasUrl;
   renderArchiveSearchResults(hasText && !hasOps ? textNeedles : null);
 }
 // Build a normalized search blob for an archive entry (group or item).

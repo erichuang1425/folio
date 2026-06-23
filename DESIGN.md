@@ -95,8 +95,9 @@ A deliberately distinct identity that is **neither** TabExtend's pastel-light fa
 - From Refern: the **Canvas** view (we already have one) and a future **relationship/graph**
   view; ~~tag-based + **color search**~~ → **color search shipped** (`color:red` operator
   in the search bar). Refern's "14 search operators" trait → **search operators expanded**:
-  `type:tab|note|todo|stack` (by kind) and `is:done` / `is:open` (todo state) now join
-  `color:` and combine freely (e.g. `type:todo is:open urgent`). All derived from local
+  `type:tab|note|todo|stack` (by kind), `is:done` / `is:open` (todo state), and
+  `domain:`/`site:` + `url:` (tab hostname / URL substring) now join `color:` and combine
+  freely (e.g. `type:tab domain:github.com "pull request"`). All derived from local
   item metadata — no host access. Note: **link previews / thumbnails** would require reading
   page content, which conflicts with our no-host-permissions / private-by-default positioning
   — deferred unless we can derive previews without host access.
@@ -148,3 +149,10 @@ differentiator we can market honestly.
   stacks are kept visible when a nested item matches, so operator searches surface items inside
   stacks too. Quoted phrases are tokenized before operators so they compose (`type:todo
   "due today"`), and list-view stack headers (`.lv-stack`) are filtered too, not just board/canvas.
+- **2026-06-23** — Added the **`domain:`/`site:`** and **`url:`** search operators (toward
+  Refern's "14 operators"): filter tabs by hostname (`domain:github.com`, alias `site:`) or by
+  full-URL substring (`url:/issues`). Comma-lists OR together; both compose with the existing
+  `color:`/`type:`/`is:` operators and free/quoted text. URLs are read from the locally stored
+  item metadata (exposed as `data-host`/`data-url` on tab nodes) — still no host access. Only
+  tab items carry a URL, so these operators exclude notes/todos/stacks, and archive results are
+  suppressed when they're active (consistent with the other metadata operators).
