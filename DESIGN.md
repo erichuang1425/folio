@@ -94,9 +94,12 @@ A deliberately distinct identity that is **neither** TabExtend's pastel-light fa
 ### Borrowed *ideas* (functional, safe) worth pursuing next
 - From Refern: the **Canvas** view (we already have one) and a future **relationship/graph**
   view; ~~tag-based + **color search**~~ → **color search shipped** (`color:red` operator
-  in the search bar). Note: **link previews / thumbnails** would require reading page content,
-  which conflicts with our no-host-permissions / private-by-default positioning — deferred
-  unless we can derive previews without host access.
+  in the search bar). Refern's "14 search operators" trait → **search operators expanded**:
+  `type:tab|note|todo|stack` (by kind) and `is:done` / `is:open` (todo state) now join
+  `color:` and combine freely (e.g. `type:todo is:open urgent`). All derived from local
+  item metadata — no host access. Note: **link previews / thumbnails** would require reading
+  page content, which conflicts with our no-host-permissions / private-by-default positioning
+  — deferred unless we can derive previews without host access.
 - From TabExtend: mixing **tabs + notes + todos** in one column (we already do this);
   per-window workspaces (we already do this).
 
@@ -138,3 +141,10 @@ differentiator we can market honestly.
 - **2026-06-21** — Completed the `--brand-grad` through-line onto the **active workspace chip**
   (gradient left accent bar). Shipped **color search** (`color:red`, `color:red,blue`) in the
   board search bar — the first of the §3 "borrowed ideas" roadmap items.
+- **2026-06-21** — Expanded the **search operators** (toward Refern's "14 operators" trait):
+  `type:tab|note|todo|stack` (by kind, with synonyms like `link`/`task`/`group`) and
+  `is:done` / `is:open` (todo completion state). Operators compose with each other and with
+  free/quoted text, and stay privacy-safe (derived purely from local item metadata). Ancestor
+  stacks are kept visible when a nested item matches, so operator searches surface items inside
+  stacks too. Quoted phrases are tokenized before operators so they compose (`type:todo
+  "due today"`), and list-view stack headers (`.lv-stack`) are filtered too, not just board/canvas.

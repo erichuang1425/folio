@@ -2931,52 +2931,143 @@ function bindRtToolbar() {
 // SEARCH
 // ════════════════════════════════════════════════════════════════
 const SEARCH_COLORS = ['red','orange','yellow','green','blue'];
+// type: operator vocabulary → canonical item type (singular/plural + synonyms).
+const SEARCH_TYPES = {
+  tab:'tab', tabs:'tab', link:'tab', links:'tab',
+  note:'note', notes:'note',
+  todo:'todo', todos:'todo', task:'todo', tasks:'todo',
+  stack:'stack', stacks:'stack', group:'stack', groups:'stack',
+};
+// Canonical DOM type of an item node (mirrors the build* classNames).
+function itemNodeType(el) {
+  const c = el.classList;
+  if (c.contains('stack')) return 'stack';
+  if (c.contains('todo')) return 'todo';
+  if (c.contains('note')) return 'note';
+  if (c.contains('tab')) return 'tab';
+  return '';
+}
 function applySearchFilter() {
   const raw = document.getElementById('search-input').value.toLowerCase().trim();
-  // Support exact match with quotes
-  const isExact = /^".+"$/.test(raw);
-  // Pull out color:NAME filters (e.g. "color:red", "color:red,blue") — the plan's
-  // color search. Skipped inside quoted exact searches so literals match verbatim.
+  // Clear any stack we force-opened on a previous keystroke; the reveal pass below
+  // re-adds it only for stacks that still contain a match (so cleared/changed queries
+  // restore the user's real collapse state).
+  document.querySelectorAll('.search-expand').forEach(n => n.classList.remove('search-expand'));
+  // Tokenize honoring "quoted phrases" BEFORE pulling operators, so a quoted phrase
+  // survives intact next to an operator (e.g. type:todo "due today"). Structured
+  // operators (the plan's borrowed-from-Refern search operators):
+  //   color:red[,blue]   — filter by item color
+  //   type:tab[,note]    — filter by item kind (tab/note/todo/stack, plus synonyms)
+  //   is:done | is:open  — filter todos by completion state
+  // Everything else (bare words and quoted phrases) becomes a text needle that must
+  // appear as a substring; a quoted phrase is one needle so its spaces match verbatim.
   const colorFilters = [];
-  let q = raw;
-  if (!isExact && raw) {
-    const kept = [];
-    raw.split(/\s+/).forEach(w => {
-      const m = /^colou?r:(.+)$/.exec(w);
-      if (m) m[1].split(',').forEach(c => { if (SEARCH_COLORS.includes(c)) colorFilters.push(c); });
-      else kept.push(w);
-    });
-    q = kept.join(' ');
-  }
+  const typeFilters = [];
+  const stateFilters = [];
+  const textNeedles = [];
+  (raw.match(/"[^"]*"|\S+/g) || []).forEach(tok => {
+    if (tok.length > 1 && tok[0] === '"' && tok[tok.length - 1] === '"') {
+      const phrase = tok.slice(1, -1).trim();
+      if (phrase) textNeedles.push(phrase);
+      return;
+    }
+    let m;
+    if ((m = /^colou?r:(.+)$/.exec(tok))) {
+      m[1].split(',').forEach(c => { if (SEARCH_COLORS.includes(c)) colorFilters.push(c); });
+    } else if ((m = /^type:(.+)$/.exec(tok))) {
+      m[1].split(',').forEach(t => { const ct = SEARCH_TYPES[t]; if (ct && !typeFilters.includes(ct)) typeFilters.push(ct); });
+    } else if ((m = /^is:(.+)$/.exec(tok))) {
+      m[1].split(',').forEach(s => {
+        if (s === 'done' || s === 'checked' || s === 'complete') stateFilters.push('done');
+        else if (s === 'open' || s === 'undone' || s === 'todo' || s === 'incomplete') stateFilters.push('open');
+      });
+    } else {
+      textNeedles.push(tok);
+    }
+  });
   const hasColor = colorFilters.length > 0;
-  const hasText = isExact || !!q;
-  const needle = isExact ? raw.slice(1, -1) : q;
-  const tokens = !isExact && q ? needle.split(/\s+/) : null;
+  const hasType = typeFilters.length > 0;
+  const hasState = stateFilters.length > 0;
+  const hasText = textNeedles.length > 0;
+  // Text to match an element against. For a board/canvas stack, match ONLY its own
+  // header/name — not descendant cards, which surface on their own as .item matches and
+  // reveal their parent. This keeps results consistent with list view (which evaluates
+  // just .lv-stack-hd) and avoids type:stack false positives. The name lives in a
+  // .stack-name <input> whose value isn't in textContent, so fold it in explicitly.
+  const matchText = el => {
+    const hd = el.querySelector(':scope > .stack-hd');
+    let t;
+    if (hd) {
+      t = hd.textContent;
+      const nameInput = hd.querySelector(':scope > .stack-name');
+      if (nameInput) t += ' ' + nameInput.value;
+    } else {
+      t = el.textContent;
+    }
+    t = t.toLowerCase();
+    return textNeedles.every(n => t.includes(n));
+  };
   getItemNodes().forEach(el => {
     if (!raw) { el.classList.remove('hidden'); return; }
     let match = true;
     if (hasColor) match = colorFilters.includes(el.dataset.color);
-    if (match && hasText) {
-      const text = el.textContent.toLowerCase();
-      match = isExact ? text.includes(needle) : tokens.every(w => text.includes(w));
+    if (match && hasType) match = typeFilters.includes(itemNodeType(el));
+    if (match && hasState) {
+      // Completion state only applies to todos; non-todos can't satisfy is:done/is:open.
+      const isTodo = el.classList.contains('todo');
+      const done = isTodo && el.classList.contains('done');
+      match = stateFilters.some(s => isTodo && (s === 'done' ? done : !done));
     }
+    if (match && hasText) match = matchText(el);
     el.classList.toggle('hidden', !match);
   });
-  // Keep ancestor stacks visible when a descendant item matches — otherwise a
-  // colored item nested in an (uncolored) stack is hidden by its parent.
+  // List view renders stacks as .lv-stack / .lv-stack-hd, not .item.stack, so the loop
+  // above never evaluates them. Filter the stack header here (its own children are
+  // independent .item nodes handled above; header & children are siblings, so a hidden
+  // header doesn't hide a matching child the way a board .item.stack ancestor would).
+  document.querySelectorAll('.lv-stack').forEach(st => {
+    const hd = st.querySelector(':scope > .lv-stack-hd');
+    if (!hd) return;
+    if (!raw) { hd.classList.remove('hidden'); return; }
+    let match = true;
+    if (hasColor) match = colorFilters.includes(st.dataset.color);
+    if (match && hasType) match = typeFilters.includes('stack');
+    if (match && hasState) match = false; // a stack has no completion state
+    if (match && hasText) match = matchText(hd);
+    hd.classList.toggle('hidden', !match);
+  });
+  // Reveal the ancestor stacks of every visible match so it's actually shown, even when
+  // an ancestor didn't match or is collapsed. Matches live on two kinds of node: board/
+  // list .item nodes AND list-view .lv-stack-hd headers (a nested stack whose own name
+  // matches, e.g. type:stack alpha) — headers aren't .item nodes, so walk both sets.
   if (raw) {
-    getItemNodes().forEach(el => {
-      if (el.classList.contains('hidden')) return;
-      let p = el.parentElement?.closest('.item.stack');
-      while (p) { p.classList.remove('hidden'); p = p.parentElement?.closest('.item.stack'); }
-    });
+    const revealAncestors = node => {
+      // Board: the .item.stack wraps its children — unhide it and force it open
+      // (collapsed stacks clip children to max-height:0 via CSS).
+      let bp = node.parentElement?.closest('.item.stack');
+      while (bp) { bp.classList.remove('hidden'); bp.classList.add('search-expand'); bp = bp.parentElement?.closest('.item.stack'); }
+      // List view: open each ancestor .lv-stack and keep its header visible so the whole
+      // path down to the match is shown (header & children are siblings inside .lv-stack).
+      let lp = node.closest('.lv-stack');
+      while (lp) {
+        lp.classList.add('search-expand');
+        lp.querySelector(':scope > .lv-stack-hd')?.classList.remove('hidden');
+        lp = lp.parentElement?.closest('.lv-stack');
+      }
+    };
+    getItemNodes().forEach(el => { if (!el.classList.contains('hidden')) revealAncestors(el); });
+    document.querySelectorAll('.lv-stack-hd:not(.hidden)').forEach(revealAncestors);
   }
   document.querySelectorAll('.gcol').forEach(col => {
     const any = col.querySelectorAll('.item:not(.hidden)').length > 0;
     col.style.display = (!raw || any) ? '' : 'none';
   });
-  // Archive results match on text only; a color-only query has no text to match.
-  renderArchiveSearchResults(hasText ? q : '', needle, isExact);
+  // Archive matches on text only. Structured operators (color/type/is) can't be applied
+  // faithfully to heterogeneous archive entries — especially whole-group entries — so when
+  // any operator is active, suppress archive results rather than surface false positives
+  // (e.g. type:todo urgent must not list archived notes/tabs/groups containing "urgent").
+  const hasOps = hasColor || hasType || hasState;
+  renderArchiveSearchResults(hasText && !hasOps ? textNeedles : null);
 }
 // Build a normalized search blob for an archive entry (group or item).
 // Memoized in a WeakMap so we don't strip HTML on every keystroke.
@@ -3004,16 +3095,15 @@ function archiveEntryText(entry) {
   _archiveBlobCache.set(entry, blob);
   return blob;
 }
-function renderArchiveSearchResults(q, needle, isExact) {
+function renderArchiveSearchResults(textNeedles) {
   const $r = document.getElementById('search-archive-results');
   if (!$r) return;
-  if (!q) { $r.classList.add('hidden'); $r.innerHTML = ''; return; }
+  if (!textNeedles || !textNeedles.length) { $r.classList.add('hidden'); $r.innerHTML = ''; return; }
   const arr = State.get().archive || [];
   const matches = [];
   arr.forEach((e, i) => {
     const text = archiveEntryText(e);
-    const hit = isExact ? text.includes(needle) : needle.split(/\s+/).every(w => text.includes(w));
-    if (hit) matches.push({ entry: e, idx: i });
+    if (textNeedles.every(n => text.includes(n))) matches.push({ entry: e, idx: i });
   });
   if (!matches.length) { $r.classList.add('hidden'); $r.innerHTML = ''; return; }
   const cap = 20;
@@ -4652,6 +4742,7 @@ function buildLvStack(it, parentItems, group, depth) {
   const wrap = document.createElement('div');
   wrap.className = 'lv-stack' + (it.expanded ? ' expanded' : '');
   wrap.dataset.id = it.id;
+  if (it.color) wrap.dataset.color = it.color; // let color: search match list-view stacks
 
   const hd = document.createElement('div');
   hd.className = 'lv-stack-hd';
