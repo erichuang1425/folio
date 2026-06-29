@@ -1,6 +1,6 @@
-# TabNest — Layout & Differentiation Brief
+# TabNest Layout & Differentiation Brief
 
-Status: living document · Last updated: 2026-06-23 · Branch: `claude/extension-layout-research-6sonlp`
+Status: living document. Last updated: 2026-06-23.
 
 This brief captures the design direction for TabNest's layout refresh and — importantly —
 how we take *inspiration* from **Refern** and **TabExtend** while staying clearly distinct,

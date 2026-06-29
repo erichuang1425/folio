@@ -1,177 +1,219 @@
 # TabNest
 
-A visual tab manager + productivity workspace for Edge / Chrome. Organize tabs, notes, and to-dos in one place — with built-in tools for tracking habits, finances, reading, and more.
+**A private, visual workspace for the tabs you want to keep.**
 
-## What it does
+TabNest replaces the browser's new tab page with a local-first command center for tabs,
+notes, todos, stacks, reminders, and lightweight personal productivity tools. It is built
+as a vanilla Manifest V3 extension for Chromium browsers, with no build step and no host
+permissions.
 
-Replaces your new tab page with a workspace where you can:
+![TabNest icon](icons/icon128.png)
 
-- **Save & organize browser tabs** into groups, stacks, and categories — across multiple workspaces, one per browser window
-- **Mix tabs with notes & to-dos** in the same group (rich text, slash commands, checkboxes)
-- **Track productivity** with built-in tools: Pomodoro timer, Finance Diary, Subscriptions, Habits, Hydration, Reading log, Goals, Workouts
-- **Hibernate** opened tabs to use near-zero memory until you actually click them
+## Why It Exists
 
-## Install (developer mode)
+Modern browser sessions get messy fast: research tabs, half-written notes, quick tasks,
+articles to read, subscriptions to track, and goals you meant to come back to. TabNest
+turns that sprawl into a workspace you can scan, search, rearrange, and resume.
 
-1. Clone or download this repository
-2. Open `edge://extensions/` (or `chrome://extensions/`)
-3. Toggle **Developer mode** in the top right
-4. Click **Load unpacked** and select this folder
-5. Open a new tab — TabNest takes over
+It is designed for people who live in the browser but still want a calmer system:
+local-first storage, fast keyboard-driven organization, and enough structure to keep
+context without turning every tab into a project-management ceremony.
 
-## File structure
+## Highlights
 
+- **Visual tab workspaces**: organize saved tabs into workspaces, categories, groups,
+  recursive stacks, and color-coded cards.
+- **Mixed cards**: keep tabs, notes, and todos side by side, with rich text, checkboxes,
+  slash commands, reminders, and undo support.
+- **Multiple views**: switch between board, list, group focus, and free-positioning canvas
+  modes depending on how you want to think.
+- **Search operators**: filter with plain text, quoted phrases, and operators such as
+  `color:`, `type:`, `is:`, `domain:`, `url:`, `in:`, `has:reminder`, and `reminder:`.
+  Prefix any term with `-` to exclude matches.
+- **Browser-aware workflow**: save the current tab, save all open tabs, batch-select open
+  tabs, bind workspaces to windows, and reopen saved tabs when needed.
+- **Tab hibernation**: open saved tabs through a lightweight suspended page so they use
+  near-zero memory until you activate them.
+- **Built-in tools**: Pomodoro, finance diary, subscriptions, habits, hydration, reading,
+  goals, and workout tracking, including draggable floating widgets for several tools.
+- **Privacy-conscious by default**: no host permissions; TabNest does not read page
+  content. Stored URLs, titles, notes, and tool data live in `chrome.storage.local`.
+- **Portable data**: export and import TabNest data with a versioned envelope and preview
+  flow.
+
+## Product Tour
+
+Screenshots are best captured from the loaded extension because the app depends on
+browser extension APIs. The current interface includes these main surfaces:
+
+| Surface | What to Look For |
+| --- | --- |
+| Workspace board | Sidebar with open tabs, category tabs, draggable groups, nested stacks, and card actions. |
+| Search | Structured operators for narrowing a busy workspace without leaving the keyboard. |
+| Canvas view | Free-positioned groups on a dotted grid for spatial planning. |
+| Tools hub | Personal trackers and floating widgets that can stay open while organizing tabs. |
+| Popup | Quick-save flow for the current tab or all tabs in the current window. |
+
+## Tech Stack
+
+- **Browser platform**: Manifest V3 extension for Chrome and Microsoft Edge
+- **Frontend**: HTML, CSS, and vanilla JavaScript
+- **Storage**: `chrome.storage.local`
+- **Background work**: MV3 service worker, alarms, notifications, and context menus
+- **CI**: GitHub Actions syntax checks for JavaScript and manifest validation
+- **Build tooling**: none required
+
+## Install for Development
+
+1. Clone the repository.
+2. Open `chrome://extensions/` or `edge://extensions/`.
+3. Enable **Developer mode**.
+4. Choose **Load unpacked**.
+5. Select the repository folder.
+6. Open a new tab to launch TabNest.
+
+After editing files, reload the extension from the browser's extensions page.
+
+## Usage
+
+- Open a new tab to use the full workspace.
+- Use the extension popup to save the current tab or every open tab.
+- Drag open tabs from the sidebar into a group or stack.
+- Create notes and todos directly inside saved groups.
+- Use search for broad text queries or structured filters like:
+
+```text
+type:tab in:work domain:github.com "pull request" -is:done
 ```
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `Cmd/Ctrl + K` | Search across saved items |
+| `Cmd/Ctrl + Shift + S` | Save current tab to Inbox |
+| `Cmd/Ctrl + Shift + E` | Open the extension popup |
+| `Cmd/Ctrl + Z` | Undo |
+| `Cmd/Ctrl + Shift + Z` | Redo |
+| `S` | Focus the open-tab filter |
+| `M` | Move the focused item or current selection |
+| `?` | Show the keyboard cheatsheet |
+| `Esc` | Close overlays or clear selections |
+| `/todo`, `/done` | Convert or update notes and todos |
+| `/red`, `/green`, `/blue`, `/yellow`, `/orange` | Set item color |
+
+## Project Structure
+
+```text
 tabnest/
-├── manifest.json        # MV3 manifest, permissions, commands
-├── background.js        # Service worker: context menus, alarms, hotkeys
-├── newtab.html          # Main workspace view
-├── newtab.css           # All styling (12 themes, 8 fonts, 3 sizes)
-├── newtab.js            # Main app logic (~3600 lines)
-├── popup.html/css/js    # Toolbar popup for quick saves
-├── suspended.html       # Lightweight hibernated-tab placeholder
-├── emoji-data.js        # ~300 emojis with search keywords
-└── icons/               # 16/48/128px extension icons
+├── manifest.json              # MV3 manifest, permissions, commands, icons
+├── background.js              # Service worker for menus, alarms, notifications, saves
+├── newtab.html                # Main workspace shell
+├── newtab.css                 # Themes, layout, components, tools, responsive styling
+├── newtab.js                  # Main application state, rendering, search, tools
+├── popup.html                 # Toolbar popup shell
+├── popup.css                  # Popup styling
+├── popup.js                   # Quick-save and popup tab list behavior
+├── suspended.html             # Lightweight hibernated-tab placeholder
+├── suspended.js               # Resume logic for hibernated tabs
+├── emoji-data.js              # Emoji picker data
+├── icons/                     # Extension icons
+├── DESIGN.md                  # Product and visual-design notes
+└── .github/workflows/ci.yml   # Validation workflow
 ```
 
 ## Architecture
 
-Single-page app, vanilla JS, no build step. State lives in `chrome.storage.local` keyed under `te`:
+TabNest is a single-page extension app. Most state lives under a compact local storage
+object keyed as `te`:
 
-```
-te = {
+```js
+{
   workspaces: [{
-    id, name, symbol, windowId?,        // workspace (optionally bound to browser window)
+    id,
+    name,
+    symbol,
+    windowId,
     activeCatId,
     categories: [{
-      id, name,
+      id,
+      name,
       groups: [{
-        id, name, symbol, color, collapsed,
+        id,
+        name,
+        symbol,
+        color,
+        collapsed,
         items: [
-          { type: 'tab',   url, title, fav, color?, reminder? },
-          { type: 'note',  html, color?, reminder? },
-          { type: 'todo',  text, done, color?, reminder? },
-          { type: 'stack', name, symbol, color, expanded, items: [...recursively] }
+          { type: "tab", url, title, fav, color, reminder },
+          { type: "note", html, color, reminder },
+          { type: "todo", text, done, color, reminder },
+          { type: "stack", name, symbol, color, expanded, items: [] }
         ]
       }]
     }]
   }],
   activeWsId,
-  archive: [{ kind: 'item'|'group', data, at }],
-  recentEmoji: [...],
-  columnWidths: { [groupId]: pixels },
-  settings: { theme, size, font, width, hibernate, autoSwitchWorkspace, ... },
-
-  // Tool data
-  pomo: { settings, stats, tasks, currentTask },
-  fin: { txns: [...], settings },
-  subscriptions: [...],
-  subSettings: { defaultCurrency },
-  habits: [{ id, name, icon, dates: [...] }],
-  water: { goal, days: { yyyy-mm-dd: count }, total },
-  books: [{ id, title, author, status, date }],
-  goals: [{ id, name, due, progress, created }],
-  workouts: [{ id, name, duration, note, date }]
+  archive,
+  settings,
+  pomo,
+  fin,
+  subscriptions,
+  habits,
+  water,
+  books,
+  goals,
+  workouts
 }
 ```
 
-### Undo system
+Rendering is intentionally straightforward: state changes update the local store and then
+re-render the affected surface or the full workspace. Destructive actions create undo
+snapshots before mutation, with a 50-entry in-memory undo stack.
 
-Every destructive action calls `State.snapshot(label)` before mutation. Up to 50 snapshots kept in memory. `Cmd/Ctrl+Z` to undo, `Cmd/Ctrl+Shift+Z` to redo. Toast notifications include an undo button.
+## Testing
 
-### Hibernated tabs
+Run the same checks used by CI:
 
-Opening a tab with hibernation enabled creates a tab pointing to `chrome-extension://{id}/suspended.html#url=...&title=...&fav=...`. The suspended page shows the title + favicon and only loads the real URL when the user clicks. Sidesteps the `chrome.tabs.discard()` race condition that was leaving tabs at `about:blank`.
+```powershell
+node --check newtab.js
+node --check background.js
+node --check popup.js
+node --check suspended.js
+node --check emoji-data.js
+node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8'))"
+```
 
-### Drag & drop
+The GitHub Actions workflow runs these syntax and manifest checks on pushes to `main`
+and on pull requests.
 
-Three drag kinds, dispatched via the global `drag` object:
-- `tab` — single open tab from sidebar → save into a group/stack
-- `tabs-multi` — multiple selected open tabs → batch save
-- `item` — saved item being moved between groups/stacks
+## Deployment
 
-Drop zones live on every group's `.gcol-cards` div and every stack's `.stack-items` div. Stacks auto-expand 500ms after drag-over. `stopPropagation` on drop handlers prevents nested zones from double-handling.
+TabNest is currently distributed as an unpacked developer-mode extension. For a store
+release, package the repository contents as a browser extension bundle after validating
+the manifest, icons, permissions, screenshots, privacy policy, and store listing copy.
 
-### Multi-select
+## Roadmap
 
-Two independent selection systems:
-- **Open tabs** (left sidebar): checkbox per row + Ctrl/Cmd-click + Shift-click range. State in `selectedTabIds: Set`.
-- **Saved items** (board cards): hover-revealed checkbox on each item. State in `selectedItemIds: Set`. Floating toolbar at bottom for batch open / move / archive / stack.
-
-### Windows-as-workspaces
-
-`chrome.windows.onFocusChanged` fires when you switch browser windows. If `autoSwitchWorkspace` is on, the bound workspace activates automatically. Workspaces store `windowId` to track the binding. Closed windows clear their `windowId` on next render. The chip stack in the sidebar shows one chip per open window with a green pulsing dot.
-
-### Tools
-
-Each tool is opened from the Tools Hub (⚡ icon in topbar). All tool state is persisted under top-level `state.{tool}` keys. Each has its own `open*()`, `close*()`, `render*()`, and `bind*()` functions. Pattern is consistent — easy to add new tools.
+- Capture polished product screenshots for the README and extension-store listing.
+- Add automated UI smoke tests for critical workspace flows.
+- Expand import/export coverage and migration tests.
+- Explore optional encrypted sync while preserving the local-first default.
+- Continue improving accessibility, keyboard workflows, and high-contrast support.
 
 ## Permissions
 
-| Permission | Why |
-|---|---|
-| `tabs` | Read/create/close tabs for the saved-tabs feature |
-| `storage` | Persist workspace data |
-| `contextMenus` | Right-click "Save page to TabNest" |
-| `bookmarks` | "Import bookmarks" feature |
-| `alarms` | Reminders + subscription renewal alerts |
-| `notifications` | Show reminder/alarm toasts in OS |
+| Permission | Why TabNest Uses It |
+| --- | --- |
+| `tabs` | Read, create, focus, and close tabs for saved-tab workflows |
+| `storage` | Persist local workspace and tool data |
+| `contextMenus` | Save pages, links, selections, and images from the browser context menu |
+| `bookmarks` | Import bookmarks into workspaces |
+| `alarms` | Schedule reminders and subscription alerts |
+| `notifications` | Show reminder and storage notifications |
 
-No host permissions — the extension does not read web page content.
-
-## Keyboard shortcuts
-
-| Shortcut | Action |
-|---|---|
-| `Cmd/Ctrl + K` | Search across all saved items. Supports operators: `color:red` / `color:red,blue` (by color), `type:tab\|note\|todo\|stack` (by kind), `is:done` / `is:open` (todo state), `domain:github.com` / `site:` (tab hostname), `url:/issues` (tab URL substring), `in:work` (containing group/stack name). Prefix any operator or word with `-` to **exclude** matches (`-type:todo`, `-domain:github.com`, `-"in progress"`). Comma-lists OR together (`domain:github.com,gitlab.com`). Combine freely with words and `"quoted phrases"`, e.g. `type:tab in:work domain:github.com "pull request" -is:done`. |
-| `Cmd/Ctrl + Shift + S` | Save current tab to Inbox |
-| `Cmd/Ctrl + Shift + E` | Open extension popup |
-| `Cmd/Ctrl + Z / Shift+Z` | Undo / Redo |
-| `S` | Focus tab filter in sidebar |
-| `M` | Move focused item (or current selection) to another group or stack |
-| `?` | Show keyboard cheatsheet |
-| `Esc` | Close overlays, clear selections |
-| `/todo` `/done` | Convert note → todo, mark done |
-| `/red` `/green` `/blue` `/yellow` `/orange` | Set item color |
-
-## Themes
-
-**Aurora** (default — TabNest's signature ink + teal→violet identity), Dark, Light, Dracula, Nord, Rosé Pine, Tokyo Night, Solarized Dark/Light, Gruvbox, Catppuccin, Sepia, Mono. Switchable in Settings → Appearance or via topbar theme button (cycles through).
-
-See [`DESIGN.md`](DESIGN.md) for the layout direction and how TabNest stays visually distinct from similar products.
-
-## v3 features (latest)
-
-**Hibernation finally fixed.** The actual bug was MV3's Content Security Policy: inline `<script>` in extension pages is silently blocked. The previous `suspended.html` had inline JavaScript, so the visibility-change listener never registered. Moved the script to external `suspended.js` (referenced via `<script src=>`). Now it works as designed: tab created in background → page sets title and favicon → script attaches `visibilitychange` listener → when user clicks the tab in the tab strip, `location.replace(realUrl)` runs.
-
-**Stack reordering bug fixed.** `isDescendantOf` now skips the dragged stack itself when walking the target list, so reordering a stack within its parent group no longer triggers "cannot drop a stack into itself."
-
-**Group focus mode.** Click the expand icon on any group header to open a single group as a full-page view with much larger cards.
-
-**2D group resize.** Drag the corner handle (bottom-right of any group) to resize both width AND height. Per-group sizes persist in `state.columnSizes`.
-
-**Move groups between categories.** Right-click any group header → "Move to category" submenu shows other categories + "New category…" to create one on the spot.
-
-**Free-positioning canvas view.** Third view mode in the cycle (board → list → canvas → board). Groups become absolute-positioned cards on a dotted-grid background you can drag anywhere. Per-group positions stored in `cat.canvasPositions[gid] = {x, y}`.
-
-**Floating tool widgets.** Pop out Pomodoro, Finance, Habits, Hydration, or Goals as small draggable mini-windows that float on top of the main board so you can keep them visible while working. Each has minimize/restore, resize, and "open full" buttons. State persists in `state.floating[]`.
-
-**Onboarding tour.** Six-step spotlight overlay walks new users through workspace chips → open tabs → board → tools → view modes → search. Auto-runs on first launch. Replayable from Settings → Behavior → "Show tour again."
-
-**Redesigned topbar icons.** Unified 16×16 viewBox, 1.5–1.6px stroke, proper rounded line caps.
-
-## Known limitations / TODO
-
-- The MV3 service worker may be idle-evicted in low-memory states, so reminders and subscription alerts can fire late (Chromium-side limitation).
-
-## Development notes for Claude Code
-
-- No build step. Edit files, reload extension at `edge://extensions/`.
-- `node -c file.js` to syntax-check JS files locally.
-- The codebase is intentionally vanilla JS / no React. State updates trigger full re-renders via `renderAll()` or scoped `render*()` calls. This is fast enough for the data sizes we see.
-- `attachItemSelection`, `attachItemDrag`, `makeGroupDropZone` are the key cross-cutting helpers.
-- Adding a new tool: add HTML overlay → CSS for `.{tool}-overlay` → JS `getX()/openX()/closeX()/renderX()/bindX()` → register in Tools Hub buttons + `bindStatic`.
+TabNest does not request host permissions.
 
 ## License
 
-MIT (use, modify, redistribute freely).
+MIT
