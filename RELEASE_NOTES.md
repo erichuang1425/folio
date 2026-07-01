@@ -1,6 +1,14 @@
 # Release Notes
 
-## Unreleased
+## v3.1.0
+
+- Introduced the official Tabento app mark: a compact 06A bento-grid icon with a dark lacquer tile,
+  gold top tab, rice compartment, and warm persimmon accents.
+- Added theme-matched logo color studies for the existing app themes, including light, dark,
+  Tabento, Aurora, Dracula, Nord, Rose Pine, Tokyo Night, Solarized, Gruvbox, Catppuccin,
+  Sepia, and Mono palettes.
+- Updated the extension popup header to use the official SVG mark instead of the older inline
+  monochrome symbol.
 
 - Renamed the product from TabNest to Tabento. Existing local data and exports are preserved:
   storage keys are unchanged and old `tabnest`/`tabextend` exports still import.

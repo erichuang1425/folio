@@ -1,0 +1,8 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Variant 07E - Soft Chip</title>
+  <rect x="18" y="18" width="92" height="92" rx="28" fill="#f6ecda"/>
+  <rect x="31" y="31" width="66" height="22" rx="11" fill="#f5b841"/>
+  <rect x="31" y="63" width="28" height="34" rx="12" fill="#ec6f4c"/>
+  <rect x="68" y="63" width="29" height="34" rx="12" fill="#1f1812"/>
+  <rect x="76" y="72" width="13" height="16" rx="6.5" fill="#9cc05a"/>
+</svg>

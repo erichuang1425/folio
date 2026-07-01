@@ -1,0 +1,8 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Variant 06F - Window Glyph</title>
+  <rect x="22" y="30" width="84" height="20" rx="10" fill="#f5b841"/>
+  <rect x="25" y="62" width="34" height="42" rx="12" fill="#f6ecda"/>
+  <rect x="69" y="62" width="34" height="17" rx="8.5" fill="#ec6f4c"/>
+  <rect x="69" y="87" width="34" height="17" rx="8.5" fill="#9cc05a"/>
+  <path d="M22 50c0-11 9-20 20-20h44c11 0 20 9 20 20v34" fill="none" stroke="#1f1812" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
