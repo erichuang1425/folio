@@ -1,0 +1,8 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Option 03 - Gold Cut</title>
+  <rect x="16" y="16" width="96" height="96" rx="28" fill="#f5b841"/>
+  <rect x="33" y="35" width="62" height="20" rx="10" fill="#1f1812"/>
+  <rect x="54" y="49" width="20" height="49" rx="10" fill="#1f1812"/>
+  <circle cx="40" cy="82" r="9" fill="#ec6f4c"/>
+  <circle cx="88" cy="82" r="9" fill="#9cc05a"/>
+</svg>

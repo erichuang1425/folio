@@ -1,0 +1,9 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Option 04 - Tab Corner</title>
+  <rect x="14" y="20" width="100" height="94" rx="28" fill="#1f1812"/>
+  <path d="M14 48c0-15.5 12.5-28 28-28h24c7.7 0 14 6.3 14 14v14H14z" fill="#f5b841"/>
+  <rect x="28" y="58" width="34" height="42" rx="11" fill="#f6ecda"/>
+  <rect x="68" y="58" width="32" height="18" rx="9" fill="#ec6f4c"/>
+  <rect x="68" y="82" width="32" height="18" rx="9" fill="#9cc05a"/>
+  <path d="M34 32h27c4.4 0 8 3.6 8 8" fill="none" stroke="#fff3c9" stroke-opacity="0.3" stroke-width="4" stroke-linecap="round"/>
+</svg>

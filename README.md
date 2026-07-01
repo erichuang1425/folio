@@ -1,7 +1,7 @@
 # Tabento
 
 <p>
-  <a href="./manifest.json"><img src="https://img.shields.io/badge/version-v3.0.0-4f46e5?style=flat-square" alt="version v3.0.0"></a>
+  <a href="./manifest.json"><img src="https://img.shields.io/badge/version-v3.1.0-4f46e5?style=flat-square" alt="version v3.1.0"></a>
   <a href="./manifest.json"><img src="https://img.shields.io/badge/Manifest-MV3-0f766e?style=flat-square&logo=googlechrome&logoColor=white" alt="Manifest V3"></a>
   <img src="https://img.shields.io/badge/local--first-2563eb?style=flat-square" alt="local-first">
   <img src="https://img.shields.io/badge/host%20permissions-none-16a34a?style=flat-square" alt="no host permissions">

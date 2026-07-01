@@ -15,7 +15,8 @@ body { font-family:'DM Sans',system-ui,sans-serif; background:var(--bg); color:v
   display:flex; align-items:center; justify-content:space-between;
   padding:12px 14px; border-bottom:1px solid var(--border); background:var(--bg2);
 }
-.logo { display:flex; align-items:center; gap:7px; font:600 13.5px 'DM Sans',sans-serif; color:var(--accent); }
+.logo { display:flex; align-items:center; gap:7px; font:700 13.5px 'DM Sans',sans-serif; color:var(--text); }
+.brand-mark { width:18px; height:18px; display:block; flex-shrink:0; }
 #open-full {
   background:var(--bg3); border:1px solid var(--border); border-radius:6px;
   color:var(--text3); cursor:pointer; padding:6px 7px;

@@ -1,0 +1,9 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Option 02 - Tab Stack</title>
+  <rect x="16" y="18" width="88" height="92" rx="26" fill="#1f1812"/>
+  <rect x="28" y="28" width="76" height="28" rx="14" fill="#f5b841"/>
+  <rect x="24" y="58" width="32" height="42" rx="14" fill="#ec6f4c"/>
+  <rect x="52" y="52" width="30" height="52" rx="14" fill="#f6ecda"/>
+  <rect x="78" y="58" width="28" height="42" rx="14" fill="#9cc05a"/>
+  <rect x="28" y="28" width="76" height="28" rx="14" fill="none" stroke="#fff3c9" stroke-opacity="0.16" stroke-width="3"/>
+</svg>

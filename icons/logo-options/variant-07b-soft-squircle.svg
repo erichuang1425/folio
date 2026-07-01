@@ -1,0 +1,8 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Variant 07B - Soft Squircle</title>
+  <rect x="15" y="15" width="98" height="98" rx="32" fill="#f6ecda"/>
+  <rect x="29" y="29" width="70" height="26" rx="13" fill="#f5b841"/>
+  <rect x="29" y="64" width="25" height="34" rx="12.5" fill="#ec6f4c"/>
+  <rect x="64" y="64" width="35" height="34" rx="13" fill="#1f1812"/>
+  <circle cx="81.5" cy="81" r="8.5" fill="#9cc05a"/>
+</svg>
