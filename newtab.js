@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   TabNest — newtab.js (v3)
+   Tabento — newtab.js (v3)
    ═══════════════════════════════════════════════════════════════ */
 
 // Schema version of the in-storage state. Bump when state shape changes,
@@ -16,7 +16,7 @@ const State = (() => {
     workspaces: [], activeWsId: null, archive: [], recentEmoji: [],
     columnWidths: {},
     settings: {
-      theme:'aurora', size:'normal', font:'dm', width:'normal',
+      theme:'tabento', size:'normal', font:'dm', width:'normal',
       closeTabOnSave:true, hibernate:true, showUrls:true,
       animate:true, confirmDelete:true, sidebarCollapsed:false,
       blurPrivacy:false, windowSync:false
@@ -512,12 +512,12 @@ function bindBoardArrowNav() {
 function ensureDefault() {
   const s = State.get();
   if (!s.workspaces.length) {
-    const cat = { id: uid(), name:'Quicklinks', groups:[] };
-    const cat2 = { id: uid(), name:'Read later', groups:[] };
+    const cat = { id: uid(), name:'Pinned', groups:[] };
+    const cat2 = { id: uid(), name:'Later', groups:[] };
     cat.groups.push({
       id: uid(), name:'Getting started', symbol:'✨', color:'#6366f1', collapsed:false,
       items: [
-        { id: uid(), type:'note', html:'👋 <b>Welcome to TabNest!</b><br><br>Drag tabs from the left sidebar into any group.<br>Select text for the rich-text toolbar.<br>Right-click anywhere for more options.' },
+        { id: uid(), type:'note', html:'👋 <b>Welcome to Tabento!</b><br><br>Drag tabs from the left sidebar into any group.<br>Select text for the rich-text toolbar.<br>Right-click anywhere for more options.' },
         { id: uid(), type:'todo', text:'Try dragging a tab here', done:false },
         { id: uid(), type:'todo', text:'Right-click a group for context menu', done:false },
         { id: uid(), type:'todo', text:'Press Cmd/Ctrl + K to search', done:false }
@@ -533,6 +533,8 @@ function ensureDefault() {
 // SETTINGS
 // ════════════════════════════════════════════════════════════════
 const THEMES = [
+  { id:'tabento',          label:'Tabento',          colors:['#f3ead7','#c2761a','#d2542f'] },
+  { id:'tabento-dark',     label:'Tabento Dark',     colors:['#17120d','#f5b841','#ec6f4c'] },
   { id:'aurora',           label:'Aurora',           colors:['#0a0c14','#5eead4','#a78bfa'] },
   { id:'dark',             label:'Dark',             colors:['#0b0b10','#6366f1','#9b9bb4'] },
   { id:'light',            label:'Light',            colors:['#f4f4f7','#4f46e5','#52525e'] },
@@ -1416,6 +1418,25 @@ function renderOpenTabs() {
       } else {
         drag = { kind:'tab', data: { tabId:t.id, title:t.title, url:t.url, fav:t.favIconUrl } };
         el.classList.add('dragging');
+        // Custom compact drag image (favicon + title, no checkbox) so the
+        // browser doesn't fall back to a full snapshot of the row — that
+        // snapshot duplicated the checkbox and overlapped whatever it was
+        // dragged over, reading as two overlapping selection boxes.
+        try {
+          const ghost = document.createElement('div');
+          ghost.className = 'single-drag-ghost';
+          const favImg = document.createElement('img');
+          favImg.src = t.favIconUrl || favUrl(t.url);
+          ghost.appendChild(favImg);
+          const label = document.createElement('span');
+          label.textContent = t.title || t.url;
+          ghost.appendChild(label);
+          document.body.appendChild(ghost);
+          ghost.style.position = 'absolute';
+          ghost.style.left = '-9999px';
+          e.dataTransfer.setDragImage(ghost, 14, 14);
+          setTimeout(() => ghost.remove(), 0);
+        } catch {}
       }
       e.dataTransfer.effectAllowed = 'copyMove';
       try { e.dataTransfer.setData('text/plain', t.url); } catch {}
@@ -3410,7 +3431,7 @@ function exportJSON() {
   const data = State.get();
   const counts = countState(data);
   const payload = {
-    app: 'tabnest',
+    app: 'tabento',
     schema: CURRENT_SCHEMA,
     exportedAt: new Date().toISOString(),
     counts,
@@ -3421,7 +3442,7 @@ function exportJSON() {
   const a = document.createElement('a');
   const wsTag = counts.workspaces ? `-${counts.workspaces}ws` : '';
   a.href = url;
-  a.download = `tabnest${wsTag}-${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `tabento${wsTag}-${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
   toast(`Exported · ${pluralize(counts.workspaces, 'workspace')} · ${pluralize(counts.items, 'item')}`);
@@ -3441,7 +3462,7 @@ function importJSON(file) {
       return;
     }
     let data, schema, exportedAt;
-    if (parsed && (parsed.app === 'tabnest' || parsed.app === 'tabextend') && parsed.data && typeof parsed.data === 'object') {
+    if (parsed && (parsed.app === 'tabento' || parsed.app === 'tabnest' || parsed.app === 'tabextend') && parsed.data && typeof parsed.data === 'object') {
       data = parsed.data;
       schema = parsed.schema;
       exportedAt = parsed.exportedAt;
@@ -5002,6 +5023,35 @@ function setupDragAutoScroll() {
     }
   }, true);
 }
+
+// ── Drag a saved tab card onto the sidebar's open-tabs list to open it ──
+// Only accepts item-kind drags (board/list cards) whose item is a tab —
+// notes/todos/stacks have no URL to open. Dragging FROM the sidebar back
+// onto itself (kind 'tab'/'tabs-multi') is ignored; that's not a target.
+function setupOpenTabsDropToOpen() {
+  const zone = document.getElementById('open-tabs');
+  if (!zone) return;
+  zone.addEventListener('dragover', (e) => {
+    if (drag?.kind !== 'item') return;
+    const info = findItem(drag.id);
+    if (!info || info.item.type !== 'tab') return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    zone.classList.add('dragover');
+  });
+  zone.addEventListener('dragleave', (e) => {
+    if (zone.contains(e.relatedTarget)) return;
+    zone.classList.remove('dragover');
+  });
+  zone.addEventListener('drop', (e) => {
+    if (drag?.kind !== 'item') return;
+    const info = findItem(drag.id);
+    zone.classList.remove('dragover');
+    if (!info || info.item.type !== 'tab') return;
+    e.preventDefault();
+    openTabMaybeHibernated(info.item.url);
+  });
+}
 function openToolsHub() { document.getElementById('tools-hub').classList.remove('hidden'); }
 function closeToolsHub() { document.getElementById('tools-hub').classList.add('hidden'); }
 function bindToolsHub() {
@@ -5116,7 +5166,7 @@ function renderPomo() {
 
   // Title indicator
   if (pomoState.running) {
-    document.title = `${m}:${String(s).padStart(2,'0')} · TabNest`;
+    document.title = `${m}:${String(s).padStart(2,'0')} · Tabento`;
   } else {
     document.title = 'New Tab';
   }
@@ -5159,7 +5209,7 @@ function tickPomo() {
   if (!_pomoTimeEl) _pomoTimeEl = document.getElementById('pomo-time');
   if (_pomoTimeEl) _pomoTimeEl.textContent = timeText;
   // document.title writes are surprisingly expensive — only change when needed.
-  const nextTitle = pomoState.running ? `${timeText} · TabNest` : 'New Tab';
+  const nextTitle = pomoState.running ? `${timeText} · Tabento` : 'New Tab';
   if (nextTitle !== _pomoLastTitle) { document.title = nextTitle; _pomoLastTitle = nextTitle; }
 }
 function startPomoTimer() {
@@ -5570,7 +5620,7 @@ function exportFinCSV() {
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `tabnest-finance-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  a.href = url; a.download = `tabento-finance-${new Date().toISOString().slice(0,10)}.csv`; a.click();
   URL.revokeObjectURL(url);
   toast('Exported CSV');
 }
@@ -6433,7 +6483,7 @@ function bindWorkout() {
 const TOUR_STEPS = [
   {
     center: true,
-    title: '👋 Welcome to TabNest',
+    title: '👋 Welcome to Tabento',
     body: 'A calmer place for your tabs. In about 30 seconds you\'ll know how to save, organise, and find anything again. Use ← / → to step through, or Esc to skip.'
   },
   {
@@ -6636,7 +6686,7 @@ function bindStatic() {
   document.getElementById('tab-filter').onkeydown = e => { if (e.key === 'Escape') { e.target.value = ''; applyFilter(); e.target.blur(); } };
 
   document.getElementById('theme-btn').onclick = () => {
-    const cycle = ['aurora','dark','light','dracula','nord','rose-pine','tokyo-night','solarized-dark','solarized-light','gruvbox','catppuccin','sepia','mono'];
+    const cycle = ['tabento','tabento-dark','aurora','dark','light','dracula','nord','rose-pine','tokyo-night','solarized-dark','solarized-light','gruvbox','catppuccin','sepia','mono'];
     const i = cycle.indexOf(State.get().settings.theme);
     State.get().settings.theme = cycle[(i + 1) % cycle.length];
     applySettings();
@@ -6794,6 +6844,7 @@ function bindStatic() {
 
   // Drag auto-scroll
   setupDragAutoScroll();
+  setupOpenTabsDropToOpen();
 
   // Onboarding tour
   bindTour();

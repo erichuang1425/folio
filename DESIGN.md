@@ -1,8 +1,8 @@
-# TabNest Layout & Differentiation Brief
+# Tabento Layout & Differentiation Brief
 
 Status: living document. Last updated: 2026-06-23.
 
-This brief captures the design direction for TabNest's layout refresh and — importantly —
+This brief captures the design direction for Tabento's layout refresh and — importantly —
 how we take *inspiration* from **Refern** and **TabExtend** while staying clearly distinct,
 so the product is defensible and free to grow into a profitable business.
 
@@ -31,8 +31,8 @@ A **tab manager / workspace**. Distinctive traits visible in their marketing sho
 - **Kanban columns** of cards that mix tabs + to-dos + notes; yellow sticky-note styling.
 - Tagline "Tab management made easy."
 
-### Where TabNest already sits
-TabNest is functionally close to TabExtend (sidebar + category tabs + kanban columns of mixed
+### Where Tabento already sits
+Tabento is functionally close to TabExtend (sidebar + category tabs + kanban columns of mixed
 tab/note/todo cards + a free-positioning canvas). That overlap is **fine on the merits** — these
 are generic category patterns — but it means our *visual* identity has to carry the
 differentiation. That is the core of this brief.
@@ -47,7 +47,7 @@ Four buckets matter. Get a real IP attorney before any paid launch; this is our 
 |---|---|---|
 | **Copyright** | Their *code*, icons, illustrations, marketing copy, exact gradients/art. | Independently written (vanilla JS, our own SVG icons). Never copy their CSS, assets, or taglines. |
 | **Trade dress** | The *distinctive, non-functional* total look-and-feel that identifies the source. | Differentiate the signature elements (palette, tab treatment, card styling, motifs). Keep only the *functional* patterns. |
-| **Trademark** | Their names/logos ("Refern", "TabExtend"). | Don't use their names/marks anywhere. "Tab" is descriptive in this category (Toby, Tabby, Workona, Tab Manager all coexist), so "TabNest" is acceptably distinct — but never imitate their wordmark/logo. |
+| **Trademark** | Their names/logos ("Refern", "TabExtend"). | Don't use their names/marks anywhere. "Tab" is descriptive in this category (Toby, Tabby, Workona, Tab Manager all coexist), so "Tabento" is acceptably distinct — but never imitate their wordmark/logo. |
 | **Patents** | Specific claimed inventions. | None known to read on basic kanban/canvas/tag UI. Re-check before launch. |
 
 ### The key distinction: functional vs. distinctive
@@ -71,25 +71,31 @@ What we must make our *own* (the non-functional, source-identifying signature):
 
 ---
 
-## 3. Our visual signature — "Aurora"
+## 3. Our visual signature: "Bento"
 
-A deliberately distinct identity that is **neither** TabExtend's pastel-light favicon-rail
-**nor** Refern's dark image gallery.
+A distinct identity that is neither TabExtend's pastel-light favicon-rail nor Refern's dark
+image gallery. The name Tabento (tab + *bento box*) drives it: a compartmentalized box for
+organizing, used as the UI's signature motif.
 
-- **Palette — "ink + aurora":** a deep blue-black base (`#0a0c14`) rather than TabExtend's white
-  or Refern's neutral gallery grey. Signature accent is a **teal → violet gradient**
-  (`--brand-grad`), unlike TabExtend's flat blue or Refern's content-neutral chrome.
-- **Category tabs — underline indicator, not solid pills.** The active category is marked with a
-  thin gradient **underline** (Linear/Vercel-style), a clear, deliberate divergence from
-  TabExtend's solid blue pill. This is structural CSS, so it holds across every theme.
-- **Cohesive accent gradient** (`--brand-grad`, derived from each theme's own accents) on the
-  active tab, primary buttons, and active workspace chip (gradient left accent bar) — a
-  recognizable through-line that is ours, not borrowed.
-- **Sidebar = workspaces + live open-tabs list**, not a favicon bubble rail. Already different
-  from TabExtend by construction; we lean into it.
-- **Themes stay first-class.** Aurora is the new default, but the existing 12 themes remain, so
-  users who want light/Nord/Dracula keep them. Identity travels through *structure*
-  (tab underline, gradient through-line), not just colors.
+- **Palette:** the default is a warm rice-paper base (`#f3ead7`) with espresso text and a
+  gold/persimmon accent, rather than TabExtend's white or Refern's neutral gallery grey. The
+  accent gradient (`--brand-grad`) replaces TabExtend's flat blue. A "Tabento Dark" lacquer
+  variant (`#17120d` base) ships alongside it, and notes use a warm matcha/cream instead of
+  yellow sticky-notes.
+- **Columns as bento compartments:** board columns are framed cells with a thin gradient top
+  accent and a faint sheen (`.gcol` + `.gcol-hd::before`), unlike TabExtend's flat kanban
+  columns. The treatment is structural CSS, so it holds across every theme.
+- **Category tabs:** the active category gets a short, thicker gradient underline
+  (Linear/Vercel-style) instead of TabExtend's solid blue pill.
+- **One accent gradient:** `--brand-grad` (derived from each theme's own accents) marks the
+  active tab, primary buttons, the active workspace chip, and the column top edge, so the UI
+  reads with a single through-line.
+- **Sidebar:** workspaces plus a live open-tabs list, not a favicon bubble rail. Different from
+  TabExtend by construction.
+- **Themes stay first-class:** Tabento (rice-paper) is the new default. Tabento Dark, Aurora
+  (the previous default), and the other themes remain, so users who want light/Nord/Dracula keep
+  them. The identity lives in structure (compartment columns, tab divider-tick, accent gradient),
+  not only colors.
 
 ### Borrowed *ideas* (functional, safe) worth pursuing next
 - From Refern: the **Canvas** view (we already have one) and a future **relationship/graph**
@@ -175,3 +181,14 @@ differentiator we can market honestly.
   note/todo). Negative structured operators suppress archive results like the positive ones;
   negative *text* needles instead just filter out matching archive entries. Still no host
   access — purely local metadata/structure.
+- **2026-06-30** — Renamed TabNest to Tabento (tab + *bento box*) and replaced Aurora as the
+  default signature with Bento (§3). New default `[data-theme="tabento"]`: a warm rice-paper base
+  with a gold/persimmon `--brand-grad` and matcha/cream notes (not yellow sticky-notes); a
+  `tabento-dark` lacquer variant ships alongside. Added the structural compartment treatment:
+  framed board columns with a gradient top accent and a faint sheen (`.gcol` / `.gcol-hd::before`)
+  plus a thicker category-tab underline, so the identity holds across every theme and pushes
+  further from TabExtend's flat-kanban look. Aurora and all prior themes stay selectable. Seed
+  category names (Quicklinks/Read later, which echoed TabExtend) changed to Pinned/Later. Internal
+  storage keys (`te`, `te_settings_mirror`) left unchanged for data continuity; import still
+  accepts old `tabnest`/`tabextend` envelopes. The name was conflict-checked against the Chrome
+  Web Store and app space (unlike "TabPro", which collides with existing extensions).

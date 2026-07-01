@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tabento icon generator</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; background:#17120d; color:#f6ecda;
+         margin:0; padding:32px; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  p  { color:#c6b498; margin:0 0 20px; max-width:60ch; }
+  .row { display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap; margin-bottom:24px; }
+  .cell { text-align:center; }
+  .cell canvas { background:#0000; image-rendering:auto; border:1px solid #f5dcb422;
+                 border-radius:8px; display:block; margin:0 auto 8px; }
+  .cell small { color:#8a775d; }
+  button { font:600 14px system-ui; color:#1b1510; cursor:pointer; border:0;
+           border-radius:9px; padding:10px 18px;
+           background:linear-gradient(135deg,#f5b841,#ec6f4c); }
+  button:active { transform:translateY(1px); }
+</style>
+</head>
+<body>
+  <h1>Tabento icon generator</h1>
+  <p>Renders <code>icon.svg</code> to the three PNG sizes the MV3 manifest needs. Click
+     <b>Download all</b>, then save the files into this <code>icons/</code> folder, replacing
+     the old <code>icon16.png</code> / <code>icon48.png</code> / <code>icon128.png</code>.</p>
+  <div class="row" id="previews"></div>
+  <button id="dl">Download all (16, 48, 128)</button>
+
+<script>
+const SIZES = [16, 48, 128];
+
+// Inline copy of icon.svg so the page is self-contained and avoids file:// CORS.
+const SVG = `<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Tabento</title>
+  <rect x="15" y="18" width="98" height="92" rx="26" fill="#1f1812"/>
+  <rect x="29" y="28" width="70" height="19" rx="9.5" fill="#f5b841"/>
+  <rect x="25" y="55" width="35" height="45" rx="12" fill="#f6ecda"/>
+  <rect x="68" y="55" width="35" height="19" rx="9.5" fill="#ec6f4c"/>
+  <rect x="68" y="81" width="35" height="19" rx="9.5" fill="#ef8a3c"/>
+</svg>`;
+
+const url = URL.createObjectURL(new Blob([SVG], { type: 'image/svg+xml' }));
+const img = new Image();
+const canvases = {};
+
+img.onload = () => {
+  const wrap = document.getElementById('previews');
+  SIZES.forEach(sz => {
+    const c = document.createElement('canvas');
+    c.width = c.height = sz;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, sz, sz);
+    ctx.drawImage(img, 0, 0, sz, sz);
+    canvases[sz] = c;
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.appendChild(c);
+    const cap = document.createElement('small');
+    cap.textContent = `icon${sz}.png`;
+    cell.appendChild(cap);
+    wrap.appendChild(cell);
+  });
+};
+img.src = url;
+
+function download(sz) {
+  canvases[sz].toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `icon${sz}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }, 'image/png');
+}
+
+document.getElementById('dl').onclick = () => {
+  // Small stagger so browsers do not drop the batched downloads.
+  SIZES.forEach((sz, i) => setTimeout(() => download(sz), i * 350));
+};
+</script>
+</body>
+</html>

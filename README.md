@@ -1,25 +1,29 @@
-# TabNest
+# Tabento
 
 <p>
-  <a href="./manifest.json"><img src="https://img.shields.io/badge/version-v3.0.0-4f46e5?style=flat-square" alt="version v3.0.0"></a>
+  <a href="./manifest.json"><img src="https://img.shields.io/badge/version-v3.1.0-4f46e5?style=flat-square" alt="version v3.1.0"></a>
   <a href="./manifest.json"><img src="https://img.shields.io/badge/Manifest-MV3-0f766e?style=flat-square&logo=googlechrome&logoColor=white" alt="Manifest V3"></a>
   <img src="https://img.shields.io/badge/local--first-2563eb?style=flat-square" alt="local-first">
   <img src="https://img.shields.io/badge/host%20permissions-none-16a34a?style=flat-square" alt="no host permissions">
   <img src="https://img.shields.io/badge/build-no%20build%20step-f97316?style=flat-square" alt="no build step">
 </p>
 
-**A local-first new tab workspace for saved tabs, notes, todos, reminders, and small trackers.**
+**A local-first new tab workspace for saved tabs, notes, todos, reminders, and small trackers, with one-click tab hibernation that keeps memory low.**
 
-TabNest replaces the Chromium new tab page. It helps you save tabs, group them with notes and todos, search them later, and reopen pages without keeping every tab loaded. Data stays in `chrome.storage.local`; the extension has no account system, no server, no host permissions, and no page-content reading.
+Tabento replaces the Chromium new tab page. It helps you save tabs, group them with notes and todos, search them later, and reopen pages without keeping every tab loaded. Data stays in `chrome.storage.local`; the extension has no account system, no server, no host permissions, and no page-content reading.
+
+### Hibernate tabs to save memory
+
+Reopen any saved page through a light placeholder that loads the real site only when you click it. A workspace of 50 tabs costs almost nothing until you need them, the browser stays fast, and it works without host permissions or background loading. This is the core trade Tabento makes: keep your context without paying for it in RAM.
 
 <p align="center">
-  <img src="./icons/icon128.png" alt="TabNest icon" width="120">
+  <img src="./icons/icon128.png" alt="Tabento icon" width="120">
 </p>
 
 <p align="center">
   <samp>
-    <a href="#why-tabnest">Why</a> |
-    <a href="#features">Features</a> |
+    <a href="#why-tabento">Why</a> |
+    <a href="#what-it-does">What it does</a> |
     <a href="#screenshots">Screenshots</a> |
     <a href="#install">Install</a> |
     <a href="#development">Development</a> |
@@ -29,11 +33,11 @@ TabNest replaces the Chromium new tab page. It helps you save tabs, group them w
 
 ---
 
-## Why TabNest
+## Why Tabento
 
 Browser work is rarely just tabs. A session can include research links, half-written plans, reminders, reference pages, recurring routines, and things you want to reopen later without keeping them alive forever.
 
-TabNest keeps that context in the new tab page:
+Tabento keeps that context in the new tab page:
 
 - Save the current tab, every tab in a window, bookmarks, links, selections, or images.
 - Organize saved context into workspaces, categories, groups, stacks, colors, and views.
@@ -41,7 +45,7 @@ TabNest keeps that context in the new tab page:
 - Search by words, quoted phrases, color, item type, domain, URL, location, todo state, and reminders.
 - Reopen saved pages directly or through a hibernated placeholder so the browser stays lighter.
 
-## Features
+## What it does
 
 | Area | What you can do |
 | --- | --- |
@@ -53,7 +57,7 @@ TabNest keeps that context in the new tab page:
 | Popup | Save the current tab, save every open tab, and inspect open tabs from the extension action. |
 | Tools | Use built-in Pomodoro, finance diary, subscriptions, habits, hydration, reading, goals, and workout trackers. |
 | Portability | Export and import data with a versioned envelope and preview step before restore. |
-| Privacy | Keep data in `chrome.storage.local`; TabNest requests no host permissions and does not read page content. |
+| Privacy | Keep data in `chrome.storage.local`; Tabento requests no host permissions and does not read page content. |
 
 Example search:
 
@@ -63,21 +67,19 @@ type:tab in:work domain:github.com "pull request" -is:done
 
 ## Screenshots
 
-Screenshots still need to be captured. The table below lists the views that should be added to the README and browser-store listing.
+![Tabento workspace board](./docs/images/tabento-workspace-demo.png)
 
-| Workspace board | Focus and search | Popup capture |
-| --- | --- | --- |
-| Board, categories, groups, and nested stacks. | Operators, archive visibility, and focused group flow. | Current-tab and all-tabs save workflow. |
+Demo workspace captured from the unpacked Edge extension.
 
 ## Tech stack
 
-- **Platform:** Chromium extension, Manifest V3
-- **Languages:** Vanilla JavaScript, HTML, CSS
-- **Storage:** `chrome.storage.local`
-- **Background runtime:** MV3 service worker
-- **Browser APIs:** tabs, storage, context menus, bookmarks, alarms, notifications
-- **Build tooling:** none required
-- **CI:** GitHub Actions syntax and manifest validation
+- Platform: Chromium extension, Manifest V3
+- Languages: Vanilla JavaScript, HTML, CSS
+- Storage: `chrome.storage.local`
+- Background runtime: MV3 service worker
+- Browser APIs: tabs, storage, context menus, bookmarks, alarms, notifications
+- Build tooling: none required
+- CI: GitHub Actions syntax and manifest validation
 
 ## Install
 
@@ -86,9 +88,9 @@ Screenshots still need to be captured. The table below lists the views that shou
 3. Enable **Developer mode**.
 4. Choose **Load unpacked**.
 5. Select the repository folder.
-6. Open a new tab to launch TabNest.
+6. Open a new tab to launch Tabento.
 
-After editing extension files, reload TabNest from the browser extensions page.
+After editing extension files, reload Tabento from the browser extensions page.
 
 ## Usage
 
@@ -107,7 +109,7 @@ has:reminder reminder:overdue
 ## Project structure
 
 ```text
-tabnest/
+tabento/
 |-- manifest.json        # MV3 manifest, permissions, commands, icons
 |-- background.js        # Service worker for menus, alarms, notifications, saves
 |-- newtab.html          # Main workspace shell
@@ -127,7 +129,7 @@ tabnest/
 
 ## Development
 
-TabNest has no package install and no build command.
+Tabento has no package install and no build command.
 
 Run the validation checks used by CI:
 
@@ -164,13 +166,9 @@ For a packaged release:
 
 The current product release is documented in [RELEASE_NOTES.md](./RELEASE_NOTES.md).
 
-## GitHub topics
-
-`browser-extension` `chrome-extension` `manifest-v3` `tab-manager` `new-tab` `productivity` `workspace` `local-first` `privacy-first` `vanilla-javascript` `notes` `todos` `reminders` `tab-hibernation`
-
 ## Privacy
 
-TabNest keeps data local:
+Tabento keeps data local:
 
 - Stored URLs, titles, notes, todos, reminders, workspace state, and tool data live in `chrome.storage.local`.
 - The extension does not request host permissions.

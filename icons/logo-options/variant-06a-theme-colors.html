@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tabento 06A Theme Color Variants</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin:0;
+    padding:32px;
+    background:#17120d;
+    color:#f6ecda;
+    font:14px/1.45 system-ui, sans-serif;
+  }
+  h1 { margin:0 0 6px; font-size:22px; }
+  p { margin:0 0 22px; color:#c6b498; }
+  .grid {
+    display:grid;
+    grid-template-columns:repeat(5, 174px);
+    gap:16px;
+  }
+  figure {
+    margin:0;
+    padding:14px;
+    background:var(--theme-bg);
+    border:1px solid color-mix(in srgb, var(--theme-text) 16%, transparent);
+    border-radius:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.16);
+  }
+  .logo {
+    width:96px;
+    height:96px;
+    position:relative;
+    margin:0 auto 12px;
+  }
+  .logo::before {
+    content:"";
+    position:absolute;
+    left:11px;
+    top:13px;
+    width:74px;
+    height:70px;
+    border-radius:20px;
+    background:var(--tile);
+  }
+  .cell {
+    position:absolute;
+    display:block;
+  }
+  .top {
+    left:22px;
+    top:21px;
+    width:52px;
+    height:14px;
+    border-radius:7px;
+    background:var(--top);
+  }
+  .left {
+    left:19px;
+    top:41px;
+    width:26px;
+    height:34px;
+    border-radius:9px;
+    background:var(--neutral);
+  }
+  .right-top {
+    left:51px;
+    top:41px;
+    width:26px;
+    height:14px;
+    border-radius:7px;
+    background:var(--warm);
+  }
+  .right-bottom {
+    left:51px;
+    top:61px;
+    width:26px;
+    height:14px;
+    border-radius:7px;
+    background:var(--cool);
+  }
+  figcaption {
+    color:var(--theme-text);
+    text-align:center;
+    font-weight:700;
+    font-size:13px;
+  }
+  small {
+    display:block;
+    margin-top:2px;
+    color:color-mix(in srgb, var(--theme-text) 62%, transparent);
+    font-weight:600;
+  }
+</style>
+</head>
+<body>
+  <h1>06A Grid - Theme Color Variants</h1>
+  <p>Same approved shape, recolored to fit each existing Tabento theme. Pick one before I update the active extension icon.</p>
+  <div class="grid">
+    <figure style="--theme-bg:#f0e4cb;--theme-text:#2b2118;--tile:#2b2118;--top:#c2761a;--neutral:#fdf9f1;--warm:#d2542f;--cool:#b8860b">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Tabento<small>rice paper</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#17120d;--theme-text:#f6ecda;--tile:#1f1812;--top:#f5b841;--neutral:#f6ecda;--warm:#ec6f4c;--cool:#ef8a3c">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Tabento Dark<small>lacquer</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#0b0b10;--theme-text:#ebebf5;--tile:#12121a;--top:#818cf8;--neutral:#ebebf5;--warm:#f87171;--cool:#a5b4fc">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Dark<small>indigo</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#0a0c14;--theme-text:#eef1fb;--tile:#11141f;--top:#5eead4;--neutral:#eef1fb;--warm:#a78bfa;--cool:#60a5fa">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Aurora<small>teal violet</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#282a36;--theme-text:#f8f8f2;--tile:#21222c;--top:#bd93f9;--neutral:#f8f8f2;--warm:#ff5555;--cool:#8be9fd">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Dracula<small>purple neon</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#2e3440;--theme-text:#eceff4;--tile:#3b4252;--top:#88c0d0;--neutral:#eceff4;--warm:#bf616a;--cool:#a3be8c">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Nord<small>frost</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#191724;--theme-text:#e0def4;--tile:#1f1d2e;--top:#c4a7e7;--neutral:#e0def4;--warm:#eb6f92;--cool:#9ccfd8">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Rose Pine<small>iris rose</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#1a1b26;--theme-text:#c0caf5;--tile:#16161e;--top:#7aa2f7;--neutral:#c0caf5;--warm:#f7768e;--cool:#bb9af7">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Tokyo Night<small>blue dusk</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#002b36;--theme-text:#fdf6e3;--tile:#073642;--top:#268bd2;--neutral:#fdf6e3;--warm:#dc322f;--cool:#2aa198">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Solarized Dark<small>cyan base</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#fdf6e3;--theme-text:#073642;--tile:#073642;--top:#268bd2;--neutral:#fdf6e3;--warm:#dc322f;--cool:#2aa198">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Solarized Light<small>paper cyan</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#282828;--theme-text:#ebdbb2;--tile:#32302f;--top:#fabd2f;--neutral:#ebdbb2;--warm:#fb4934;--cool:#b8bb26">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Gruvbox<small>retro warm</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#1e1e2e;--theme-text:#cdd6f4;--tile:#181825;--top:#cba6f7;--neutral:#cdd6f4;--warm:#f38ba8;--cool:#89b4fa">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Catppuccin<small>mauve</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#f4ecd8;--theme-text:#3d2e18;--tile:#3d2e18;--top:#b8860b;--neutral:#ebe0c3;--warm:#a0342b;--cool:#5c7a2a">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Sepia<small>bookish</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#0a0a0a;--theme-text:#f5f5f5;--tile:#141414;--top:#f5f5f5;--neutral:#bdbdbd;--warm:#858585;--cool:#5c5c5c">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Mono<small>grayscale</small></figcaption>
+    </figure>
+    <figure style="--theme-bg:#f4f4f7;--theme-text:#15151f;--tile:#15151f;--top:#4f46e5;--neutral:#ffffff;--warm:#dc2626;--cool:#2563eb">
+      <div class="logo"><span class="cell top"></span><span class="cell left"></span><span class="cell right-top"></span><span class="cell right-bottom"></span></div>
+      <figcaption>Light<small>classic</small></figcaption>
+    </figure>
+  </div>
+</body>
+</html>

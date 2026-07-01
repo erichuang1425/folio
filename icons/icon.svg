@@ -1,0 +1,8 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Tabento</title>
+  <rect x="15" y="18" width="98" height="92" rx="26" fill="#1f1812"/>
+  <rect x="29" y="28" width="70" height="19" rx="9.5" fill="#f5b841"/>
+  <rect x="25" y="55" width="35" height="45" rx="12" fill="#f6ecda"/>
+  <rect x="68" y="55" width="35" height="19" rx="9.5" fill="#ec6f4c"/>
+  <rect x="68" y="81" width="35" height="19" rx="9.5" fill="#ef8a3c"/>
+</svg>

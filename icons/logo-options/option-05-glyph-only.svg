@@ -1,0 +1,9 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Option 05 - Glyph Only</title>
+  <rect x="16" y="22" width="96" height="34" rx="17" fill="#1f1812"/>
+  <rect x="24" y="30" width="80" height="18" rx="9" fill="#f5b841"/>
+  <rect x="47" y="57" width="34" height="52" rx="17" fill="#1f1812"/>
+  <rect x="55" y="64" width="18" height="38" rx="9" fill="#f6ecda"/>
+  <rect x="22" y="66" width="20" height="38" rx="10" fill="#ec6f4c"/>
+  <rect x="86" y="66" width="20" height="38" rx="10" fill="#9cc05a"/>
+</svg>

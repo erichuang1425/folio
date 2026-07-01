@@ -1,0 +1,8 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Option 08 - Lacquer Tab</title>
+  <rect x="16" y="18" width="96" height="94" rx="30" fill="#1f1812"/>
+  <path d="M33 28h42c8.8 0 16 7.2 16 16v12H24V37c0-5 4-9 9-9z" fill="#f5b841"/>
+  <path d="M34 64h23c4.4 0 8 3.6 8 8v20c0 4.4-3.6 8-8 8H34c-4.4 0-8-3.6-8-8V72c0-4.4 3.6-8 8-8z" fill="#f6ecda"/>
+  <path d="M74 64h20c4.4 0 8 3.6 8 8v5c0 4.4-3.6 8-8 8H74c-4.4 0-8-3.6-8-8v-5c0-4.4 3.6-8 8-8z" fill="#ec6f4c"/>
+  <path d="M74 91h20c4.4 0 8 3.6 8 8v1H66v-1c0-4.4 3.6-8 8-8z" fill="#9cc05a"/>
+</svg>

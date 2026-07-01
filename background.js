@@ -1,4 +1,4 @@
-/* ═══ TabNest background.js ═══ */
+/* ═══ Tabento background.js ═══ */
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -10,14 +10,14 @@ async function setState(s) {
   try {
     await chrome.storage.local.set({ te: s });
   } catch (err) {
-    console.error('TabNest storage write failed:', err);
+    console.error('Tabento storage write failed:', err);
     if (/quota/i.test(String(err?.message || err))) {
       try {
         chrome.notifications.create('te-storage-quota-' + Date.now(), {
           type: 'basic',
           iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-          title: 'TabNest storage full',
-          message: 'A background save failed. Open TabNest to free space.',
+          title: 'Tabento storage full',
+          message: 'A background save failed. Open Tabento to free space.',
           priority: 2
         });
       } catch {}
@@ -72,8 +72,8 @@ function flash(text = '✓', color = '#22c55e') {
 // upgrade paths). Also re-registering on onStartup is defense-in-depth for
 // rare cases where persisted menu state desyncs from the SW.
 const MENU_ITEMS = [
-  { id: 'te-save-page',      title: '💾 Save page to TabNest',  contexts: ['page'] },
-  { id: 'te-save-link',      title: '🔗 Save link to TabNest',  contexts: ['link'] },
+  { id: 'te-save-page',      title: '💾 Save page to Tabento',  contexts: ['page'] },
+  { id: 'te-save-link',      title: '🔗 Save link to Tabento',  contexts: ['link'] },
   { id: 'te-save-selection', title: '📝 Save selection as note',  contexts: ['selection'] },
   { id: 'te-save-image',     title: '🖼️ Save image',              contexts: ['image'] },
   { id: 'te-sep',            type: 'separator',                   contexts: ['page'] },
@@ -198,7 +198,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       });
     }
   } catch (err) {
-    console.error('TabNest alarm failed:', alarm.name, err);
+    console.error('Tabento alarm failed:', alarm.name, err);
   }
 });
 
@@ -206,7 +206,7 @@ function stripHtml(html) {
   return String(html).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 }
 
-// Click notification → open TabNest. Subscription and storage-quota
+// Click notification → open Tabento. Subscription and storage-quota
 // notifications previously did nothing on click — now they all open newtab.
 const NOTIF_OPEN_PREFIXES = ['te-notif-', 'te-sub-notif-', 'te-storage-quota-'];
 chrome.notifications.onClicked.addListener((notifId) => {

@@ -1,10 +1,47 @@
 /* ═══════════════════════════════════════════════════════════════
-   TabNest — newtab.css
+   Tabento — newtab.css
    ═══════════════════════════════════════════════════════════════ */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ═══ THEMES ═══ */
+
+/* Tabento: signature theme (default). Warm rice-paper "bento box" base with a
+   gold/persimmon accent. Distinct from TabExtend's pastel favicon rail and from
+   Refern's neutral gallery grey. --brand-grad (built from --accent/--accent2)
+   carries the gold/persimmon through-line onto tabs, buttons, and the chip bar. */
+[data-theme="tabento"] {
+  /* Board is the deepest tone; panels/cards sit lighter so columns lift. */
+  --bg: #f0e4cb; --bg2: #fdf9f1; --bg3: #eaddc4; --bg4: #ddceb0; --bg5: #c8b596;
+  --panel: #fdf9f1;
+  --border: rgba(90,66,30,0.11); --border2: rgba(90,66,30,0.19);
+  --text: #2b2118; --text2: #6b5a44; --text3: #9c8a6c;
+  --accent: #c2761a; --accent2: #d2542f; --accent-bg: #c2761a; --accent-hover: #a9620f;
+  --green: #5e8a32; --red: #c0392b; --yellow: #b8860b; --orange: #cd6a1f; --blue: #2c7a9e;
+  --note-bg: #eef3df; --note-bd: rgba(94,138,50,0.30);
+  /* Warm espresso elevation (not cold black) so the light theme has real depth
+     instead of the base dark shadows it was inheriting. */
+  --shadow: 0 16px 46px rgba(74,52,20,0.16), 0 4px 12px rgba(74,52,20,0.08);
+  --shadow-sm: 0 2px 10px rgba(74,52,20,0.08);
+  --card-shadow: 0 1px 2px rgba(74,52,20,0.06), 0 2px 5px rgba(74,52,20,0.05);
+  --card-shadow-h: 0 10px 24px rgba(74,52,20,0.14), 0 2px 6px rgba(74,52,20,0.08);
+  --shadow-1: 0 2px 10px rgba(74,52,20,0.10);
+  --shadow-2: 0 8px 20px rgba(74,52,20,0.14), 0 0 0 1px rgba(74,52,20,0.05);
+  --shadow-3: 0 16px 44px rgba(74,52,20,0.18), 0 3px 10px rgba(74,52,20,0.10);
+}
+
+/* Tabento Dark: lacquer variant of the signature theme. Same gold/persimmon
+   accent on a warm near-black base. */
+[data-theme="tabento-dark"] {
+  --bg: #17120d; --bg2: #1f1812; --bg3: #2a211a; --bg4: #392c22; --bg5: #4c3b2d;
+  --panel: #1b1510;
+  --border: rgba(245,222,180,0.08); --border2: rgba(245,222,180,0.17);
+  --text: #f6ecda; --text2: #c6b498; --text3: #8a775d;
+  --accent: #f5b841; --accent2: #ec6f4c; --accent-bg: #e8902a; --accent-hover: #cf7d1d;
+  --green: #9cc05a; --red: #e5563f; --yellow: #f5b841; --orange: #ef8a3c; --blue: #5fa8c4;
+  --note-bg: #20231a; --note-bd: rgba(156,192,90,0.22);
+}
+
 [data-theme="dark"] {
   --bg: #0b0b10; --bg2: #12121a; --bg3: #1a1a24; --bg4: #23232f; --bg5: #2e2e3d;
   --panel: #14141c;
@@ -15,8 +52,8 @@
   --note-bg: #1e1e18; --note-bd: rgba(234,179,8,0.18);
 }
 
-/* Aurora — TabNest signature theme (default). Ink base + teal→violet accent.
-   Deliberately distinct from TabExtend (pastel-light) and Refern (gallery-grey). */
+/* Aurora: alternate signature theme (the previous default). Ink base plus
+   teal/violet accent. Tabento (above) is now the default signature. */
 [data-theme="aurora"] {
   --bg: #0a0c14; --bg2: #11141f; --bg3: #181c2b; --bg4: #222840; --bg5: #2f3754;
   --panel: #0f1320;
@@ -485,6 +522,25 @@ textarea:focus-visible {
   font: 600 13px var(--font);
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
+
+/* Single-tab drag ghost: favicon + title only, no checkbox. Replaces the
+   browser's default drag snapshot of the sidebar row, which duplicated the
+   checkbox and looked like two overlapping selection boxes wherever it hovered. */
+.single-drag-ghost {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 12px 6px 6px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  font: 500 12.5px var(--font);
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  max-width: 220px;
+}
+.single-drag-ghost img { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; }
+.single-drag-ghost span {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 @keyframes popIn { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
 
 /* Open tabs list */
@@ -493,6 +549,13 @@ textarea:focus-visible {
   padding: 2px 8px 8px;
   scrollbar-width: thin; scrollbar-color: var(--bg5) transparent;
   display: flex; flex-direction: column; gap: 2px;
+  border-radius: 8px;
+  transition: background var(--trans), box-shadow var(--trans);
+}
+/* Drop a saved tab card here to open it — see setupOpenTabsDropToOpen(). */
+#open-tabs.dragover {
+  background: color-mix(in srgb, var(--accent-bg) 8%, transparent);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .otab {
@@ -767,8 +830,8 @@ body[data-anim="off"] .cat-tabs-wrap::after {
 
 /* ═══ BOARD ═══ */
 #board {
-  flex: 1; display: flex; gap: 14px;
-  padding: 20px 18px;
+  flex: 1; display: flex; gap: 16px;
+  padding: 22px 20px;
   overflow-x: auto; overflow-y: hidden;
   align-items: flex-start;
   scroll-behavior: smooth;
@@ -862,7 +925,7 @@ body[data-anim="off"] .cat-tabs-wrap::after {
   cursor: pointer; user-select: none;
   flex-shrink: 0;
   background: linear-gradient(to bottom,
-    color-mix(in srgb, var(--gcol-tint, transparent) 10%, transparent),
+    color-mix(in srgb, var(--gcol-tint, transparent) 18%, transparent),
     transparent);
   /* Header layers above the scrolling cards, echoing the topbar treatment. */
   border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
@@ -883,15 +946,21 @@ body[data-anim="off"] .cat-tabs-wrap::after {
 .gcol-sym-wrap::after {
   content: ''; position: absolute; inset: 0;
   border-radius: 9px; background: var(--gcol-tint, transparent);
-  opacity: 0.14; pointer-events: none;
+  opacity: 0.2; pointer-events: none;
 }
 
 .gcol-info { flex: 1; min-width: 0; }
 .gcol-name {
   background: none; border: none; outline: none;
-  color: var(--text); font: 600 14.5px var(--font);
-  width: 100%; padding: 0; letter-spacing: -0.01em;
+  color: var(--text); font: 600 15px var(--font);
+  width: 100%; padding: 0; letter-spacing: -0.012em;
+  /* Reserve room for the 5-icon action row (below) so a long name always
+     ellipsizes before it instead of running under the icons on hover.
+     Kept constant (not hover-conditional) so the title never reflows. */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding-right: 128px;
 }
+.gcol-name:focus { padding-right: 0; }
 .gcol-meta {
   display: flex; align-items: center; gap: 5px;
   font-size: 11px; color: var(--text3); margin-top: 2px;
@@ -906,15 +975,30 @@ body[data-anim="off"] .cat-tabs-wrap::after {
 }
 .gcol-meta .todo-count.all-done { background: var(--green); color: white; border-color: transparent; }
 
-.gcol-acts { display: flex; gap: 1px; }
+/* Actions are absolutely positioned so they never reserve header width when
+   hidden — that reservation was clipping group names. They fade in over the
+   header's right edge on hover/focus. .gcol-name reserves matching padding
+   so the name never sits under this zone; the backing is fully opaque
+   (not a soft fade) as a second guard against text bleeding through. */
+.gcol-acts {
+  position: absolute; top: 9px; right: 9px; bottom: 9px;
+  display: flex; align-items: center; gap: 1px;
+  opacity: 0; pointer-events: none;
+  padding-left: 10px;
+  /* Matches the header's own tinted top band (see .gcol-hd background)
+     rather than plain --panel, so no visible seam shows behind the icons. */
+  background: color-mix(in srgb, var(--gcol-tint, transparent) 18%, var(--panel));
+  transition: opacity var(--trans);
+}
+.gcol:hover .gcol-acts,
+.gcol-hd:focus-within .gcol-acts { opacity: 1; pointer-events: auto; }
 .gcol-btn {
   width: 26px; height: 26px;
   background: none; border: 1px solid transparent;
   color: var(--text3); cursor: pointer; border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: all var(--trans);
+  transition: all var(--trans);
 }
-.gcol:hover .gcol-btn { opacity: 1; }
 .gcol-btn:hover { background: var(--bg3); color: var(--text); border-color: var(--border); }
 .gcol-btn.danger:hover { color: var(--red); }
 .gcol-btn.go:hover { color: var(--green); }
@@ -4549,4 +4633,56 @@ body.blur-privacy .otab-title:hover { filter: blur(0); }
 }
 
 /* Hub card interactions are defined in the main tools-hub block above. */
+
+/* ═══════════════════════════════════════════════════════════════
+   BENTO SIGNATURE: Tabento's source-identifying visual treatment.
+   Built on theme tokens, so the identity survives every theme switch,
+   not only the default Tabento palette. This is the trade-dress
+   divergence from TabExtend's flat kanban and yellow sticky-note look.
+   See DESIGN.md §3.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Board columns read as bento "compartments": a crisp framed cell with a
+   faint top lacquer sheen. The gradient top accent lives on .gcol-hd::before
+   so it never collides with the .gcol drop-before/after ::before/::after. */
+.gcol {
+  border-color: var(--border2);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), var(--card-shadow);
+}
+.gcol:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), var(--card-shadow-h); }
+.gcol-hd { position: relative; }
+.gcol-hd::before {
+  content: '';
+  position: absolute; left: 0; right: 0; top: 0; height: 2px;
+  background: var(--brand-grad);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Cards as "morsels": a touch crisper than the column frame. The left
+   seasoning-accent strip (per data-color) already lives at .item[data-color]. */
+.item { border-radius: 8px; }
+
+/* Active category: thicken the gradient underline into a short "divider tick".
+   This diverges from TabExtend's solid blue pills. */
+.cat-tab.active {
+  background: var(--brand-grad) bottom center / calc(100% - 18px) 3px no-repeat;
+}
+.cat-tab.active:hover {
+  background:
+    var(--brand-grad) bottom center / calc(100% - 18px) 3px no-repeat,
+    var(--bg3);
+}
+
+/* Bento grid board: in board view, groups wrap into compartment tiles instead
+   of one long horizontally-scrolling kanban row. Removing the side-scroll is a
+   usability win and reads as a bento box. List and canvas keep their layouts.
+   Card areas already cap at 60vh (.gcol-cards), so tiles stay height-bounded. */
+#board:not(.list-mode):not(.canvas-mode) {
+  flex-wrap: wrap;
+  align-content: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
 
