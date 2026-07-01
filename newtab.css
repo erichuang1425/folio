@@ -11,13 +11,23 @@
    Refern's neutral gallery grey. --brand-grad (built from --accent/--accent2)
    carries the gold/persimmon through-line onto tabs, buttons, and the chip bar. */
 [data-theme="tabento"] {
-  --bg: #f3ead7; --bg2: #fcf8f0; --bg3: #ece0cb; --bg4: #e0d2b8; --bg5: #cbb99a;
-  --panel: #fcf8f0;
-  --border: rgba(90,66,30,0.10); --border2: rgba(90,66,30,0.18);
+  /* Board is the deepest tone; panels/cards sit lighter so columns lift. */
+  --bg: #f0e4cb; --bg2: #fdf9f1; --bg3: #eaddc4; --bg4: #ddceb0; --bg5: #c8b596;
+  --panel: #fdf9f1;
+  --border: rgba(90,66,30,0.11); --border2: rgba(90,66,30,0.19);
   --text: #2b2118; --text2: #6b5a44; --text3: #9c8a6c;
   --accent: #c2761a; --accent2: #d2542f; --accent-bg: #c2761a; --accent-hover: #a9620f;
   --green: #5e8a32; --red: #c0392b; --yellow: #b8860b; --orange: #cd6a1f; --blue: #2c7a9e;
   --note-bg: #eef3df; --note-bd: rgba(94,138,50,0.30);
+  /* Warm espresso elevation (not cold black) so the light theme has real depth
+     instead of the base dark shadows it was inheriting. */
+  --shadow: 0 16px 46px rgba(74,52,20,0.16), 0 4px 12px rgba(74,52,20,0.08);
+  --shadow-sm: 0 2px 10px rgba(74,52,20,0.08);
+  --card-shadow: 0 1px 2px rgba(74,52,20,0.06), 0 2px 5px rgba(74,52,20,0.05);
+  --card-shadow-h: 0 10px 24px rgba(74,52,20,0.14), 0 2px 6px rgba(74,52,20,0.08);
+  --shadow-1: 0 2px 10px rgba(74,52,20,0.10);
+  --shadow-2: 0 8px 20px rgba(74,52,20,0.14), 0 0 0 1px rgba(74,52,20,0.05);
+  --shadow-3: 0 16px 44px rgba(74,52,20,0.18), 0 3px 10px rgba(74,52,20,0.10);
 }
 
 /* Tabento Dark: lacquer variant of the signature theme. Same gold/persimmon
@@ -794,8 +804,8 @@ body[data-anim="off"] .cat-tabs-wrap::after {
 
 /* ═══ BOARD ═══ */
 #board {
-  flex: 1; display: flex; gap: 14px;
-  padding: 20px 18px;
+  flex: 1; display: flex; gap: 16px;
+  padding: 22px 20px;
   overflow-x: auto; overflow-y: hidden;
   align-items: flex-start;
   scroll-behavior: smooth;
@@ -916,8 +926,8 @@ body[data-anim="off"] .cat-tabs-wrap::after {
 .gcol-info { flex: 1; min-width: 0; }
 .gcol-name {
   background: none; border: none; outline: none;
-  color: var(--text); font: 600 14.5px var(--font);
-  width: 100%; padding: 0; letter-spacing: -0.01em;
+  color: var(--text); font: 600 15px var(--font);
+  width: 100%; padding: 0; letter-spacing: -0.012em;
 }
 .gcol-meta {
   display: flex; align-items: center; gap: 5px;
