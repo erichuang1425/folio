@@ -67,9 +67,9 @@ type:tab in:work domain:github.com "pull request" -is:done
 
 ## Screenshots
 
-![Tabento workspace board](./docs/images/tabnest-workspace.png)
+![Tabento workspace board](./docs/images/tabento-workspace-demo.png)
 
-The screenshot above is the default workspace running as an unpacked Edge extension.
+Demo workspace captured from the unpacked Edge extension.
 
 ## Tech stack
 
