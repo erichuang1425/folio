@@ -1418,6 +1418,25 @@ function renderOpenTabs() {
       } else {
         drag = { kind:'tab', data: { tabId:t.id, title:t.title, url:t.url, fav:t.favIconUrl } };
         el.classList.add('dragging');
+        // Custom compact drag image (favicon + title, no checkbox) so the
+        // browser doesn't fall back to a full snapshot of the row — that
+        // snapshot duplicated the checkbox and overlapped whatever it was
+        // dragged over, reading as two overlapping selection boxes.
+        try {
+          const ghost = document.createElement('div');
+          ghost.className = 'single-drag-ghost';
+          const favImg = document.createElement('img');
+          favImg.src = t.favIconUrl || favUrl(t.url);
+          ghost.appendChild(favImg);
+          const label = document.createElement('span');
+          label.textContent = t.title || t.url;
+          ghost.appendChild(label);
+          document.body.appendChild(ghost);
+          ghost.style.position = 'absolute';
+          ghost.style.left = '-9999px';
+          e.dataTransfer.setDragImage(ghost, 14, 14);
+          setTimeout(() => ghost.remove(), 0);
+        } catch {}
       }
       e.dataTransfer.effectAllowed = 'copyMove';
       try { e.dataTransfer.setData('text/plain', t.url); } catch {}
@@ -5004,6 +5023,35 @@ function setupDragAutoScroll() {
     }
   }, true);
 }
+
+// ── Drag a saved tab card onto the sidebar's open-tabs list to open it ──
+// Only accepts item-kind drags (board/list cards) whose item is a tab —
+// notes/todos/stacks have no URL to open. Dragging FROM the sidebar back
+// onto itself (kind 'tab'/'tabs-multi') is ignored; that's not a target.
+function setupOpenTabsDropToOpen() {
+  const zone = document.getElementById('open-tabs');
+  if (!zone) return;
+  zone.addEventListener('dragover', (e) => {
+    if (drag?.kind !== 'item') return;
+    const info = findItem(drag.id);
+    if (!info || info.item.type !== 'tab') return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    zone.classList.add('dragover');
+  });
+  zone.addEventListener('dragleave', (e) => {
+    if (zone.contains(e.relatedTarget)) return;
+    zone.classList.remove('dragover');
+  });
+  zone.addEventListener('drop', (e) => {
+    if (drag?.kind !== 'item') return;
+    const info = findItem(drag.id);
+    zone.classList.remove('dragover');
+    if (!info || info.item.type !== 'tab') return;
+    e.preventDefault();
+    openTabMaybeHibernated(info.item.url);
+  });
+}
 function openToolsHub() { document.getElementById('tools-hub').classList.remove('hidden'); }
 function closeToolsHub() { document.getElementById('tools-hub').classList.add('hidden'); }
 function bindToolsHub() {
@@ -6796,6 +6844,7 @@ function bindStatic() {
 
   // Drag auto-scroll
   setupDragAutoScroll();
+  setupOpenTabsDropToOpen();
 
   // Onboarding tour
   bindTour();

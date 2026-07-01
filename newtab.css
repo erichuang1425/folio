@@ -522,6 +522,25 @@ textarea:focus-visible {
   font: 600 13px var(--font);
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
+
+/* Single-tab drag ghost: favicon + title only, no checkbox. Replaces the
+   browser's default drag snapshot of the sidebar row, which duplicated the
+   checkbox and looked like two overlapping selection boxes wherever it hovered. */
+.single-drag-ghost {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 12px 6px 6px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  font: 500 12.5px var(--font);
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  max-width: 220px;
+}
+.single-drag-ghost img { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; }
+.single-drag-ghost span {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 @keyframes popIn { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
 
 /* Open tabs list */
@@ -530,6 +549,13 @@ textarea:focus-visible {
   padding: 2px 8px 8px;
   scrollbar-width: thin; scrollbar-color: var(--bg5) transparent;
   display: flex; flex-direction: column; gap: 2px;
+  border-radius: 8px;
+  transition: background var(--trans), box-shadow var(--trans);
+}
+/* Drop a saved tab card here to open it — see setupOpenTabsDropToOpen(). */
+#open-tabs.dragover {
+  background: color-mix(in srgb, var(--accent-bg) 8%, transparent);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .otab {
@@ -928,7 +954,13 @@ body[data-anim="off"] .cat-tabs-wrap::after {
   background: none; border: none; outline: none;
   color: var(--text); font: 600 15px var(--font);
   width: 100%; padding: 0; letter-spacing: -0.012em;
+  /* Reserve room for the 5-icon action row (below) so a long name always
+     ellipsizes before it instead of running under the icons on hover.
+     Kept constant (not hover-conditional) so the title never reflows. */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding-right: 128px;
 }
+.gcol-name:focus { padding-right: 0; }
 .gcol-meta {
   display: flex; align-items: center; gap: 5px;
   font-size: 11px; color: var(--text3); margin-top: 2px;
@@ -945,13 +977,17 @@ body[data-anim="off"] .cat-tabs-wrap::after {
 
 /* Actions are absolutely positioned so they never reserve header width when
    hidden — that reservation was clipping group names. They fade in over the
-   header's right edge on hover/focus, behind a short panel-colored fade. */
+   header's right edge on hover/focus. .gcol-name reserves matching padding
+   so the name never sits under this zone; the backing is fully opaque
+   (not a soft fade) as a second guard against text bleeding through. */
 .gcol-acts {
-  position: absolute; top: 9px; right: 9px;
-  display: flex; gap: 1px;
+  position: absolute; top: 9px; right: 9px; bottom: 9px;
+  display: flex; align-items: center; gap: 1px;
   opacity: 0; pointer-events: none;
-  padding-left: 18px;
-  background: linear-gradient(to left, var(--panel) 60%, transparent);
+  padding-left: 10px;
+  /* Matches the header's own tinted top band (see .gcol-hd background)
+     rather than plain --panel, so no visible seam shows behind the icons. */
+  background: color-mix(in srgb, var(--gcol-tint, transparent) 18%, var(--panel));
   transition: opacity var(--trans);
 }
 .gcol:hover .gcol-acts,
