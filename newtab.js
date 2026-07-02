@@ -210,6 +210,17 @@ let activeGroupPage = null;
 // (that surface owns the `…/group/<id>/item/<id>` path shape); the two never
 // apply at once. currentDetailItemId() resolves whichever is active.
 let boardDetailItemId = null;
+
+// Explorer layout (§3.1) selection: the drilled-into group and the stack path
+// (ids of nested stacks) currently expanded across the Miller columns, plus the
+// selected leaf item. Ephemeral UI state — validated against live data on each
+// render and reset when the category changes. _exFocusAfter carries a keyboard
+// focus intent across the re-render a selection triggers.
+let explorerSel = { groupId: null, stackPath: [], itemId: null };
+let _exFocusAfter = null;
+// Timeline layout (§3.2) time granularity: 'day' | 'week' | 'month'.
+let timelineZoom = 'day';
+
 function currentDetailItemId() {
   return activeGroupPage ? (activeGroupPage.itemId || null) : (boardDetailItemId || null);
 }
@@ -312,11 +323,21 @@ const Router = (() => {
       const cat = activeW.categories.find(c => c.id === route.catId);
       if (cat && activeW.activeCatId !== cat.id) { activeW.activeCatId = cat.id; changed = true; }
     }
-    const wantView = (route.query && route.query.view) || 'board';
-    if (typeof LAYOUTS !== 'undefined' && LAYOUTS[wantView] && getViewMode() !== wantView) {
-      s.settings.viewMode = wantView;
-      document.body.dataset.viewMode = wantView;
-      changed = true;
+    // Layout (§7) is stored per category. A `?view=<layout>` in the URL selects
+    // it for the route's category; a bare board URL leaves the category's saved
+    // layout untouched (Router.sync re-adds the `?view=` from it), so navigating
+    // to a plain link never silently resets a category to the board.
+    const wantView = route.query && route.query.view;
+    if (typeof LAYOUTS !== 'undefined' && wantView && LAYOUTS[wantView]) {
+      const aw = activeWs();
+      const tcat = aw ? (aw.categories.find(c => c.id === route.catId) || aw.categories.find(c => c.id === aw.activeCatId)) : null;
+      const curLayout = tcat ? (tcat.layout || s.settings.viewMode || 'board') : (s.settings.viewMode || 'board');
+      if (curLayout !== wantView) {
+        if (tcat) tcat.layout = wantView;
+        s.settings.viewMode = wantView;
+        document.body.dataset.viewMode = wantView;
+        changed = true;
+      }
     }
     // Board-surface item detail pane (§4.2): `?item=<id>`. A stale id renders
     // nothing (renderItemDetail resolves it and closes gracefully), so a dead
@@ -2079,17 +2100,30 @@ function bindCatScroll() {
   updateCatScrollState();
 }
 
+// SVG glyphs for the layout switcher (§7) — one per registered layout, shown in
+// the top-bar button and the switcher menu so every mode has a recognizable mark.
+const LAYOUT_ICONS = {
+  board:    '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="5" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="3" width="5" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>',
+  list:     '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 5h10M3 8h10M3 11h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="3" cy="5" r="0.6" fill="currentColor"/><circle cx="3" cy="8" r="0.6" fill="currentColor"/><circle cx="3" cy="11" r="0.6" fill="currentColor"/></svg>',
+  canvas:   '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="6" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="3" width="5" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="5" height="3" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>',
+  explorer: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="3.6" height="10" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="6.2" y="3" width="3.6" height="10" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="10.4" y="3" width="3.6" height="10" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>',
+  timeline: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="4.5" r="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="9.5" r="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M9.5 4.5H13M9.5 9.5H12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+};
+
 // Layout registry (§2.2) — every registered layout is a pure renderer over the
 // active category, sharing the same data, search filter, drag/drop and
 // selection, so adding a layout is registering an entry here rather than
-// touching the data model. `settings.viewMode` names the active layout.
+// touching the data model. The active layout is stored per category
+// (`category.layout`, §7) and falls back to the legacy `settings.viewMode`.
 const LAYOUTS = {
-  board:  { label: 'Bento board', render: renderBoardView },
-  list:   { label: 'List',        render: renderListView },
-  canvas: { label: 'Canvas',      render: renderCanvasView },
+  board:    { label: 'Bento board', icon: LAYOUT_ICONS.board,    render: renderBoardView },
+  list:     { label: 'List',        icon: LAYOUT_ICONS.list,     render: renderListView },
+  canvas:   { label: 'Canvas',      icon: LAYOUT_ICONS.canvas,   render: renderCanvasView },
+  explorer: { label: 'Explorer',    icon: LAYOUT_ICONS.explorer, render: renderExplorerView },
+  timeline: { label: 'Timeline',    icon: LAYOUT_ICONS.timeline, render: renderTimelineView },
 };
-// Order the cycle button / future layout switcher walks through.
-const LAYOUT_ORDER = ['board', 'list', 'canvas'];
+// Order the layout switcher walks through.
+const LAYOUT_ORDER = ['board', 'list', 'canvas', 'explorer', 'timeline'];
 
 // Single dispatch point: pick the active layout and render it. Everything that
 // mutates state calls renderBoard() to re-render whatever layout is showing.
@@ -2101,8 +2135,12 @@ function renderBoard() {
   // to the normal board in that case.
   if (activeGroupPage && renderGroupPage()) return;
   hideBreadcrumb();
-  document.getElementById('board').classList.remove('group-page-mode');
-  const layout = LAYOUTS[getViewMode()] || LAYOUTS.board;
+  const $b = document.getElementById('board');
+  $b.classList.remove('group-page-mode', 'list-mode', 'canvas-mode', 'explorer-mode', 'timeline-mode');
+  const mode = getViewMode();
+  document.body.dataset.viewMode = mode;
+  updateViewModeButton(mode);
+  const layout = LAYOUTS[mode] || LAYOUTS.board;
   layout.render();
 }
 
@@ -5687,33 +5725,407 @@ function buildLvStack(it, parentItems, group, depth) {
 }
 
 // ════════════════════════════════════════════════════════════════
+// EXPLORER LAYOUT (§3.1 — Miller / column browser)
+// ════════════════════════════════════════════════════════════════
+// A macOS-Finder / column-browser over the hierarchy: categories → groups →
+// items → (a stack's children as a further column). Selecting an item opens the
+// §4.2 detail pane. Keyboard-first (arrows move/descend/ascend, Enter opens).
+// Each column reuses the bento `.gcol` framing so it reads as Tabento, not Finder.
+const EX_CHEVRON = '<svg class="ex-row-chev" width="8" height="8" viewBox="0 0 8 8"><path d="M2.5 1.5L5.5 4l-3 2.5" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function renderExplorerView() {
+  const $b = document.getElementById('board');
+  $b.innerHTML = '';
+  $b.classList.add('explorer-mode');
+  const ws = activeWs(), cat = activeCat();
+  if (!ws || !cat) return;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'ex-wrap';
+
+  // Validate the drilled-into group against the active category; a stale id
+  // (deleted, or the category changed) resets the selection so a dead pointer
+  // never wedges the columns.
+  let group = cat.groups.find(g => g.id === explorerSel.groupId) || null;
+  if (!group) { explorerSel.groupId = null; explorerSel.stackPath = []; explorerSel.itemId = null; }
+
+  // Column 1 — categories of the active workspace. Selecting one makes it active
+  // (like a category-tab click) and resets the deeper selection.
+  wrap.appendChild(buildExCol('Categories', ws.categories.map(c => ({
+    sym: '🗂', label: c.name, meta: String(c.groups.length), hasChildren: true,
+    active: c.id === cat.id,
+    onSelect: () => {
+      if (c.id === cat.id) return;
+      ws.activeCatId = c.id;
+      explorerSel = { groupId: null, stackPath: [], itemId: null };
+      State.persist();
+      renderAll();
+    },
+  }))));
+
+  // Column 2 — groups in the active category. Select drills in; double-click /
+  // Enter opens the full group page (§4.1).
+  wrap.appendChild(buildExCol('Groups', cat.groups.map(g => ({
+    sym: g.symbol || '📁', label: g.name, meta: String(g.items.length), color: g.color,
+    hasChildren: true, active: group && g.id === group.id,
+    onSelect: () => {
+      explorerSel.groupId = g.id; explorerSel.stackPath = []; explorerSel.itemId = null;
+      _exFocusAfter = 'deepest';
+      renderBoard();
+    },
+    onOpen: () => openGroupPage(g.id),
+  })), { emptyText: 'No groups' }));
+
+  // Columns 3+ — the selected group's items, plus one column per expanded stack
+  // level along explorerSel.stackPath.
+  if (group) {
+    const levels = [group.items];
+    let list = group.items;
+    for (const sid of explorerSel.stackPath) {
+      const st = list.find(x => x.id === sid && x.type === 'stack');
+      if (!st) { explorerSel.stackPath = explorerSel.stackPath.slice(0, levels.length - 1); break; }
+      levels.push(st.items); list = st.items;
+    }
+    levels.forEach((lvl, depth) => {
+      const rows = lvl.map(it => explorerItemRow(it, lvl, group, depth));
+      wrap.appendChild(buildExCol(depth === 0 ? 'Items' : 'Stack', rows, { emptyText: 'Empty' }));
+    });
+  }
+
+  $b.appendChild(wrap);
+  bindExplorerKeys(wrap);
+
+  // Restore keyboard focus across the re-render a selection triggered.
+  if (_exFocusAfter) {
+    const cols = wrap.querySelectorAll('.ex-col');
+    const target = _exFocusAfter === 'deepest' ? cols[cols.length - 1] : null;
+    const row = target && (target.querySelector('.ex-row.active') || target.querySelector('.ex-row'));
+    if (row) row.focus();
+    _exFocusAfter = null;
+  }
+  applySearchFilter();
+}
+
+// Build a row descriptor for an item in an explorer column at the given stack depth.
+function explorerItemRow(it, lvl, group, depth) {
+  const isStack = it.type === 'stack';
+  const label = it.type === 'note'
+    ? (String(it.html || '').replace(/<[^>]*>/g, ' ').trim().slice(0, 60) || 'Empty note')
+    : (it.title || it.text || it.name || 'Untitled');
+  const sym = isStack ? (it.symbol || '📚')
+    : it.type === 'note' ? '📝'
+    : it.type === 'todo' ? (it.done ? '☑' : '☐')
+    : '🔗';
+  const active = isStack ? explorerSel.stackPath.includes(it.id) : explorerSel.itemId === it.id;
+  return {
+    sym, label, color: it.color, hasChildren: isStack, active,
+    meta: isStack ? String((it.items || []).length) : '',
+    onSelect: () => {
+      const prefix = explorerSel.stackPath.slice(0, depth);
+      if (isStack) {
+        explorerSel.stackPath = prefix.concat(it.id);
+        explorerSel.itemId = null;
+        _exFocusAfter = 'deepest';
+        renderBoard();
+      } else {
+        explorerSel.stackPath = prefix;
+        explorerSel.itemId = it.id;
+        openItemDetail(it.id); // navigates + re-renders; opens the §4.2 pane
+      }
+    },
+    onOpen: () => {
+      if (it.type === 'tab' && it.url) window.open(it.url, '_blank');
+      else openItemDetail(it.id);
+    },
+  };
+}
+
+function buildExCol(title, rows, opts = {}) {
+  const col = document.createElement('div');
+  col.className = 'ex-col gcol';
+  const hd = document.createElement('div');
+  hd.className = 'ex-col-hd';
+  hd.textContent = title;
+  col.appendChild(hd);
+  const body = document.createElement('div');
+  body.className = 'ex-col-body';
+  body.setAttribute('role', 'listbox');
+  body.setAttribute('aria-label', title);
+  if (!rows.length) {
+    const em = document.createElement('div');
+    em.className = 'ex-col-empty';
+    em.textContent = opts.emptyText || '';
+    body.appendChild(em);
+  } else {
+    rows.forEach(r => body.appendChild(buildExRow(r)));
+  }
+  col.appendChild(body);
+  return col;
+}
+
+function buildExRow(r) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'ex-row' + (r.active ? ' active' : '');
+  b.setAttribute('role', 'option');
+  b.setAttribute('aria-selected', r.active ? 'true' : 'false');
+  b.tabIndex = r.active ? 0 : -1;
+  if (r.color) b.style.setProperty('--ex-tint', r.color);
+  b.innerHTML =
+    `<span class="ex-row-sym">${esc(r.sym)}</span>` +
+    `<span class="ex-row-label">${esc(r.label)}</span>` +
+    (r.meta ? `<span class="ex-row-meta">${esc(r.meta)}</span>` : '') +
+    (r.hasChildren ? EX_CHEVRON : '');
+  b.onclick = () => r.onSelect && r.onSelect();
+  b.ondblclick = () => (r.onOpen || r.onSelect) && (r.onOpen || r.onSelect)();
+  b._exOpen = r.onOpen;
+  return b;
+}
+
+// Keyboard model for the column browser: ↑/↓ move within a column, → descends
+// into the next column, ← ascends, Enter opens. Rows are native buttons so
+// focus/blur are free; we only translate the arrow keys into column moves.
+function bindExplorerKeys(wrap) {
+  wrap.addEventListener('keydown', (e) => {
+    const cur = document.activeElement;
+    if (!cur || !cur.classList || !cur.classList.contains('ex-row')) return;
+    const col = cur.closest('.ex-col');
+    if (!col) return;
+    const rows = [...col.querySelectorAll('.ex-row')];
+    const i = rows.indexOf(cur);
+    if (e.key === 'ArrowDown') { e.preventDefault(); (rows[i + 1] || rows[0]).focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); (rows[i - 1] || rows[rows.length - 1]).focus(); }
+    else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      const next = col.nextElementSibling;
+      if (next && next.classList.contains('ex-col')) {
+        (next.querySelector('.ex-row.active') || next.querySelector('.ex-row'))?.focus();
+      } else {
+        cur.click(); // no next column yet — selecting reveals/descends
+      }
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prev = col.previousElementSibling;
+      if (prev && prev.classList.contains('ex-col')) {
+        (prev.querySelector('.ex-row.active') || prev.querySelector('.ex-row'))?.focus();
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      cur._exOpen ? cur._exOpen() : cur.click();
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// TIMELINE LAYOUT (§3.2 — chronological, animated)
+// ════════════════════════════════════════════════════════════════
+// Items laid along a time axis by reminder.at when present, else createdAt, else
+// (for pre-schema-4 items) their array order in an "Undated" lane. A "now"
+// playhead separates overdue reminders (persimmon) from what's upcoming. Cards
+// reuse buildItem(), so search / detail / drag keep working; entrance is
+// staggered via IntersectionObserver and gated behind prefers-reduced-motion.
+const _tlStartOfDay = ts => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const _tlStartOfWeek = ts => { const d = new Date(ts); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); };
+const _tlStartOfMonth = ts => { const d = new Date(ts); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); };
+function _tlBucketStart(ts, zoom) {
+  return zoom === 'month' ? _tlStartOfMonth(ts) : zoom === 'week' ? _tlStartOfWeek(ts) : _tlStartOfDay(ts);
+}
+function _tlBucketLabel(start, zoom) {
+  const d = new Date(start);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  if (zoom === 'month') return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  if (zoom === 'week') return 'Week of ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + (sameYear ? '' : ', ' + d.getFullYear());
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + (sameYear ? '' : ', ' + d.getFullYear());
+}
+
+function setTimelineZoom(z) {
+  if (!['day', 'week', 'month'].includes(z) || z === timelineZoom) return;
+  timelineZoom = z;
+  renderBoard();
+}
+
+function renderTimelineView() {
+  const $b = document.getElementById('board');
+  $b.innerHTML = '';
+  $b.classList.add('timeline-mode');
+  const cat = activeCat(); if (!cat) return;
+
+  // Flatten the category's items (recursing through stacks, whose container
+  // cards aren't themselves timeline entries) and compute each one's moment.
+  const entries = [];
+  let order = 0;
+  const walk = (list, group) => {
+    list.forEach(it => {
+      if (it.type === 'stack') { walk(it.items || [], group); return; }
+      const time = (it.reminder && it.reminder.at != null) ? it.reminder.at
+        : (it.createdAt != null ? it.createdAt : null);
+      entries.push({
+        it, group, parent: list, order: order++,
+        time, dated: time != null,
+        overdue: !!(it.reminder && it.reminder.at != null && it.reminder.at < Date.now()),
+      });
+    });
+  };
+  cat.groups.forEach(g => walk(g.items, g));
+
+  if (!entries.length) {
+    $b.innerHTML = `<div class="board-empty"><p>Nothing to place on the timeline in <strong>${esc(cat.name)}</strong> yet.<br>Save a tab or set a reminder to see it here.</p></div>`;
+    return;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'tl-wrap';
+
+  // Zoom control (day / week / month granularity).
+  const ctrl = document.createElement('div');
+  ctrl.className = 'tl-controls';
+  ctrl.innerHTML = `<span class="tl-controls-label">Scale</span>` +
+    ['day', 'week', 'month'].map(z =>
+      `<button type="button" class="tl-zoom${z === timelineZoom ? ' active' : ''}" data-zoom="${z}">${z[0].toUpperCase() + z.slice(1)}</button>`
+    ).join('');
+  ctrl.querySelectorAll('.tl-zoom').forEach(b => b.onclick = () => setTimelineZoom(b.dataset.zoom));
+  wrap.appendChild(ctrl);
+
+  const track = document.createElement('div');
+  track.className = 'tl-track';
+
+  const dated = entries.filter(e => e.dated).sort((a, b) => a.time - b.time);
+  const undated = entries.filter(e => !e.dated); // keep array order
+
+  // Bucket the dated entries by the active granularity.
+  const buckets = [];
+  let curBucket = null;
+  for (const e of dated) {
+    const start = _tlBucketStart(e.time, timelineZoom);
+    if (!curBucket || curBucket.start !== start) {
+      curBucket = { start, label: _tlBucketLabel(start, timelineZoom), items: [] };
+      buckets.push(curBucket);
+    }
+    curBucket.items.push(e);
+  }
+
+  // IntersectionObserver drives the staggered entrance; reduced-motion users get
+  // the cards revealed instantly (CSS also disables the transition).
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const io = (!reduce && 'IntersectionObserver' in window)
+    ? new IntersectionObserver((obs) => obs.forEach(en => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } }), { root: null, threshold: 0.05 })
+    : null;
+
+  const buildEntry = (e, idx) => {
+    const entry = document.createElement('div');
+    entry.className = 'tl-entry' + (e.overdue ? ' overdue' : '');
+    entry.style.setProperty('--i', Math.min(idx, 12));
+    const dot = document.createElement('span');
+    dot.className = 'tl-dot';
+    if (e.it.color || e.group.color) dot.style.background = e.it.color || e.group.color;
+    entry.appendChild(dot);
+    const card = document.createElement('div');
+    card.className = 'tl-card';
+    card.appendChild(buildItem(e.it, e.parent, e.group));
+    entry.appendChild(card);
+    if (io) io.observe(entry); else entry.classList.add('in');
+    return entry;
+  };
+
+  const nowBucketStart = _tlBucketStart(Date.now(), timelineZoom);
+  const nowDivider = () => {
+    const d = document.createElement('div');
+    d.className = 'tl-now';
+    d.innerHTML = `<span class="tl-now-dot"></span><span class="tl-now-label">Now</span>`;
+    return d;
+  };
+
+  let nowPlaced = false;
+  buckets.forEach(bk => {
+    if (!nowPlaced && bk.start >= nowBucketStart) { track.appendChild(nowDivider()); nowPlaced = true; }
+    const section = document.createElement('div');
+    section.className = 'tl-bucket' + (bk.start === nowBucketStart ? ' current' : '');
+    const lab = document.createElement('div');
+    lab.className = 'tl-bucket-label';
+    lab.textContent = bk.label;
+    section.appendChild(lab);
+    const items = document.createElement('div');
+    items.className = 'tl-bucket-items';
+    bk.items.forEach((e, i) => items.appendChild(buildEntry(e, i)));
+    section.appendChild(items);
+    track.appendChild(section);
+  });
+  if (!nowPlaced) track.appendChild(nowDivider());
+
+  if (undated.length) {
+    const section = document.createElement('div');
+    section.className = 'tl-bucket tl-undated';
+    const lab = document.createElement('div');
+    lab.className = 'tl-bucket-label';
+    lab.textContent = 'Undated';
+    section.appendChild(lab);
+    const items = document.createElement('div');
+    items.className = 'tl-bucket-items';
+    undated.forEach((e, i) => items.appendChild(buildEntry(e, i)));
+    section.appendChild(items);
+    track.appendChild(section);
+  }
+
+  wrap.appendChild(track);
+  $b.appendChild(wrap);
+  applySearchFilter();
+}
+
+// ════════════════════════════════════════════════════════════════
 // VIEW MODES (board / list) + selection / reorder mode toggles
 // ════════════════════════════════════════════════════════════════
+// The active layout is stored per category (`category.layout`, §7) so each space
+// can default to the mode it's meant to be used in; it falls back to the legacy
+// global `settings.viewMode` for categories that have never picked one (which
+// keeps existing single-view users on their chosen mode with no migration).
 function getViewMode() {
-  const m = State.get().settings.viewMode;
+  const cat = activeCat();
+  const m = (cat && cat.layout) || State.get().settings.viewMode;
   return LAYOUTS[m] ? m : 'board';
 }
 function setViewMode(mode) {
   if (!LAYOUTS[mode]) mode = 'board';
+  const cat = activeCat();
+  if (cat) cat.layout = mode;
+  // Keep the legacy global as the "last used" default for categories that
+  // haven't picked a layout yet.
   State.get().settings.viewMode = mode;
   document.body.dataset.viewMode = mode;
-  // Show appropriate icon in the toggle button
-  const iBoard = document.getElementById('view-mode-icon-board');
-  const iList = document.getElementById('view-mode-icon-list');
-  const iCanvas = document.getElementById('view-mode-icon-canvas');
-  if (iBoard) iBoard.style.display = mode === 'list' ? '' : 'none';
-  if (iList) iList.style.display = mode === 'canvas' ? '' : 'none';
-  if (iCanvas) iCanvas.style.display = mode === 'board' ? '' : 'none';
-  const btn = document.getElementById('view-mode-btn');
-  if (btn) btn.title = mode === 'board' ? 'Switch to list view' : mode === 'list' ? 'Switch to canvas view' : 'Switch to board view';
+  updateViewModeButton(mode);
   State.persist();
   renderBoard();
   Router.sync();
+}
+// Reflect the active layout onto the top-bar button (single dynamic icon).
+function updateViewModeButton(mode) {
+  const def = LAYOUTS[mode] || LAYOUTS.board;
+  const icon = document.getElementById('view-mode-icon');
+  if (icon) icon.innerHTML = def.icon;
+  const btn = document.getElementById('view-mode-btn');
+  if (btn) { btn.title = `View: ${def.label} — click to switch`; btn.dataset.mode = mode; }
 }
 function cycleViewMode() {
   const order = LAYOUT_ORDER.filter(m => LAYOUTS[m]);
   const i = order.indexOf(getViewMode());
   setViewMode(order[(i + 1) % order.length] || 'board');
+}
+// The layout switcher (§7) — a dropdown listing every registered layout with its
+// icon, anchored under the top-bar button, replacing the old 3-way cycle. Reuses
+// the shared context-menu chrome so it stays consistent across the 13 themes.
+function openLayoutMenu(btn) {
+  const cur = getViewMode();
+  const items = [{ label: 'View' }];
+  LAYOUT_ORDER.filter(m => LAYOUTS[m]).forEach(m => {
+    const def = LAYOUTS[m];
+    items.push({
+      text: def.label,
+      icon: def.icon,
+      sub: m === cur ? '✓' : '',
+      action: () => setViewMode(m),
+    });
+  });
+  const r = btn.getBoundingClientRect();
+  showContextMenu(r.left, r.bottom + 6, items, { focusFirst: true });
 }
 
 function toggleSelectMode() {
@@ -7253,7 +7665,7 @@ const TOUR_STEPS = [
   {
     target: '#view-mode-btn',
     title: '🔄 Switch how it looks',
-    body: 'Toggle between board columns, a Notion-style list, and a freeform canvas. Pick whichever fits the mood.'
+    body: 'Open the layout menu to view the same links as a bento board, a list, a freeform canvas, a column explorer, or a chronological timeline. Each category remembers its own layout.'
   },
   {
     target: '#search-btn',
@@ -7584,7 +7996,7 @@ function bindStatic() {
   bindWorkout();
 
   // View modes + selection mode + reorder mode
-  document.getElementById('view-mode-btn').onclick = cycleViewMode;
+  document.getElementById('view-mode-btn').onclick = (e) => openLayoutMenu(e.currentTarget);
   document.getElementById('select-mode-btn').onclick = toggleSelectMode;
   document.getElementById('reorder-mode-btn').onclick = toggleReorderMode;
 
