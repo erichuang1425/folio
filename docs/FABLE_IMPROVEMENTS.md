@@ -306,7 +306,69 @@ The user asked for navigation "compatible with the current overall layout." Conc
 
 ---
 
-## 8. Phasing
+## 8. Supporting feature — a calmer, progressive onboarding (not all at once)
+
+**Today.** Tabento fires a **9-step spotlight tour up front on first run** (`TOUR_STEPS`,
+newtab.js:6483; `startTour`/`showTourStep`, gated by `settings.tourCompleted`). It marches
+through workspaces → open tabs → board → categories → tools → view mode → search in one
+sitting. Two problems, both of which the features in this plan make worse if left alone:
+
+- **Overwhelming / all at once.** Nine modal steps before the user has done anything is a wall
+  of text about surfaces they have no context for yet — and adding Group Pages, new layouts, and
+  the calendar would push it to a dozen-plus steps.
+- **Laggy.** Each step recomputes `getBoundingClientRect` and writes `top`/`left` on the
+  spotlight and bubble (newtab.js:6579-6615), which triggers layout on every transition; there is
+  **no resize/scroll reposition handler**, so the spotlight drifts off its target if the window
+  changes. Animating layout properties (not `transform`) is the classic source of jank.
+
+The fix is to **shrink the upfront tour and move the rest to just-in-time**, so users learn each
+surface the moment they first touch it — one small hint at a time, never a queue.
+
+### 8.1 Three tiers, never stacked
+
+1. **A 15-second welcome (≤3 cards).** Reduce the upfront `TOUR_STEPS` to the essentials only:
+   *what Tabento is → save your first tab → where things live.* Everything else graduates to a
+   contextual hint. Skippable in one click; never shown twice (`settings.onboarding.welcomeSeen`).
+2. **Just-in-time coach-marks.** A single small hint appears the **first time** a user reaches a
+   surface — the first empty board, the first time the tools menu opens, the first group page
+   (§4), the first layout switch (§3), the first calendar open (§5). Each fires **at most once**
+   (persisted in `settings.onboarding.hintsSeen[key]`) and only when **no other coach-mark is
+   visible**, with a short cooldown so two milestones can't fire back-to-back. This is how the new
+   features onboard themselves *without* growing the upfront tour.
+3. **A "Getting started" checklist (learn by doing).** A small, collapsible, **dismissible** card
+   (corner-docked, non-blocking) with 4-5 real actions — *Save a tab · Create a group · Set a
+   reminder · Try another layout · Open the calendar.* Items tick off when the user actually does
+   them (event-driven, wired to the existing `setReminder`, group-create, `setViewMode` paths),
+   so it teaches through action, not prose. Auto-hides when complete or dismissed.
+
+### 8.2 Performance & feel (the "not laggy" part)
+
+- **One reusable coach-mark element**, repositioned — never rebuilt per step (the current tour
+  already reuses `#tour-bubble`; extend that discipline to the JIT hints).
+- **Composite-only motion:** animate `transform`/`opacity`, not `top`/`left`, for the spotlight
+  and bubble glide, so transitions stay on the compositor.
+- **rAF-throttled reposition on `resize` and `scroll`** (the gap in the current tour) with the
+  target rect cached between frames, so the spotlight tracks its target without layout thrash.
+- **Defer to after first paint/layout settle** so onboarding never competes with initial render.
+- **`prefers-reduced-motion` honored** end to end (instant swaps, no glide) — same guard as the
+  rest of this plan (§7).
+
+### 8.3 Control & data model
+
+- New `settings.onboarding = { welcomeSeen, hintsSeen:{}, checklist:{…}, disabled }`. A
+  non-destructive migration maps the existing `settings.tourCompleted` → `onboarding.welcomeSeen`
+  so returning users are **not** re-onboarded.
+- **Settings toggles:** "Replay welcome," "Reset hints," and "Turn off tips" — so power users can
+  silence everything and newcomers can replay. Keeps the existing "Settings → Show tour" entry.
+- Every hint is dismissible; dismissing a hint marks it seen. Nothing is ever forced twice.
+
+*Why Fable:* the value is entirely in restraint and feel — deciding *what not to say up front*,
+sequencing hints so they never pile up, and making the spotlight track smoothly under resize with
+zero jank. That is taste-and-motion work, done in vanilla JS with no tour library.
+
+---
+
+## 9. Phasing
 
 Each phase is independently shippable and leaves the app fully working.
 
@@ -320,9 +382,14 @@ Each phase is independently shippable and leaves the app fully working.
 | **5 — Reminders everywhere** | §6 group/category reminders + recurrence, background.js alarm branches | Calendar becomes truly complete |
 | **6 — Stretch layouts + palette** | §3.3 Gallery, §3.4 Graph, command palette (§7) | Breadth & polish |
 
+**Onboarding (§8)** is deliberately **not a single phase** — it ships in two low-risk slices:
+the tour-shrink + JIT framework + checklist can land early (right after Phase 0, since it stands
+alone and improves first-run immediately), and each later phase (1, 3, 4) adds its own one-shot
+just-in-time hint as it ships, instead of ever re-inflating the upfront tour.
+
 ---
 
-## 9. Risks & guardrails
+## 10. Risks & guardrails
 
 - **Performance at scale.** Timeline/graph over large workspaces need virtualization; render only
   what's near the viewport (`IntersectionObserver`). The board's cached node list pattern
@@ -339,7 +406,7 @@ Each phase is independently shippable and leaves the app fully working.
 
 ---
 
-## 10. Success criteria
+## 11. Success criteria
 
 - A group opens as a **shareable, back/forward-navigable page**, not a modal.
 - Any link can carry **notes, tags, custom fields, a checklist, and a reminder**, with today's
@@ -350,3 +417,7 @@ Each phase is independently shippable and leaves the app fully working.
   existing search operators, with drag-to-reschedule.
 - Navigation (layout switcher, breadcrumbs, command palette, motion) feels like **one coherent
   product** across all 13 themes and light/dark, with `prefers-reduced-motion` honored throughout.
+- First-run onboarding is **short and progressive**: a ≤3-card welcome, then one just-in-time
+  hint per surface (shown at most once, never stacked), plus a dismissible learn-by-doing
+  checklist — no nine-step upfront wall, no spotlight jank on resize, and returning users are
+  never re-onboarded.
