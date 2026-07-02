@@ -5,7 +5,7 @@
 // Schema version of the in-storage state. Bump when state shape changes,
 // then add a forward-migration branch in migrate(). Older builds reading
 // data stamped with a higher value get a blocking "newer data" guard.
-const CURRENT_SCHEMA = 3;
+const CURRENT_SCHEMA = 4;
 
 // ════════════════════════════════════════════════════════════════
 // STATE + UNDO
@@ -69,6 +69,11 @@ const State = (() => {
 // HELPERS
 // ════════════════════════════════════════════════════════════════
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+// Stamp a freshly-built item with a creation time (ms) unless it already has
+// one. Enables the Timeline layout (§3.2) and reminder sorting; items created
+// before schema 4 have no createdAt and fall back to array order. Returns the
+// same object so it can wrap an item literal inline: g.items.push(stampNew({…})).
+const stampNew = it => { if (it && it.createdAt == null) it.createdAt = Date.now(); return it; };
 const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const _favCache = new Map();
 const favUrl = u => {
@@ -175,6 +180,138 @@ function findItem(itemId) {
 }
 
 // ════════════════════════════════════════════════════════════════
+// HASH ROUTER (§2.1)
+// ════════════════════════════════════════════════════════════════
+// A tiny client-side router keyed off location.hash so every meaningful
+// surface has a URL. Today it drives the board (active workspace / category /
+// layout); group pages and the calendar (§4/§5) register as new route shapes
+// later without touching the data model. Deep links survive reload because the
+// selection lives in the URL, and browser back/forward "just work".
+//
+// Hash grammar (query is optional):
+//   #/ws/<wsId>/cat/<catId>?view=<layout>     → board (default surface)
+//   #/ws/<wsId>/group/<groupId>               → group page      (§4, parsed now)
+//   #/ws/<wsId>/calendar                       → calendar        (§5, parsed now)
+//
+// We only mutate history via history.pushState/replaceState (which never fire
+// hashchange/popstate), and only ever *read* state on popstate/hashchange, so
+// there is no apply↔render feedback loop.
+const Router = (() => {
+  let _ready = false;
+
+  // hash string (no leading '#') → Route object, or null when unparseable.
+  function parse(hash) {
+    const raw = String(hash || '').replace(/^#/, '');
+    if (!raw || raw === '/') return null;
+    const [pathPart, queryPart] = raw.split('?');
+    const seg = pathPart.split('/').filter(Boolean); // ['ws','<id>','cat','<id>']
+    const query = {};
+    (queryPart ? queryPart.split('&') : []).forEach(kv => {
+      const [k, v] = kv.split('=');
+      if (k) query[decodeURIComponent(k)] = decodeURIComponent(v || '');
+    });
+    if (seg[0] !== 'ws' || !seg[1]) return null;
+    const wsId = decodeURIComponent(seg[1]);
+    if (seg[2] === 'cat' && seg[3]) return { type: 'board', wsId, catId: decodeURIComponent(seg[3]), query };
+    if (seg[2] === 'group' && seg[3]) return { type: 'group', wsId, groupId: decodeURIComponent(seg[3]), itemId: seg[4] === 'item' ? decodeURIComponent(seg[5] || '') : null, query };
+    if (seg[2] === 'calendar') return { type: 'calendar', wsId, query };
+    return { type: 'board', wsId, catId: null, query };
+  }
+
+  // Route object → canonical hash string (no leading '#').
+  function build(route) {
+    if (!route || !route.wsId) return '';
+    const ws = encodeURIComponent(route.wsId);
+    let path;
+    if (route.type === 'group' && route.groupId) {
+      path = `/ws/${ws}/group/${encodeURIComponent(route.groupId)}`;
+      if (route.itemId) path += `/item/${encodeURIComponent(route.itemId)}`;
+    } else if (route.type === 'calendar') {
+      path = `/ws/${ws}/calendar`;
+    } else {
+      path = `/ws/${ws}/cat/${encodeURIComponent(route.catId || '')}`;
+    }
+    const q = route.query && Object.keys(route.query).length
+      ? '?' + Object.entries(route.query).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&')
+      : '';
+    return path + q;
+  }
+
+  // The canonical route describing the current State (board surface for now).
+  function currentRoute() {
+    const ws = activeWs();
+    if (!ws) return null;
+    const cat = activeCat();
+    const query = {};
+    const mode = getViewMode();
+    if (mode && mode !== 'board') query.view = mode;
+    return { type: 'board', wsId: ws.id, catId: cat ? cat.id : null, query };
+  }
+
+  // Apply a parsed route to State (select workspace / category / layout).
+  // Returns true if anything changed. Unknown ids fall back gracefully so a
+  // stale deep link never wedges the app. Group/calendar surfaces don't exist
+  // yet, so those routes resolve to their workspace's board.
+  function apply(route) {
+    if (!route) return false;
+    const s = State.get();
+    let changed = false;
+    const ws = s.workspaces.find(w => w.id === route.wsId);
+    if (ws && s.activeWsId !== ws.id) { s.activeWsId = ws.id; changed = true; }
+    const activeW = activeWs();
+    if (activeW && route.type === 'board' && route.catId) {
+      const cat = activeW.categories.find(c => c.id === route.catId);
+      if (cat && activeW.activeCatId !== cat.id) { activeW.activeCatId = cat.id; changed = true; }
+    }
+    const wantView = (route.query && route.query.view) || 'board';
+    if (typeof LAYOUTS !== 'undefined' && LAYOUTS[wantView] && getViewMode() !== wantView) {
+      s.settings.viewMode = wantView;
+      document.body.dataset.viewMode = wantView;
+      changed = true;
+    }
+    return changed;
+  }
+
+  function handleLocationChange() {
+    const route = parse(location.hash);
+    const changed = apply(route);
+    if (changed) { State.persist(); renderAll(); }
+  }
+
+  return {
+    parse, build, currentRoute,
+    // Reflect current State into the URL. Adds a history entry only when the
+    // canonical hash actually changes (a real navigation); otherwise no-op, so
+    // incidental re-renders (creating a group, editing a note) never spam
+    // history. Called at the tail of renderAll().
+    sync() {
+      if (!_ready) return;
+      const want = build(currentRoute());
+      const have = location.hash.replace(/^#/, '');
+      if (want !== have) history.pushState(null, '', '#' + want);
+    },
+    // Deep-link navigation used by future surfaces; replace avoids a history
+    // entry when appropriate.
+    navigate(route, { replace = false } = {}) {
+      const hash = '#' + build(route);
+      if (replace) history.replaceState(null, '', hash);
+      else history.pushState(null, '', hash);
+      if (apply(route)) { State.persist(); renderAll(); }
+    },
+    // Called once after migrate/ensureDefault, before the first render.
+    init() {
+      const parsed = parse(location.hash);
+      if (parsed) apply(parsed);
+      // Normalize the address bar to the canonical hash without a history entry.
+      history.replaceState(null, '', '#' + build(currentRoute()));
+      window.addEventListener('popstate', handleLocationChange);
+      window.addEventListener('hashchange', handleLocationChange);
+      _ready = true;
+    },
+  };
+})();
+
+// ════════════════════════════════════════════════════════════════
 // INIT / MIGRATE
 // ════════════════════════════════════════════════════════════════
 async function init() {
@@ -197,6 +334,9 @@ async function init() {
 function initAfterLoad() {
   migrate();
   ensureDefault();
+  // Resolve any deep link into the active workspace/category/layout, then
+  // normalize the URL — before the first render so we paint the right surface.
+  Router.init();
 
   applySettings();
   buildThemeGrid();
@@ -272,6 +412,14 @@ function migrate() {
     if (!s.archive) s.archive = [];
     if (!s.recentEmoji) s.recentEmoji = [];
     if (!s.columnWidths) s.columnWidths = {};
+  }
+
+  if (from < 4) {
+    // Schema 4 introduces optional, additive item metadata — chiefly
+    // `createdAt` (used by the Timeline layout and reminder sorting). Existing
+    // items are intentionally left un-stamped: we have no real creation time
+    // for them, so consumers fall back to array order (see collectReminders /
+    // the timeline renderer). Purely additive; nothing to rewrite here.
   }
 
   s.schema = CURRENT_SCHEMA;
@@ -517,10 +665,10 @@ function ensureDefault() {
     cat.groups.push({
       id: uid(), name:'Getting started', symbol:'✨', color:'#6366f1', collapsed:false,
       items: [
-        { id: uid(), type:'note', html:'👋 <b>Welcome to Tabento!</b><br><br>Drag tabs from the left sidebar into any group.<br>Select text for the rich-text toolbar.<br>Right-click anywhere for more options.' },
-        { id: uid(), type:'todo', text:'Try dragging a tab here', done:false },
-        { id: uid(), type:'todo', text:'Right-click a group for context menu', done:false },
-        { id: uid(), type:'todo', text:'Press Cmd/Ctrl + K to search', done:false }
+        stampNew({ id: uid(), type:'note', html:'👋 <b>Welcome to Tabento!</b><br><br>Drag tabs from the left sidebar into any group.<br>Select text for the rich-text toolbar.<br>Right-click anywhere for more options.' }),
+        stampNew({ id: uid(), type:'todo', text:'Try dragging a tab here', done:false }),
+        stampNew({ id: uid(), type:'todo', text:'Right-click a group for context menu', done:false }),
+        stampNew({ id: uid(), type:'todo', text:'Press Cmd/Ctrl + K to search', done:false })
       ]
     });
     s.workspaces = [{ id: uid(), name:'My Workspace', symbol:'🏠', categories:[cat, cat2], activeCatId: cat.id }];
@@ -819,6 +967,86 @@ async function clearReminder(itemId) {
   State.persist();
   renderBoard();
   toast('Reminder cleared');
+}
+
+// ════════════════════════════════════════════════════════════════
+// REMINDER AGGREGATION (§2.3)
+// ════════════════════════════════════════════════════════════════
+// The single place that knows how to find every reminder in the tree. Today
+// only items carry `reminder`; groups/categories gain `reminders[]` in a later
+// phase (§6) and this sweep already reads them so the calendar and the
+// `has:reminder`/`reminder:` search operators can rely on one source of truth
+// instead of re-walking state at each call site.
+//
+// Returns a flat, normalized list:
+//   { at, notified, source:'item'|'group'|'category', refId, wsId, catId,
+//     groupId?, title, color, recur? }
+// sorted ascending by `at`. `refId` is the id you act on (the item / group /
+// category); `alarmId` is the chrome.alarms key that fires it.
+//
+// Options:
+//   scope  — 'all' (default) or a workspace id to restrict the sweep.
+//   filter — optional predicate (entry) => boolean applied to each result.
+function collectReminders({ scope = 'all', filter } = {}) {
+  const out = [];
+  const reminderTitle = it =>
+    it.type === 'note'
+      ? (String(it.html || '').replace(/<[^>]*>/g, ' ').trim().slice(0, 80) || 'Note')
+      : (it.title || it.text || 'Untitled');
+
+  const pushItem = (it, ctx) => {
+    if (it.reminder && it.reminder.at != null) {
+      out.push({
+        at: it.reminder.at,
+        notified: !!it.reminder.notified,
+        source: 'item',
+        refId: it.id,
+        alarmId: 'te-reminder-' + it.id,
+        wsId: ctx.wsId, catId: ctx.catId, groupId: ctx.groupId,
+        title: reminderTitle(it),
+        color: it.color || ctx.groupColor || null,
+        itemType: it.type,
+        recur: it.reminder.recur || null,
+      });
+    }
+    // Reminders set on items nested inside a stack are found by recursion.
+    if (it.type === 'stack' && Array.isArray(it.items)) {
+      it.items.forEach(sub => pushItem(sub, ctx));
+    }
+  };
+
+  for (const ws of State.get().workspaces) {
+    if (scope !== 'all' && ws.id !== scope) continue;
+    for (const cat of ws.categories) {
+      // Category-level reminders (§6) — absent today, read defensively.
+      (cat.reminders || []).forEach((r, n) => {
+        if (r && r.at != null) out.push({
+          at: r.at, notified: !!r.notified, source: 'category',
+          refId: cat.id, alarmId: `te-creminder-${cat.id}-${n}`,
+          wsId: ws.id, catId: cat.id,
+          title: r.label || cat.name, color: r.color || null,
+          recur: r.recur || null,
+        });
+      });
+      for (const g of cat.groups) {
+        // Group-level reminders (§6) — absent today, read defensively.
+        (g.reminders || []).forEach((r, n) => {
+          if (r && r.at != null) out.push({
+            at: r.at, notified: !!r.notified, source: 'group',
+            refId: g.id, alarmId: `te-greminder-${g.id}-${n}`,
+            wsId: ws.id, catId: cat.id, groupId: g.id,
+            title: r.label || g.name, color: r.color || g.color || null,
+            recur: r.recur || null,
+          });
+        });
+        const ctx = { wsId: ws.id, catId: cat.id, groupId: g.id, groupColor: g.color };
+        g.items.forEach(it => pushItem(it, ctx));
+      }
+    }
+  }
+
+  out.sort((a, b) => a.at - b.at);
+  return typeof filter === 'function' ? out.filter(filter) : out;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1275,7 +1503,7 @@ function confirmModal() {
     if (ctx && ctx.groupId) {
       const info = findGroup(ctx.groupId);
       if (info) {
-        info.group.items.push({ id: uid(), type:'stack', name: name || 'New Stack', symbol: sym, color, expanded: true, items: [] });
+        info.group.items.push(stampNew({ id: uid(), type:'stack', name: name || 'New Stack', symbol: sym, color, expanded: true, items: [] }));
         State.persist(); renderBoard();
       }
     }
@@ -1493,7 +1721,7 @@ async function saveSelectedToInbox() {
   let added = 0;
   for (const t of tabs) {
     if (inbox.items.find(it => it.type === 'tab' && it.url === t.url)) continue;
-    inbox.items.push({ id: uid(), type:'tab', title: t.title||'Untitled', url: t.url, fav: t.favIconUrl||'' });
+    inbox.items.push(stampNew({ id: uid(), type:'tab', title: t.title||'Untitled', url: t.url, fav: t.favIconUrl||'' }));
     added++;
   }
   if (State.get().settings.closeTabOnSave) { for (const t of tabs) { try { await chrome.tabs.remove(t.id); } catch {} } }
@@ -1520,7 +1748,7 @@ async function saveTabToInbox(t) {
   if (!inbox) { inbox = { id: uid(), name:'Inbox', symbol:'📥', color:'#6366f1', collapsed:false, items:[] }; cat.groups.unshift(inbox); }
   if (inbox.items.find(it => it.type === 'tab' && it.url === t.url)) { toast('Already saved', { danger: true }); return; }
   State.snapshot('Save to inbox');
-  inbox.items.push({ id: uid(), type:'tab', title: t.title||'Untitled', url: t.url, fav: t.favIconUrl||'' });
+  inbox.items.push(stampNew({ id: uid(), type:'tab', title: t.title||'Untitled', url: t.url, fav: t.favIconUrl||'' }));
   if (State.get().settings.closeTabOnSave) { try { await chrome.tabs.remove(t.id); } catch {} }
   State.persist(); renderBoard(); toast('Saved to Inbox', { undo: true });
 }
@@ -1533,7 +1761,7 @@ async function saveSelectedAsGroup() {
   const g = {
     id: uid(), symbol:'📂', color:'#6366f1', collapsed:false,
     name: `${tabs.length} tabs ${now.toLocaleDateString('en',{month:'short',day:'numeric'})}`,
-    items: tabs.map(t => ({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }))
+    items: tabs.map(t => stampNew({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }))
   };
   cat.groups.push(g);
   if (State.get().settings.closeTabOnSave) { for (const t of tabs) { try { await chrome.tabs.remove(t.id); } catch {} } }
@@ -1552,7 +1780,7 @@ async function saveAllTabs() {
   cat.groups.push({
     id: uid(), symbol:'💾', color:'#06b6d4', collapsed:false,
     name:`Session ${now.toLocaleDateString('en',{month:'short',day:'numeric'})} ${now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`,
-    items: valid.map(t => ({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }))
+    items: valid.map(t => stampNew({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }))
   });
   if (State.get().settings.closeTabOnSave) {
     const others = valid.slice(1);
@@ -1564,7 +1792,7 @@ async function saveAllTabs() {
 // ════════════════════════════════════════════════════════════════
 // RENDER (diff-based for items)
 // ════════════════════════════════════════════════════════════════
-function renderAll() { renderHeader(); renderWsList(); renderCategoryTabs(); renderBoard(); }
+function renderAll() { renderHeader(); renderWsList(); renderCategoryTabs(); renderBoard(); Router.sync(); }
 
 async function renderHeader() {
   const ws = activeWs(); if (!ws) return;
@@ -1680,7 +1908,7 @@ function renderCategoryTabs() {
     b.className = 'cat-tab' + (cat.id === ws.activeCatId ? ' active' : '');
     b.dataset.cid = cat.id;
     b.textContent = cat.name;
-    b.onclick = () => { ws.activeCatId = cat.id; State.persist(); renderCategoryTabs(); renderBoard(); };
+    b.onclick = () => { ws.activeCatId = cat.id; State.persist(); renderCategoryTabs(); renderBoard(); Router.sync(); };
     b.ondblclick = () => {
       const nn = prompt('Rename category:', cat.name);
       if (nn && nn.trim()) { State.snapshot('Rename cat'); cat.name = nn.trim(); State.persist(); renderCategoryTabs(); }
@@ -1782,10 +2010,28 @@ function bindCatScroll() {
   updateCatScrollState();
 }
 
+// Layout registry (§2.2) — every registered layout is a pure renderer over the
+// active category, sharing the same data, search filter, drag/drop and
+// selection, so adding a layout is registering an entry here rather than
+// touching the data model. `settings.viewMode` names the active layout.
+const LAYOUTS = {
+  board:  { label: 'Bento board', render: renderBoardView },
+  list:   { label: 'List',        render: renderListView },
+  canvas: { label: 'Canvas',      render: renderCanvasView },
+};
+// Order the cycle button / future layout switcher walks through.
+const LAYOUT_ORDER = ['board', 'list', 'canvas'];
+
+// Single dispatch point: pick the active layout and render it. Everything that
+// mutates state calls renderBoard() to re-render whatever layout is showing.
 function renderBoard() {
   invalidateItemCache();
-  if (getViewMode() === 'list') return renderListView();
-  if (getViewMode() === 'canvas') return renderCanvasView();
+  const layout = LAYOUTS[getViewMode()] || LAYOUTS.board;
+  layout.render();
+}
+
+// The bento-board layout itself (formerly the body of renderBoard).
+function renderBoardView() {
   const $b = document.getElementById('board');
   $b.classList.remove('list-mode', 'canvas-mode');
   $b.innerHTML = '';
@@ -1985,18 +2231,18 @@ function buildGroupCol(g) {
         if (t && !isProto(t.url)) {
           if (g.items.find(it => it.type === 'tab' && it.url === t.url)) return toast('Already saved');
           State.snapshot('Add current tab');
-          g.items.push({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' });
+          g.items.push(stampNew({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }));
           if (State.get().settings.closeTabOnSave) try { await chrome.tabs.remove(t.id); } catch {}
           State.persist(); renderBoard(); toast('Tab saved', { undo: true });
         }
       } else if (act === 'add-note') {
         State.snapshot('Add note');
-        const n = { id: uid(), type:'note', html:'' };
+        const n = stampNew({ id: uid(), type:'note', html:'' });
         g.items.push(n); State.persist(); renderBoard();
         setTimeout(() => { const el = document.querySelector(`[data-id="${n.id}"] .note-text`); if (el) el.focus(); }, 30);
       } else if (act === 'add-todo') {
         State.snapshot('Add todo');
-        const t = { id: uid(), type:'todo', text:'', done:false };
+        const t = stampNew({ id: uid(), type:'todo', text:'', done:false });
         g.items.push(t); State.persist(); renderBoard();
         setTimeout(() => { const el = document.querySelector(`[data-id="${t.id}"] .todo-text`); if (el) el.focus(); }, 30);
       } else if (act === 'add-stack') openModal('new-stack', { groupId: g.id });
@@ -2454,7 +2700,7 @@ function buildStack(it, parentItems, group) {
       let added = 0;
       for (const t of drag.data) {
         if (it.items.find(x => x.type === 'tab' && x.url === t.url)) continue;
-        it.items.push({ id: uid(), type:'tab', title: t.title||'Untitled', url: t.url, fav: t.fav||'' });
+        it.items.push(stampNew({ id: uid(), type:'tab', title: t.title||'Untitled', url: t.url, fav: t.fav||'' }));
         added++;
       }
       if (State.get().settings.closeTabOnSave) { for (const t of drag.data) { if (t.tabId) { try { await chrome.tabs.remove(t.tabId); } catch {} } } }
@@ -2655,12 +2901,12 @@ function runBatchAction(act) {
       const info = findItem(orderedIds[i]);
       if (info) moved.unshift(...info.parent.splice(info.index, 1));
     }
-    const stack = {
+    const stack = stampNew({
       id: uid(), type:'stack',
       name: prompt('Stack name:', 'New stack') || 'New stack',
       symbol: '📚', color: '#6366f1', expanded: true,
       items: moved
-    };
+    });
     // Insert at first item's original position within first.group
     first.group.items.unshift(stack);
     State.persist();
@@ -2841,7 +3087,7 @@ function makeGroupDropZone(cardsEl, colEl, g, targetList) {
       let added = 0;
       for (const t of drag.data) {
         if (targetList.find(it => it.type === 'tab' && it.url === t.url)) continue;
-        const item = { id: uid(), type:'tab', title: t.title||'Untitled', url: t.url, fav: t.fav||'' };
+        const item = stampNew({ id: uid(), type:'tab', title: t.title||'Untitled', url: t.url, fav: t.fav||'' });
         if (idx >= targetList.length) targetList.push(item);
         else targetList.splice(idx, 0, item);
         idx++; added++;
@@ -2891,7 +3137,7 @@ async function handleTabDropIntoList(tabObj, list, insertIdx, { snapshot = true 
     return;
   }
   if (snapshot) State.snapshot('Save tab');
-  const item = { id: uid(), type:'tab', title: tabObj.title||'Untitled', url: tabObj.url, fav: tabObj.fav||'' };
+  const item = stampNew({ id: uid(), type:'tab', title: tabObj.title||'Untitled', url: tabObj.url, fav: tabObj.fav||'' });
   if (insertIdx == null || insertIdx >= list.length) list.push(item);
   else list.splice(insertIdx, 0, item);
   if (State.get().settings.closeTabOnSave && tabObj.tabId) { try { await chrome.tabs.remove(tabObj.tabId); } catch {} }
@@ -3342,7 +3588,7 @@ async function saveWindowAsWorkspace(win) {
     id: uid(), name: `Window ${new Date().toLocaleDateString('en',{month:'short',day:'numeric'})}`, symbol:'🪟',
     categories: [{ id: uid(), name:'Quicklinks', groups: [{
       id: uid(), name:'Tabs', symbol:'📁', color:'#06b6d4', collapsed:false,
-      items: tabs.map(t => ({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }))
+      items: tabs.map(t => stampNew({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }))
     }] }]
   };
   ws.activeCatId = ws.categories[0].id;
@@ -3394,7 +3640,7 @@ async function importBookmarks() {
     const g = { id: uid(), name: folderName || 'Bookmarks', symbol:'🔖', color:'#eab308', collapsed:false, items:[] };
     let has = false;
     for (const n of nodes) {
-      if (n.url && !isProto(n.url)) { g.items.push({ id: uid(), type:'tab', title:n.title||n.url, url:n.url, fav:'' }); has = true; imported++; }
+      if (n.url && !isProto(n.url)) { g.items.push(stampNew({ id: uid(), type:'tab', title:n.title||n.url, url:n.url, fav:'' })); has = true; imported++; }
       else if (n.children) walk(n.children, n.title, depth + 1);
     }
     if (has) cat.groups.push(g);
@@ -3673,10 +3919,10 @@ function applyPasteImport() {
   for (const url of urls) {
     let host = '';
     try { host = new URL(url).hostname; } catch {}
-    targetGroup.items.push({
+    targetGroup.items.push(stampNew({
       id: uid(), type: 'tab', url,
       title: host || url, fav: favUrl(url)
-    });
+    }));
   }
 
   State.persist();
@@ -4761,7 +5007,7 @@ function buildLvGroup(g) {
       if (t && !isProto(t.url)) {
         if (g.items.find(it => it.type === 'tab' && it.url === t.url)) return toast('Already saved');
         State.snapshot('Add tab');
-        g.items.push({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' });
+        g.items.push(stampNew({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }));
         if (State.get().settings.closeTabOnSave) try { await chrome.tabs.remove(t.id); } catch {}
         State.persist(); renderBoard();
       }
@@ -4934,7 +5180,7 @@ function buildLvStack(it, parentItems, group, depth) {
       State.snapshot(`Save ${drag.data.length} tabs`);
       for (const t of drag.data) {
         if (it.items.find(x => x.type === 'tab' && x.url === t.url)) continue;
-        it.items.push({ id: uid(), type:'tab', title: t.title||'Untitled', url: t.url, fav: t.fav||'' });
+        it.items.push(stampNew({ id: uid(), type:'tab', title: t.title||'Untitled', url: t.url, fav: t.fav||'' }));
       }
       if (State.get().settings.closeTabOnSave) for (const t of drag.data) if (t.tabId) { try { await chrome.tabs.remove(t.tabId); } catch {} }
       selectedTabIds.clear();
@@ -4957,8 +5203,12 @@ function buildLvStack(it, parentItems, group, depth) {
 // ════════════════════════════════════════════════════════════════
 // VIEW MODES (board / list) + selection / reorder mode toggles
 // ════════════════════════════════════════════════════════════════
-function getViewMode() { return State.get().settings.viewMode || 'board'; }
+function getViewMode() {
+  const m = State.get().settings.viewMode;
+  return LAYOUTS[m] ? m : 'board';
+}
 function setViewMode(mode) {
+  if (!LAYOUTS[mode]) mode = 'board';
   State.get().settings.viewMode = mode;
   document.body.dataset.viewMode = mode;
   // Show appropriate icon in the toggle button
@@ -4972,10 +5222,12 @@ function setViewMode(mode) {
   if (btn) btn.title = mode === 'board' ? 'Switch to list view' : mode === 'list' ? 'Switch to canvas view' : 'Switch to board view';
   State.persist();
   renderBoard();
+  Router.sync();
 }
 function cycleViewMode() {
-  const cur = getViewMode();
-  setViewMode(cur === 'board' ? 'list' : cur === 'list' ? 'canvas' : 'board');
+  const order = LAYOUT_ORDER.filter(m => LAYOUTS[m]);
+  const i = order.indexOf(getViewMode());
+  setViewMode(order[(i + 1) % order.length] || 'board');
 }
 
 function toggleSelectMode() {
