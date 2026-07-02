@@ -2,6 +2,11 @@
 
 Status: proposal / living document. Created: 2026-07-02.
 
+**Progress.** Phase 0 (the Spine) has landed: a hash router (`Router`, §2.1), a
+layout registry (`LAYOUTS` / `renderBoardView`, §2.2), a reminder aggregator
+(`collectReminders`, §2.3), and `createdAt` stamping on new items behind schema
+4 — all additive, no user-visible change beyond a deep-linkable board.
+
 This document plans a set of **major** features for Tabento: spatial, animated, design-forward
 interfaces and the systems work needed to make them cohere. Every proposal here is grounded in
 the current codebase (vanilla JS, MV3, no build step, local-first, no host permissions) and
@@ -372,7 +377,7 @@ Each phase is independently shippable and leaves the app fully working.
 
 | Phase | Scope | Unlocks |
 |---|---|---|
-| **0 — Spine** | Hash router (§2.1), layout registry (§2.2), reminder aggregator (§2.3), `createdAt` on new items | Everything below; no user-visible change beyond deep-linkable board |
+| **0 — Spine** ✅ | Hash router (§2.1), layout registry (§2.2), reminder aggregator (§2.3), `createdAt` on new items | Everything below; no user-visible change beyond deep-linkable board |
 | **1 — Group Pages** | §4.1 group route + shell, migrate `openGroupFocus` to it, breadcrumb + back/forward | Groups become manageable pages |
 | **2 — Link content** | §4.2 detail pane, additive item fields, `tag:` operator, migration | Rich per-link context |
 | **3 — Explorer + Timeline** | §3.1, §3.2, layout switcher (§7), per-category layout persistence | The headline new layouts |
