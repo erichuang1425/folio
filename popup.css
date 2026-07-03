@@ -46,11 +46,11 @@ body {
 .pa-btn:hover { background: var(--bg4); color: var(--text); border-color: var(--border2); transform: translateY(-1px); box-shadow: var(--card-shadow, 0 2px 6px rgba(0,0,0,0.08)); }
 .pa-btn:active { transform: translateY(0); }
 .pa-btn.primary {
-  background: var(--accent-bg); color: #fff; border-color: transparent;
+  background: var(--accent-bg); color: var(--accent-text, #fff); border-color: transparent;
   box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-bg) 34%, transparent);
 }
-.pa-btn.primary b { color: #fff; }
-.pa-btn.primary:hover { background: var(--accent-hover); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-bg) 40%, transparent); }
+.pa-btn.primary b { color: var(--accent-text, #fff); }
+.pa-btn.primary:hover { background: var(--accent-bg); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-bg) 40%, transparent); }
 .pa-btn.primary svg { opacity: 1; }
 .pa-wide { width: 100%; position: relative; }
 .pa-hint { position: absolute; right: 12px; font: 600 10.5px 'DM Sans', sans-serif; color: var(--text3); }
@@ -143,7 +143,7 @@ body {
 .pti-save { padding: 4px 8px; font: 600 10.5px 'DM Sans', sans-serif; }
 .pti:hover .pti-hib, .pti:hover .pti-save { opacity: 1; }
 .pti-hib:hover { background: color-mix(in srgb, var(--accent-bg) 16%, var(--bg4)); color: var(--accent); border-color: var(--border2); }
-.pti-save:hover { background: var(--accent-bg); color: #fff; border-color: transparent; }
+.pti-save:hover { background: var(--accent-bg); color: var(--accent-text, #fff); border-color: transparent; }
 .pti-badge {
   font: 600 9px 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--text3); background: var(--bg4); border: 1px solid var(--border);

@@ -1590,8 +1590,18 @@ body[data-show-urls="off"] .item-url { display: none; }
   transition: all var(--trans);
   position: relative; overflow: hidden;
 }
-.btn-primary { background: var(--brand-grad); color: #fff; }
-.btn-primary:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.btn-primary {
+  background: var(--accent-bg);
+  color: var(--accent-text, #fff);
+  border-color: color-mix(in srgb, var(--accent-bg) 68%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-bg) 26%, transparent);
+}
+.btn-primary:hover {
+  background: var(--accent-bg);
+  color: var(--accent-text, #fff);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-bg) 34%, transparent);
+}
 .btn-primary:active { transform: translateY(0); }
 .btn-secondary { background: var(--bg3); color: var(--text2); border-color: var(--border); }
 .btn-secondary:hover { background: var(--bg4); color: var(--text); }
@@ -4923,6 +4933,12 @@ body.blur-privacy .otab-title:hover { filter: blur(0); }
   font: 500 12px var(--font); transition: all var(--trans);
 }
 .idp-btn:hover { background: var(--bg4); }
+.idp-btn.primary {
+  background: var(--accent-bg);
+  border-color: color-mix(in srgb, var(--accent-bg) 68%, transparent);
+  color: var(--accent-text, #fff);
+}
+.idp-btn.primary:hover { background: var(--accent-bg); }
 .idp-btn.danger { color: var(--red); }
 .idp-btn.danger:hover { background: var(--red); color: #fff; border-color: var(--red); }
 

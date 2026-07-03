@@ -5355,7 +5355,7 @@ function renderItemDetail() {
     const clr2 = document.createElement('button'); clr2.type = 'button'; clr2.className = 'idp-btn danger'; clr2.textContent = 'Clear'; clr2.onclick = () => clearReminder(it.id);
     remWrap.appendChild(change); remWrap.appendChild(clr2);
   } else {
-    const set = document.createElement('button'); set.type = 'button'; set.className = 'idp-btn'; set.textContent = 'Set reminder…'; set.onclick = () => openReminderPicker(it.id);
+    const set = document.createElement('button'); set.type = 'button'; set.className = 'idp-btn primary'; set.textContent = 'Set reminder…'; set.onclick = () => openReminderPicker(it.id);
     remWrap.appendChild(set);
   }
   rem.appendChild(remWrap);
