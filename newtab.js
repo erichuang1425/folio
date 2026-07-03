@@ -176,7 +176,7 @@ const State = (() => {
     workspaces: [], activeWsId: null, archive: [], recentEmoji: [],
     columnWidths: {},
     settings: {
-      theme:'tabento', size:'normal', font:'dm', width:'normal',
+      theme:'light', size:'normal', font:'dm', width:'normal',
       language: browserLanguage(),
       closeTabOnSave:true, hibernate:true, showUrls:true,
       animate:true, confirmDelete:true, sidebarCollapsed:false,
@@ -1012,7 +1012,7 @@ function applySettings() {
   const s = State.get().settings;
   let theme = s.theme;
   if (theme !== 'auto' && !THEMES.some(t => t.id === theme)) {
-    theme = 'tabento';
+    theme = 'light';
     s.theme = theme;
   }
   if (theme === 'auto') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

@@ -12,7 +12,29 @@ const browserLanguage = () => {
 };
 const appLocale = () => normalizeLanguage(state?.settings?.language || browserLanguage());
 
-let all = [], state = null, pendingTab = null;
+// Every surface reads its palette from the shared themes.css, so applying the
+// same [data-theme] the workspace uses keeps the popup on-theme.
+const THEME_IDS = new Set(['tabento','tabento-dark','dark','aurora','light','dracula','nord','rose-pine','tokyo-night','solarized-dark','solarized-light','gruvbox','catppuccin','sepia','mono']);
+function applyTheme() {
+  let theme = state?.settings?.theme || 'light';
+  if (theme === 'auto') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  if (!THEME_IDS.has(theme)) theme = 'light';
+  document.documentElement.dataset.theme = theme;
+}
+
+// ── Hibernation (mirrors newtab.js: a lightweight suspended.html placeholder
+// that only loads the real URL when the tab is focused + clicked, so a
+// backgrounded tab uses near-zero memory). ──
+const SUSPEND_PREFIX = chrome.runtime.getURL('suspended.html');
+function buildSuspendedUrl({ url, title, fav }) {
+  const p = new URLSearchParams();
+  if (url) p.set('url', url);
+  if (title) p.set('title', title);
+  if (fav) p.set('fav', fav);
+  return SUSPEND_PREFIX + '#' + p.toString();
+}
+
+let all = [], state = null, pendingTab = null, activeTabId = null;
 
 async function loadState() {
   const d = await chrome.storage.local.get('te');
@@ -20,32 +42,46 @@ async function loadState() {
 }
 async function load() {
   await loadState();
+  applyTheme();
   const [cur, tabs] = await Promise.all([
     chrome.tabs.query({ active: true, currentWindow: true }),
     chrome.tabs.query({ currentWindow: true })
   ]);
-  const curId = cur[0]?.id;
+  activeTabId = cur[0]?.id ?? null;
   all = tabs.filter(t => !isProto(t.url));
   $('qs-count').textContent = all.length;
-  render(curId);
+  render(activeTabId);
+  refreshHibernateHint();
 }
 
 function render(activeId) {
   $('ptabs').innerHTML = '';
-  if (!all.length) { $('ptabs').innerHTML = `<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px;">No saveable tabs</div>`; return; }
+  if (!all.length) { $('ptabs').innerHTML = `<div class="empty-hint">No saveable tabs in this window.</div>`; return; }
   all.forEach(t => {
     const row = document.createElement('div');
-    row.className = 'pti' + (t.id === activeId ? ' active-tab' : '');
+    const isActive = t.id === activeId;
+    row.className = 'pti' + (isActive ? ' active-tab' : '');
     const fav = t.favIconUrl || favUrl(t.url);
+    // The tab you're viewing can't be usefully hibernated (it would reload the
+    // instant you look at it), so it gets a status badge instead of a button.
+    const actions = isActive
+      ? `<span class="pti-badge" title="The tab you're viewing stays awake">viewing</span>`
+      : `<div class="pti-acts">
+           <button class="pti-hib" title="Hibernate this tab" aria-label="Hibernate this tab">
+             <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M11.5 8.2A4.6 4.6 0 015.8 2.5a4.6 4.6 0 105.7 5.7z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+           </button>
+           <button class="pti-save" title="Save…">Save</button>
+         </div>`;
     row.innerHTML = `
       <img src="${esc(fav)}" alt="" onerror="this.style.visibility='hidden'">
       <div class="pti-info">
         <div class="pti-title">${esc(t.title || t.url)}</div>
         <div class="pti-url">${esc(dispUrl(t.url))}</div>
       </div>
-      <button class="pti-save" title="Save…">Save</button>`;
+      ${actions}`;
     row.onclick = e => {
       if (e.target.closest('.pti-save')) { openSavePicker(t); return; }
+      if (e.target.closest('.pti-hib')) { hibernateSingle(t); return; }
       chrome.tabs.update(t.id, { active: true });
       window.close();
     };
@@ -53,10 +89,11 @@ function render(activeId) {
   });
 }
 
+// ═══ Save-to picker ═══
 function openSavePicker(tab) {
   pendingTab = tab;
   const stg = $('stg-list'); stg.innerHTML = '';
-  if (!state?.workspaces?.length) { stg.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:12px;">No workspaces yet. Open the full workspace to get started.</div>'; }
+  if (!state?.workspaces?.length) { stg.innerHTML = '<div class="empty-hint">No workspaces yet. Open the full workspace to get started.</div>'; }
   else {
     state.workspaces.forEach(ws => {
       ws.categories.forEach(cat => {
@@ -66,7 +103,8 @@ function openSavePicker(tab) {
         stg.appendChild(lbl);
         if (!cat.groups.length) {
           const em = document.createElement('div');
-          em.style.cssText = 'padding:6px 14px;font-size:11px;color:var(--text3);';
+          em.className = 'empty-hint';
+          em.style.cssText = 'padding:6px 14px;text-align:left;';
           em.textContent = 'No groups yet.';
           stg.appendChild(em);
         }
@@ -80,14 +118,13 @@ function openSavePicker(tab) {
       });
     });
   }
-  $('main-section').classList.add('hidden');
-  $('save-to-section').classList.remove('hidden');
+  showSection('save-to-section');
 }
-$('stg-back').onclick = () => { $('save-to-section').classList.add('hidden'); $('main-section').classList.remove('hidden'); pendingTab = null; };
+$('stg-back').onclick = () => { showSection('main-section'); pendingTab = null; };
 
 async function doSave(ws, cat, g, t) {
   if (g.items.find(it => it.type === 'tab' && it.url === t.url)) {
-    $('stg-list').innerHTML = `<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">Already saved in this group.</div>`;
+    $('stg-list').innerHTML = `<div class="empty-hint">Already saved in this group.</div>`;
     return;
   }
   g.items.push({ id: uid(), type:'tab', title: t.title || 'Untitled', url: t.url, fav: t.favIconUrl || '' });
@@ -95,28 +132,103 @@ async function doSave(ws, cat, g, t) {
   if (state.settings?.closeTabOnSave !== false) {
     try { await chrome.tabs.remove(t.id); } catch {}
   }
-  // visual feedback then close
   const row = [...document.querySelectorAll('.stg-row')].find(r => r.querySelector('.nm')?.textContent === g.name);
   if (row) { row.style.background = 'var(--green)'; row.querySelector('.nm').textContent = 'Saved!'; }
   setTimeout(() => window.close(), 400);
 }
 
+// ═══ Hibernate ═══
+async function getHibernateCandidates() {
+  const allWindows = $('hib-scope').querySelector('.active')?.dataset.val === 'all';
+  const keepPinned = $('hib-keep-pinned').checked;
+  const keepAudio = $('hib-keep-audio').checked;
+  // Only the focused window's active tab would auto-wake, so it's the single
+  // tab we always keep awake — every other real tab is fair game.
+  const focused = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  const keepAwakeId = focused[0]?.id ?? activeTabId;
+  const q = allWindows ? {} : { currentWindow: true };
+  let tabs = await chrome.tabs.query(q);
+  tabs = tabs.filter(t => !isProto(t.url) && t.id !== keepAwakeId);
+  if (keepPinned) tabs = tabs.filter(t => !t.pinned);
+  if (keepAudio) tabs = tabs.filter(t => !t.audible);
+  return tabs;
+}
+
+async function updateHibernateCount() {
+  const targets = await getHibernateCandidates();
+  const n = targets.length;
+  $('hib-count').textContent = n;
+  $('hib-go').disabled = n === 0;
+}
+
+async function refreshHibernateHint() {
+  // Count background tabs (this window, keeping pinned/audio) for the main button.
+  const focused = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  const keepAwakeId = focused[0]?.id ?? activeTabId;
+  const tabs = (await chrome.tabs.query({ currentWindow: true }))
+    .filter(t => !isProto(t.url) && t.id !== keepAwakeId && !t.pinned && !t.audible);
+  const hint = $('hib-open-hint');
+  if (hint) hint.textContent = tabs.length ? `${tabs.length} idle` : '';
+}
+
+async function hibernateSingle(t) {
+  try {
+    await chrome.tabs.update(t.id, { url: buildSuspendedUrl({ url: t.url, title: t.title, fav: t.favIconUrl }) });
+    toast('Tab hibernated');
+    await load();
+  } catch { toast('Could not hibernate tab'); }
+}
+
+$('hib-open').onclick = async () => { await updateHibernateCount(); showSection('hibernate-section'); };
+$('hib-back').onclick = () => showSection('main-section');
+$('hib-scope').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('hib-scope').querySelectorAll('button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  updateHibernateCount();
+});
+$('hib-keep-pinned').onchange = updateHibernateCount;
+$('hib-keep-audio').onchange = updateHibernateCount;
+$('hib-go').onclick = async () => {
+  const targets = await getHibernateCandidates();
+  if (!targets.length) return;
+  $('hib-go').disabled = true;
+  let n = 0;
+  for (const t of targets) {
+    try { await chrome.tabs.update(t.id, { url: buildSuspendedUrl({ url: t.url, title: t.title, fav: t.favIconUrl }) }); n++; } catch {}
+  }
+  toast(n === 1 ? 'Hibernated 1 tab' : `Hibernated ${n} tabs`);
+  await load();
+  showSection('main-section');
+};
+
+// ═══ Section switching (single visible section at a time) ═══
+function showSection(id) {
+  ['main-section', 'save-to-section', 'hibernate-section'].forEach(s => {
+    $(s).classList.toggle('hidden', s !== id);
+  });
+}
+
+// ═══ Search ═══
 $('ps').oninput = () => {
   const q = $('ps').value.toLowerCase();
-  $('ptabs').querySelectorAll('.pti').forEach((el, i) => {
-    const t = all[i]; if (!t) return;
+  const rows = $('ptabs').querySelectorAll('.pti');
+  let i = 0;
+  rows.forEach(el => {
+    const t = all[i++]; if (!t) return;
     const m = !q || (t.title||'').toLowerCase().includes(q) || (t.url||'').toLowerCase().includes(q);
     el.classList.toggle('hidden', !m);
   });
 };
 
+// ═══ Primary actions ═══
 $('open-full').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('newtab.html') }); window.close(); };
 $('qs-current').onclick = async () => {
   const [t] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (t && !isProto(t.url)) openSavePicker(t);
+  else toast('This tab can’t be saved');
 };
 $('qs-all').onclick = async () => {
-  if (!state?.workspaces?.length) return;
+  if (!state?.workspaces?.length) { toast('Open the full workspace first'); return; }
   const ws = state.workspaces.find(w => w.id === state.activeWsId) || state.workspaces[0];
   const cat = ws.categories.find(c => c.id === ws.activeCatId) || ws.categories[0];
   if (!cat) return;
@@ -131,10 +243,19 @@ $('qs-all').onclick = async () => {
     const others = all.slice(1);
     for (const t of others) { try { await chrome.tabs.remove(t.id); } catch {} }
   }
-  $('qs-all').textContent = '✓ Saved!';
-  $('qs-all').style.background = 'var(--green)';
-  $('qs-all').style.color = 'white';
-  setTimeout(() => window.close(), 600);
+  toast(`Saved ${all.length} tabs`);
+  setTimeout(() => window.close(), 650);
 };
+
+// ═══ Toast ═══
+let toastTimer = null;
+function toast(msg) {
+  let el = $('pop-toast');
+  if (!el) { el = document.createElement('div'); el.id = 'pop-toast'; document.body.appendChild(el); }
+  el.textContent = msg;
+  requestAnimationFrame(() => el.classList.add('show'));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+}
 
 load();
