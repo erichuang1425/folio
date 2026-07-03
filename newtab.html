@@ -7,19 +7,23 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,400&family=Inter:wght@400..700&family=IBM+Plex+Sans:wght@400..600&family=JetBrains+Mono:wght@400..600&family=Lora:wght@400..600&family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
-  <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon16.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon32.png">
-  <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon48.png">
-  <link rel="icon" type="image/png" sizes="128x128" href="/icons/icon128.png">
-  <link rel="shortcut icon" href="/favicon.ico">
+  <!-- Extension-relative paths so the new-tab override resolves the Tabento
+       bento logo from the extension root on every Chromium build. Chromium
+       favours the 32×32 for the tab strip on modern (HiDPI) displays. -->
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/icon32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/icon16.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/icon48.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="stylesheet" href="themes.css">
   <link rel="stylesheet" href="newtab.css">
 </head>
 <body>
   <script>
     // Pre-init: apply saved theme/size/font/width before any paint to
     // eliminate the dark->light flash on launch. Reads a localStorage
-    // mirror written by applySettings(); falls back to Tabento on first launch.
+    // mirror written by applySettings(); falls back to Light on first launch.
     // Also marks body as loading so it fades in once renderAll() finishes.
     (function () {
       var b = document.body, m = {};
@@ -32,7 +36,7 @@
       document.documentElement.lang = lang;
       var theme = m.theme;
       if (!theme) {
-        theme = 'tabento';
+        theme = 'light';
       } else if (theme === 'auto') {
         theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
       }
@@ -128,23 +132,14 @@
           <button id="calendar-btn" class="icon-btn" title="Calendar (reminders)" aria-pressed="false" data-i18n-title="action.calendar">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3" width="11" height="10.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 6h11M5.5 2v2.2M10.5 2v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="5.6" cy="9" r="0.9" fill="currentColor"/><circle cx="8" cy="9" r="0.9" fill="currentColor"/><circle cx="10.4" cy="9" r="0.9" fill="currentColor"/></svg>
           </button>
-          <button id="select-mode-btn" class="icon-btn" title="Selection mode" data-i18n-title="action.selectionMode">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="2.5" width="11" height="11" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 8l2 2 3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <button id="reorder-mode-btn" class="icon-btn" title="Reorder mode" data-i18n-title="action.reorderMode">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="4" r="1" fill="currentColor"/><circle cx="11" cy="4" r="1" fill="currentColor"/><circle cx="5" cy="8" r="1" fill="currentColor"/><circle cx="11" cy="8" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="11" cy="12" r="1" fill="currentColor"/></svg>
-          </button>
           <button id="search-btn" class="icon-btn" title="Search (Ctrl/⌘ + K)" data-i18n-title="action.search">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5L13 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           </button>
-          <button id="theme-btn" class="icon-btn" title="Cycle theme" data-i18n-title="action.cycleTheme">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 9A5.5 5.5 0 017 2.5a5.5 5.5 0 106.5 6.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-          </button>
-          <button id="save-session-btn" class="icon-btn" title="Save all open tabs" data-i18n-title="action.saveAllTabs">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2.5 3.5A1 1 0 013.5 2.5h7l2.5 2.5v7.5a1 1 0 01-1 1h-9a1 1 0 01-1-1v-9z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 2.5v3h5.5v-3M5 13.5V9h6v4.5" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          <button id="more-btn" class="icon-btn" title="More" data-i18n-title="action.more" aria-haspopup="menu">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="8" r="1.35" fill="currentColor"/><circle cx="8" cy="8" r="1.35" fill="currentColor"/><circle cx="12" cy="8" r="1.35" fill="currentColor"/></svg>
           </button>
           <button id="settings-btn" class="icon-btn" title="Settings" data-i18n-title="action.settings">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.3" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5v1.8M8 12.7v1.8M14.5 8h-1.8M3.3 8H1.5M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3M12.6 12.6l-1.3-1.3M4.7 4.7L3.4 3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6.9 2.2a.6.6 0 01.6-.5h1a.6.6 0 01.6.5l.16 1.05c.44.13.85.36 1.2.66l1-.4a.6.6 0 01.72.26l.5.86a.6.6 0 01-.12.75l-.83.67a4.3 4.3 0 010 1.38l.83.67a.6.6 0 01.12.75l-.5.86a.6.6 0 01-.72.26l-1-.4c-.35.3-.76.53-1.2.66L9.1 14.3a.6.6 0 01-.6.5h-1a.6.6 0 01-.6-.5l-.16-1.05a4.3 4.3 0 01-1.2-.66l-1 .4a.6.6 0 01-.72-.26l-.5-.86a.6.6 0 01.12-.75l.83-.67a4.3 4.3 0 010-1.38l-.83-.67a.6.6 0 01-.12-.75l.5-.86a.6.6 0 01.72-.26l1 .4c.35-.3.76-.53 1.2-.66L6.9 2.2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="8" cy="8" r="2.1" stroke="currentColor" stroke-width="1.3"/></svg>
           </button>
         </div>
       </header>
@@ -275,6 +270,10 @@
         </button>
       </div>
       <div class="modal-bd">
+        <div id="rm-label-field" class="hidden">
+          <label class="field-lbl">Label</label>
+          <input type="text" id="rm-label" placeholder="Label (optional)" spellcheck="false">
+        </div>
         <div class="rm-quick">
           <button data-offset="3600000">In 1 hour</button>
           <button data-offset="10800000">In 3 hours</button>
@@ -283,6 +282,13 @@
         </div>
         <label class="field-lbl">Or pick a date</label>
         <input type="datetime-local" id="rm-datetime">
+        <label class="field-lbl">Repeat</label>
+        <select id="rm-recur">
+          <option value="">Does not repeat</option>
+          <option value="day">Daily</option>
+          <option value="week">Weekly</option>
+          <option value="month">Monthly</option>
+        </select>
       </div>
       <div class="modal-ft">
         <button id="rm-clear" class="btn-secondary">Clear</button>
@@ -466,7 +472,13 @@
 
       <div class="drawer-sections" id="dp-appearance">
         <div class="drawer-sec">
-          <div class="field-lbl" data-i18n="settings.theme">Theme</div>
+          <div class="sec-hd-row">
+            <div class="field-lbl" data-i18n="settings.theme">Theme</div>
+            <button id="theme-cycle-btn" class="mini-btn" title="Cycle theme" data-i18n-title="action.cycleTheme">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6a4 4 0 016.9-2.8M10 6a4 4 0 01-6.9 2.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M9.2 1.6v1.9H7.3M2.8 10.4V8.5h1.9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span data-i18n="action.cycleTheme">Cycle theme</span>
+            </button>
+          </div>
           <div class="theme-grid" id="theme-grid"></div>
         </div>
 
@@ -549,10 +561,21 @@
             <input type="checkbox" id="tog-autoswitch">
             <span class="tog"></span>
           </label>
-          <button id="show-tour-btn" class="btn-secondary" style="margin-top:10px">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="vertical-align:-2px;margin-right:5px"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M5 5.5a1.5 1.5 0 113 0c0 .8-1.5 1-1.5 2M6.5 9.5v.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-            <span data-i18n="settings.showTour">Show tour again</span>
-          </button>
+          <label class="toggle-row">
+            <span><span data-i18n="settings.tips">Show tips as you explore</span><br><small data-i18n="settings.tipsHint">a one-time hint the first time you open a feature</small></span>
+            <input type="checkbox" id="tog-tips" checked>
+            <span class="tog"></span>
+          </label>
+          <div class="onboarding-actions">
+            <button id="show-tour-btn" class="btn-secondary">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="vertical-align:-2px;margin-right:5px"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M5 5.5a1.5 1.5 0 113 0c0 .8-1.5 1-1.5 2M6.5 9.5v.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <span data-i18n="settings.showTour">Replay welcome</span>
+            </button>
+            <button id="reset-hints-btn" class="btn-secondary">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="vertical-align:-2px;margin-right:5px"><path d="M2.5 6.5a4 4 0 104-4M2.5 6.5V4M2.5 6.5H5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span data-i18n="settings.resetHints">Reset tips</span>
+            </button>
+          </div>
         </div>
         <div class="drawer-sec">
           <div class="field-lbl" data-i18n="settings.shortcuts">Shortcuts</div>
@@ -848,6 +871,13 @@
       </div>
       <div class="tour-hint">← / → to navigate · Esc to close</div>
     </div>
+  </div>
+
+  <!-- ══════ JUST-IN-TIME COACH-MARK ══════ -->
+  <div id="coach" class="hidden" role="status" aria-live="polite" data-arrow="up">
+    <div class="coach-title"></div>
+    <div class="coach-body"></div>
+    <button class="coach-got" type="button">Got it</button>
   </div>
 
   <!-- ══════ TOOLS HUB ══════ -->

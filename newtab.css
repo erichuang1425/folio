@@ -5,174 +5,10 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ═══ THEMES ═══ */
-
-/* Tabento: signature theme (default). Warm rice-paper "bento box" base with a
-   gold/persimmon accent. Distinct from TabExtend's pastel favicon rail and from
-   Refern's neutral gallery grey. --brand-grad (built from --accent/--accent2)
-   carries the gold/persimmon through-line onto tabs, buttons, and the chip bar. */
-[data-theme="tabento"] {
-  /* Board is the deepest tone; panels/cards sit lighter so columns lift. */
-  --bg: #f0e4cb; --bg2: #fdf9f1; --bg3: #eaddc4; --bg4: #ddceb0; --bg5: #c8b596;
-  --panel: #fdf9f1;
-  --border: rgba(90,66,30,0.11); --border2: rgba(90,66,30,0.19);
-  --text: #2b2118; --text2: #6b5a44; --text3: #9c8a6c;
-  --accent: #c2761a; --accent2: #d2542f; --accent-bg: #c2761a; --accent-hover: #a9620f;
-  --green: #5e8a32; --red: #c0392b; --yellow: #b8860b; --orange: #cd6a1f; --blue: #2c7a9e;
-  --note-bg: #eef3df; --note-bd: rgba(94,138,50,0.30);
-  /* Warm espresso elevation (not cold black) so the light theme has real depth
-     instead of the base dark shadows it was inheriting. */
-  --shadow: 0 16px 46px rgba(74,52,20,0.16), 0 4px 12px rgba(74,52,20,0.08);
-  --shadow-sm: 0 2px 10px rgba(74,52,20,0.08);
-  --card-shadow: 0 1px 2px rgba(74,52,20,0.06), 0 2px 5px rgba(74,52,20,0.05);
-  --card-shadow-h: 0 10px 24px rgba(74,52,20,0.14), 0 2px 6px rgba(74,52,20,0.08);
-  --shadow-1: 0 2px 10px rgba(74,52,20,0.10);
-  --shadow-2: 0 8px 20px rgba(74,52,20,0.14), 0 0 0 1px rgba(74,52,20,0.05);
-  --shadow-3: 0 16px 44px rgba(74,52,20,0.18), 0 3px 10px rgba(74,52,20,0.10);
-}
-
-/* Tabento Dark: lacquer variant of the signature theme. Same gold/persimmon
-   accent on a warm near-black base. */
-[data-theme="tabento-dark"] {
-  --bg: #17120d; --bg2: #1f1812; --bg3: #2a211a; --bg4: #392c22; --bg5: #4c3b2d;
-  --panel: #1b1510;
-  --border: rgba(245,222,180,0.08); --border2: rgba(245,222,180,0.17);
-  --text: #f6ecda; --text2: #c6b498; --text3: #8a775d;
-  --accent: #f5b841; --accent2: #ec6f4c; --accent-bg: #e8902a; --accent-hover: #cf7d1d;
-  --green: #9cc05a; --red: #e5563f; --yellow: #f5b841; --orange: #ef8a3c; --blue: #5fa8c4;
-  --note-bg: #20231a; --note-bd: rgba(156,192,90,0.22);
-}
-
-[data-theme="dark"] {
-  --bg: #0b0b10; --bg2: #12121a; --bg3: #1a1a24; --bg4: #23232f; --bg5: #2e2e3d;
-  --panel: #14141c;
-  --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.12);
-  --text: #ebebf5; --text2: #9b9bb4; --text3: #555569;
-  --accent: #818cf8; --accent2: #a5b4fc; --accent-bg: #6366f1; --accent-hover: #5458e6;
-  --green: #22c55e; --red: #f87171; --yellow: #eab308; --orange: #fb923c; --blue: #60a5fa;
-  --note-bg: #1e1e18; --note-bd: rgba(234,179,8,0.18);
-}
-
-/* Aurora: alternate signature theme (the previous default). Ink base plus
-   teal/violet accent. Tabento (above) is now the default signature. */
-[data-theme="aurora"] {
-  --bg: #0a0c14; --bg2: #11141f; --bg3: #181c2b; --bg4: #222840; --bg5: #2f3754;
-  --panel: #0f1320;
-  --border: rgba(180,200,255,0.08); --border2: rgba(180,200,255,0.16);
-  --text: #eef1fb; --text2: #9aa3c4; --text3: #5a6386;
-  --accent: #5eead4; --accent2: #a78bfa; --accent-bg: #14b8a6; --accent-hover: #0f9d8f;
-  --green: #34d399; --red: #fb7185; --yellow: #fbbf24; --orange: #fb923c; --blue: #60a5fa;
-  --note-bg: #15201d; --note-bd: rgba(94,234,212,0.18);
-}
-
-[data-theme="light"] {
-  --bg: #f4f4f7; --bg2: #ffffff; --bg3: #f0f0f5; --bg4: #e5e5ed; --bg5: #d0d0db;
-  --panel: #ffffff;
-  --border: rgba(0,0,0,0.06); --border2: rgba(0,0,0,0.12);
-  --text: #15151f; --text2: #52525e; --text3: #9090a0;
-  --accent: #4f46e5; --accent2: #6366f1; --accent-bg: #4f46e5; --accent-hover: #4338ca;
-  --green: #059669; --red: #dc2626; --yellow: #ca8a04; --orange: #c2410c; --blue: #2563eb;
-  --note-bg: #fffbe8; --note-bd: rgba(234,179,8,0.25);
-}
-
-[data-theme="dracula"] {
-  --bg: #282a36; --bg2: #21222c; --bg3: #343746; --bg4: #44475a; --bg5: #6272a4;
-  --panel: #21222c;
-  --border: rgba(248,248,242,0.08); --border2: rgba(248,248,242,0.15);
-  --text: #f8f8f2; --text2: #b6b9c4; --text3: #6272a4;
-  --accent: #bd93f9; --accent2: #cba1fa; --accent-bg: #bd93f9; --accent-hover: #a775f2;
-  --green: #50fa7b; --red: #ff5555; --yellow: #f1fa8c; --orange: #ffb86c; --blue: #8be9fd;
-  --note-bg: #3a3640; --note-bd: rgba(241,250,140,0.25);
-}
-
-[data-theme="nord"] {
-  --bg: #2e3440; --bg2: #3b4252; --bg3: #434c5e; --bg4: #4c566a; --bg5: #5e6779;
-  --panel: #3b4252;
-  --border: rgba(236,239,244,0.06); --border2: rgba(236,239,244,0.12);
-  --text: #eceff4; --text2: #d8dee9; --text3: #8690a3;
-  --accent: #88c0d0; --accent2: #8fbcbb; --accent-bg: #5e81ac; --accent-hover: #4f7198;
-  --green: #a3be8c; --red: #bf616a; --yellow: #ebcb8b; --orange: #d08770; --blue: #81a1c1;
-  --note-bg: #3f3e36; --note-bd: rgba(235,203,139,0.25);
-}
-
-[data-theme="rose-pine"] {
-  --bg: #191724; --bg2: #1f1d2e; --bg3: #26233a; --bg4: #393552; --bg5: #524f67;
-  --panel: #1f1d2e;
-  --border: rgba(224,222,244,0.06); --border2: rgba(224,222,244,0.12);
-  --text: #e0def4; --text2: #908caa; --text3: #6e6a86;
-  --accent: #c4a7e7; --accent2: #ebbcba; --accent-bg: #eb6f92; --accent-hover: #d45a7e;
-  --green: #9ccfd8; --red: #eb6f92; --yellow: #f6c177; --orange: #ea9a97; --blue: #31748f;
-  --note-bg: #2a2437; --note-bd: rgba(246,193,119,0.25);
-}
-
-[data-theme="tokyo-night"] {
-  --bg: #1a1b26; --bg2: #16161e; --bg3: #24253a; --bg4: #292e42; --bg5: #414868;
-  --panel: #16161e;
-  --border: rgba(192,202,245,0.05); --border2: rgba(192,202,245,0.12);
-  --text: #c0caf5; --text2: #9aa5ce; --text3: #565f89;
-  --accent: #7aa2f7; --accent2: #bb9af7; --accent-bg: #7aa2f7; --accent-hover: #5a82d7;
-  --green: #9ece6a; --red: #f7768e; --yellow: #e0af68; --orange: #ff9e64; --blue: #7dcfff;
-  --note-bg: #2a2438; --note-bd: rgba(224,175,104,0.25);
-}
-
-[data-theme="solarized-dark"] {
-  --bg: #002b36; --bg2: #073642; --bg3: #0d4653; --bg4: #156073; --bg5: #1e7a92;
-  --panel: #073642;
-  --border: rgba(253,246,227,0.06); --border2: rgba(253,246,227,0.12);
-  --text: #fdf6e3; --text2: #93a1a1; --text3: #586e75;
-  --accent: #268bd2; --accent2: #2aa198; --accent-bg: #268bd2; --accent-hover: #1c6fa8;
-  --green: #859900; --red: #dc322f; --yellow: #b58900; --orange: #cb4b16; --blue: #268bd2;
-  --note-bg: #1a3a3f; --note-bd: rgba(181,137,0,0.35);
-}
-
-[data-theme="solarized-light"] {
-  --bg: #fdf6e3; --bg2: #eee8d5; --bg3: #e5dec3; --bg4: #d4ceb2; --bg5: #93a1a1;
-  --panel: #eee8d5;
-  --border: rgba(7,54,66,0.06); --border2: rgba(7,54,66,0.12);
-  --text: #073642; --text2: #586e75; --text3: #93a1a1;
-  --accent: #268bd2; --accent2: #2aa198; --accent-bg: #268bd2; --accent-hover: #1c6fa8;
-  --green: #859900; --red: #dc322f; --yellow: #b58900; --orange: #cb4b16; --blue: #268bd2;
-  --note-bg: #fff9d9; --note-bd: rgba(181,137,0,0.35);
-}
-
-[data-theme="gruvbox"] {
-  --bg: #282828; --bg2: #32302f; --bg3: #3c3836; --bg4: #504945; --bg5: #665c54;
-  --panel: #32302f;
-  --border: rgba(235,219,178,0.05); --border2: rgba(235,219,178,0.12);
-  --text: #ebdbb2; --text2: #bdae93; --text3: #7c6f64;
-  --accent: #fabd2f; --accent2: #fe8019; --accent-bg: #d79921; --accent-hover: #b58900;
-  --green: #b8bb26; --red: #fb4934; --yellow: #fabd2f; --orange: #fe8019; --blue: #83a598;
-  --note-bg: #3a3226; --note-bd: rgba(250,189,47,0.3);
-}
-
-[data-theme="catppuccin"] {
-  --bg: #1e1e2e; --bg2: #181825; --bg3: #313244; --bg4: #45475a; --bg5: #585b70;
-  --panel: #181825;
-  --border: rgba(205,214,244,0.05); --border2: rgba(205,214,244,0.12);
-  --text: #cdd6f4; --text2: #bac2de; --text3: #7f849c;
-  --accent: #cba6f7; --accent2: #f5c2e7; --accent-bg: #cba6f7; --accent-hover: #b591e5;
-  --green: #a6e3a1; --red: #f38ba8; --yellow: #f9e2af; --orange: #fab387; --blue: #89b4fa;
-  --note-bg: #2a2438; --note-bd: rgba(249,226,175,0.25);
-}
-
-[data-theme="sepia"] {
-  --bg: #f4ecd8; --bg2: #ebe0c3; --bg3: #ddd0ae; --bg4: #c9bc96; --bg5: #a89980;
-  --panel: #ebe0c3;
-  --border: rgba(92,71,39,0.1); --border2: rgba(92,71,39,0.18);
-  --text: #3d2e18; --text2: #5c4727; --text3: #8b7340;
-  --accent: #8b4513; --accent2: #a0522d; --accent-bg: #8b4513; --accent-hover: #6b3310;
-  --green: #5c7a2a; --red: #a0342b; --yellow: #b8860b; --orange: #8b4513; --blue: #2c5f7a;
-  --note-bg: #fff5d6; --note-bd: rgba(184,134,11,0.3);
-}
-
-[data-theme="mono"] {
-  --bg: #0a0a0a; --bg2: #141414; --bg3: #1f1f1f; --bg4: #2a2a2a; --bg5: #3a3a3a;
-  --panel: #141414;
-  --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
-  --text: #f5f5f5; --text2: #a0a0a0; --text3: #555555;
-  --accent: #ffffff; --accent2: #e5e5e5; --accent-bg: #ffffff; --accent-hover: #e5e5e5;
-  --green: #ffffff; --red: #ffffff; --yellow: #ffffff; --orange: #ffffff; --blue: #ffffff;
-  --note-bg: #1a1a1a; --note-bd: rgba(255,255,255,0.15);
-}
+/* Theme color palettes moved to the shared themes.css (loaded before this
+   file) so the new-tab page and the popup render from one source of truth.
+   Theme-specific component overrides (e.g. mono tints, light-mode chrome)
+   remain below. */
 [data-theme="mono"] .csw, [data-theme="mono"] .cdot { filter: grayscale(1); }
 [data-theme="mono"] .accent-bg { background: #ffffff !important; color: #000 !important; }
 
@@ -224,7 +60,10 @@
 [data-font="system"]    { --font: system-ui, -apple-system, sans-serif; }
 
 :root {
-  --sidebar: 240px; --sidebar-min: 64px; --topbar: 56px;
+  /* Sidebar scales gently with the viewport so the board keeps its breathing
+     room on smaller new-tab and split-window sizes; unchanged (240px) at the
+     common ≥1264px widths, easing down to a 184px floor below that. */
+  --sidebar: clamp(184px, 19vw, 240px); --sidebar-min: 64px; --topbar: 56px;
 
   /* Spacing scale (4px base) */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
@@ -849,6 +688,21 @@ body[data-anim="off"] .cat-tabs-wrap::after {
 #board::-webkit-scrollbar-track { background: transparent; }
 #board::-webkit-scrollbar-thumb { background: var(--bg5); border-radius: 4px; }
 
+/* ── Responsive shell ──────────────────────────────────────────────
+   Tighten the chrome's outer padding as the window narrows so the board
+   and columns keep more room, without touching the user's column-width
+   preference. The board itself scrolls horizontally, so nothing wraps —
+   these just trim dead space at smaller new-tab / split-window sizes. */
+@media (max-width: 1180px) {
+  #board  { padding: 20px 16px; gap: 14px; }
+  #topbar { padding: 0 14px; }
+}
+@media (max-width: 940px) {
+  #board  { padding: 16px 12px; gap: 12px; }
+  #topbar { padding: 0 12px; gap: 8px; }
+  .ws-bar { padding: 8px; }
+}
+
 .board-empty {
   flex: 1;
   display: flex; flex-direction: column;
@@ -961,13 +815,24 @@ body[data-anim="off"] .cat-tabs-wrap::after {
   background: none; border: none; outline: none;
   color: var(--text); font: 600 15px var(--font);
   width: 100%; padding: 0; letter-spacing: -0.012em;
-  /* Reserve room for the 5-icon action row (below) so a long name always
-     ellipsizes before it instead of running under the icons on hover.
-     Kept constant (not hover-conditional) so the title never reflows. */
+  /* Calm default view: the name uses (almost) the full header width, so long
+     group names like "Getting started" read in full instead of being clipped
+     for action buttons that aren't even showing. The compact 3-icon row only
+     appears on hover, and the tail is masked beneath it then (below) — no
+     reserved gap, no reflow. The full name is also available via the native
+     tooltip (title attribute) and the detail page. */
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  padding-right: 128px;
+  padding-right: 12px;
 }
-.gcol-name:focus { padding-right: 0; }
+/* On hover/focus the action row fades in over the right edge; fade the name's
+   tail beneath it with a mask (not reserved padding) so it never collides or
+   reflows. Short names end before the fade zone, so they're unaffected. */
+.gcol:hover .gcol-name,
+.gcol-hd:focus-within .gcol-name {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 96px), transparent calc(100% - 58px));
+  mask-image: linear-gradient(to right, #000 calc(100% - 96px), transparent calc(100% - 58px));
+}
+.gcol-name:focus { padding-right: 0; -webkit-mask-image: none; mask-image: none; }
 .gcol-meta {
   display: flex; align-items: center; gap: 5px;
   font-size: 11px; color: var(--text3); margin-top: 2px;
@@ -988,21 +853,26 @@ body[data-anim="off"] .cat-tabs-wrap::after {
    so the name never sits under this zone; the backing is fully opaque
    (not a soft fade) as a second guard against text bleeding through. */
 .gcol-acts {
-  position: absolute; top: 9px; right: 9px; bottom: 9px;
-  display: flex; align-items: center; gap: 1px;
+  position: absolute; top: 8px; right: 8px; bottom: 8px;
+  display: flex; align-items: center; gap: 2px;
   opacity: 0; pointer-events: none;
-  padding-left: 10px;
-  /* Matches the header's own tinted top band (see .gcol-hd background)
-     rather than plain --panel, so no visible seam shows behind the icons. */
-  background: color-mix(in srgb, var(--gcol-tint, transparent) 18%, var(--panel));
-  transition: opacity var(--trans);
+  padding-left: 22px;
+  /* Feather the left edge into the header rather than laying a hard opaque
+     block over it — the controls read as a light contextual overlay that hugs
+     the corner, not a panel that covers the bento. A small slide-in adds a
+     premium, intentional feel on hover. */
+  background: linear-gradient(to right,
+    transparent,
+    color-mix(in srgb, var(--gcol-tint, transparent) 16%, var(--panel)) 45%);
+  transform: translateX(6px);
+  transition: opacity var(--trans), transform var(--trans);
 }
 .gcol:hover .gcol-acts,
-.gcol-hd:focus-within .gcol-acts { opacity: 1; pointer-events: auto; }
+.gcol-hd:focus-within .gcol-acts { opacity: 1; pointer-events: auto; transform: translateX(0); }
 .gcol-btn {
-  width: 26px; height: 26px;
+  width: 24px; height: 24px;
   background: none; border: 1px solid transparent;
-  color: var(--text3); cursor: pointer; border-radius: 6px;
+  color: var(--text3); cursor: pointer; border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
   transition: all var(--trans);
 }
@@ -1119,8 +989,14 @@ body.resizing { cursor: nwse-resize !important; user-select: none; }
   background: color-mix(in srgb, var(--accent-bg) 8%, var(--bg2));
   border-color: color-mix(in srgb, var(--accent-bg) 28%, var(--border));
 }
+/* Secondary quick-adds (note/todo/stack) read as quiet ghost affordances so
+   each column footer is one confident action + lightweight options, not a row
+   of four equal boxes. They gain a subtle tint only on hover (below). */
 .gcol-ft button:not(.primary) {
   padding: 0;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text3);
 }
 .gcol-ft button:not(.primary) span {
   display: none;
@@ -1133,6 +1009,10 @@ body.resizing { cursor: nwse-resize !important; user-select: none; }
 .gcol-ft button:hover {
   border-color: var(--accent); color: var(--accent);
   background: color-mix(in srgb, var(--accent-bg) 10%, var(--bg2));
+}
+.gcol-ft button:not(.primary):hover {
+  border-color: transparent; color: var(--accent);
+  background: color-mix(in srgb, var(--accent-bg) 12%, transparent);
 }
 
 /* ═══ ITEMS ═══ */
@@ -1599,13 +1479,15 @@ body[data-show-urls="off"] .item-url { display: none; }
 }
 .field-lbl:first-child { margin-top: 0; }
 
-#modal-input, #rm-datetime {
+#modal-input, #rm-datetime, #rm-label, #rm-recur {
   background: var(--bg3); border: 1px solid var(--border);
   border-radius: var(--r); padding: 9px 12px;
   color: var(--text); font: 13.5px var(--font);
   outline: none; width: 100%;
   transition: border-color var(--trans), background var(--trans);
 }
+#rm-recur { cursor: pointer; }
+#rm-label:focus, #rm-recur:focus { border-color: var(--accent); background: var(--bg); }
 #intent-purpose, #intent-next-action, #intent-status, #intent-type {
   width: 100%;
   border: 1px solid var(--border);
@@ -1708,8 +1590,18 @@ body[data-show-urls="off"] .item-url { display: none; }
   transition: all var(--trans);
   position: relative; overflow: hidden;
 }
-.btn-primary { background: var(--brand-grad); color: #fff; }
-.btn-primary:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.btn-primary {
+  background: var(--accent-bg);
+  color: var(--accent-text, #fff);
+  border-color: color-mix(in srgb, var(--accent-bg) 68%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-bg) 26%, transparent);
+}
+.btn-primary:hover {
+  background: var(--accent-bg);
+  color: var(--accent-text, #fff);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-bg) 34%, transparent);
+}
 .btn-primary:active { transform: translateY(0); }
 .btn-secondary { background: var(--bg3); color: var(--text2); border-color: var(--border); }
 .btn-secondary:hover { background: var(--bg4); color: var(--text); }
@@ -1927,28 +1819,69 @@ body[data-show-urls="off"] .item-url { display: none; }
 .drawer-sec .sub { font-size: 11px; color: var(--text3); text-align: center; }
 .drawer-sec small { font-size: 10.5px; color: var(--text3); }
 
-/* Theme grid */
+/* Theme grid — clean mini preview tiles (no loud stripe blocks). Each tile
+   mocks a themed board: base surface, an accent header bar, two tinted cells. */
 .theme-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
 }
 .theme-card {
-  padding: 10px; border-radius: 9px;
-  border: 1.5px solid var(--border);
-  cursor: pointer; display: flex; flex-direction: column; gap: 4px;
-  transition: all var(--trans);
-  overflow: hidden;
+  padding: 6px; border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  cursor: pointer; display: flex; flex-direction: column; gap: 7px;
+  transition: transform var(--trans), border-color var(--trans), box-shadow var(--trans);
 }
-.theme-card:hover { transform: translateY(-2px); border-color: var(--border2); }
-.theme-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-bg) 20%, transparent); }
+.theme-card:hover { transform: translateY(-2px); border-color: var(--border2); box-shadow: var(--card-shadow); }
+.theme-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent);
+}
 .theme-card .th-preview {
-  height: 30px; border-radius: 5px;
-  display: flex;
+  position: relative;
+  height: 46px; border-radius: 8px;
+  background: var(--tp-bg);
+  box-shadow: inset 0 0 0 1px rgba(128,128,128,0.16);
   overflow: hidden;
+  padding: 7px;
+  display: flex; flex-direction: column; gap: 5px;
 }
-.theme-card .tp1 { flex: 1; }
-.theme-card .tp2 { flex: 0 0 6px; }
-.theme-card .tp3 { flex: 0 0 2px; }
-.theme-card .th-name { font: 500 11px var(--font); text-align: center; color: var(--text); }
+.theme-card .th-bar {
+  height: 5px; width: 55%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--tp-a1), var(--tp-a2));
+}
+.theme-card .th-cells { display: flex; gap: 5px; flex: 1; min-height: 0; }
+.theme-card .th-cell { flex: 1; border-radius: 5px; }
+.theme-card .th-cell.c1 { background: color-mix(in srgb, var(--tp-a1) 52%, var(--tp-bg)); }
+.theme-card .th-cell.c2 { background: color-mix(in srgb, var(--tp-a2) 52%, var(--tp-bg)); }
+.theme-card.active .th-preview::after {
+  content: '';
+  position: absolute; top: 5px; right: 5px;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--accent) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2.6 6.2l2.1 2.1 4.7-5' fill='none' stroke='white' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>") center/11px no-repeat;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.theme-card .th-name {
+  font: 500 11px var(--font); text-align: center; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Section header row — a label with a small trailing action (e.g. the theme
+   "Cycle theme" control that moved out of the top bar). */
+.sec-hd-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px;
+}
+.mini-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 9px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg2);
+  color: var(--text2); font: 500 11px var(--font);
+  cursor: pointer; transition: all var(--trans); white-space: nowrap;
+}
+.mini-btn:hover { color: var(--text); border-color: var(--border2); background: var(--bg3); }
+.mini-btn svg { flex-shrink: 0; }
+.mini-btn.spin svg { animation: miniSpin 0.5s var(--spring); }
+@keyframes miniSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
 
 /* Seg */
 .seg {
@@ -3936,6 +3869,43 @@ body.item-sel-mode .lv-stack-hd {
   font-style: normal;
   color: var(--text3);
 }
+/* Group-page reminders strip (§6). */
+.gp-reminders { display: flex; flex-direction: column; gap: 8px; }
+.gp-rem-head { display: flex; align-items: center; gap: 10px; }
+.gp-rem-title {
+  font: 700 11px/1 var(--font); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text3);
+}
+.gp-rem-add {
+  margin-left: auto;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 5px 10px; color: var(--text2); font: 600 12px var(--font); cursor: pointer;
+  transition: border-color var(--trans), color var(--trans), background var(--trans);
+}
+.gp-rem-add:hover { border-color: var(--accent); color: var(--text); background: var(--bg4); }
+.gp-rem-list { display: flex; flex-direction: column; gap: 6px; }
+.gp-rem-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 11px; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.gp-rem-item.past { opacity: .62; }
+.gp-rem-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: color-mix(in srgb, var(--dot, var(--accent)) 88%, var(--panel));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dot, var(--accent)) 18%, transparent);
+  flex: none;
+}
+.gp-rem-label { font: 600 13px var(--font); color: var(--text); }
+.gp-rem-when { font: 400 12px var(--font); color: var(--text3); margin-right: auto; }
+.gp-rem-btn {
+  background: none; border: none; padding: 3px 6px; border-radius: 6px;
+  color: var(--text3); font: 600 12px var(--font); cursor: pointer;
+  transition: color var(--trans), background var(--trans);
+}
+.gp-rem-btn:hover { color: var(--text); background: var(--bg4); }
+.gp-rem-btn.danger:hover { color: var(--red); }
+
 /* On the group page the reused bento column fills the width and the whole page
    scrolls, rather than the column capping its own height. */
 .group-page .gcol.gcol-focused {
@@ -4136,6 +4106,78 @@ body.item-sel-mode .lv-stack-hd {
   .tour-spotlight::after { animation: none; }
   .tour-bubble.tour-bubble-in { animation: none; }
 }
+
+/* ── Just-in-time coach-mark ─────────────────────────────────────
+   A small, non-modal hint pinned near a surface the user just reached.
+   Positioned by JS via transform (composite-only); only opacity + a short
+   translate animate, so it stays off the layout path. */
+#coach {
+  position: fixed; top: 0; left: 0;
+  z-index: 9000;
+  width: 260px; max-width: calc(100vw - 24px);
+  padding: 13px 15px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12);
+  opacity: 0;
+  transform: translate(0, 0);
+  transition: opacity 0.2s var(--trans);
+  will-change: transform, opacity;
+  pointer-events: auto;
+  --coach-ax: 32px;
+}
+#coach.hidden { display: none; }
+#coach.coach-in { opacity: 1; }
+/* A single accent hairline at the top ties it to the brand through-line. */
+#coach::before {
+  content: '';
+  position: absolute; left: 14px; right: 14px; top: 0; height: 2px;
+  border-radius: 2px;
+  background: var(--brand-grad, var(--accent));
+  opacity: 0.9;
+}
+/* Little pointer toward the target. */
+#coach::after {
+  content: '';
+  position: absolute;
+  left: var(--coach-ax); width: 12px; height: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  transform: rotate(45deg);
+}
+#coach[data-arrow="up"]::after   { top: -7px; border-right: 0; border-bottom: 0; }
+#coach[data-arrow="down"]::after { bottom: -7px; border-left: 0; border-top: 0; }
+.coach-title {
+  font: 700 13px var(--font);
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.coach-body {
+  font: 400 12px/1.5 var(--font);
+  color: var(--text2);
+  margin-bottom: 10px;
+}
+.coach-got {
+  font: 600 11.5px var(--font);
+  color: var(--accent);
+  background: none; border: 0; padding: 3px 2px; margin: 0;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.coach-got:hover { text-decoration: underline; }
+.coach-got:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  #coach { transition: opacity 0.12s linear; }
+}
+
+/* Onboarding controls in Settings → Behavior. */
+.onboarding-actions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 10px;
+}
+.onboarding-actions .btn-secondary { margin-top: 0; }
 
 #toast {
   position: fixed; bottom: 22px; left: 50%;
@@ -4891,6 +4933,12 @@ body.blur-privacy .otab-title:hover { filter: blur(0); }
   font: 500 12px var(--font); transition: all var(--trans);
 }
 .idp-btn:hover { background: var(--bg4); }
+.idp-btn.primary {
+  background: var(--accent-bg);
+  border-color: color-mix(in srgb, var(--accent-bg) 68%, transparent);
+  color: var(--accent-text, #fff);
+}
+.idp-btn.primary:hover { background: var(--accent-bg); }
 .idp-btn.danger { color: var(--red); }
 .idp-btn.danger:hover { background: var(--red); color: #fff; border-color: var(--red); }
 

@@ -34,6 +34,17 @@ overdue reminders in a persistent **Past due** rail, supports drag-to-reschedule
 to an item's group page + detail pane, with a top-bar entry point, the `C`
 keyboard shortcut, and a Workspace › Calendar breadcrumb — all additive, no schema
 change (reminders already live on items).
+Phase 5 (Reminders everywhere, §6) is now implemented: groups and categories carry their
+own `reminders[]` (each `{ at, notified, label?, recur? }`), added from the group
+menu, a group page's **Reminders** strip, or a category tab's context menu, and any
+reminder (item, group, or category) can repeat daily, weekly, or monthly. The
+reminder picker gained a label field and a **Repeat** control. background.js now
+handles `te-greminder-`/`te-creminder-` alarms and re-arms recurring reminders on
+fire, skipping cycles it slept through instead of firing a burst of catch-up
+notifications. The aggregator (§2.3) already read all three sources, so the calendar
+(§5) lists and reschedules group/category reminders through the same drag and
+right-click paths as items. Every field is optional: absent `reminders`/`recur`
+reproduces today's behavior, so no migration.
 
 This document plans a set of **major** features for Tabento: spatial, animated, design-forward
 interfaces and the systems work needed to make them cohere. Every proposal here is grounded in
@@ -410,7 +421,7 @@ Each phase is independently shippable and leaves the app fully working.
 | **2 — Link content** ✅ | §4.2 detail pane, additive item fields, `tag:` operator, migration | Rich per-link context |
 | **3 — Explorer + Timeline** ✅ | §3.1, §3.2, layout switcher (§7), per-category layout persistence | The headline new layouts |
 | **4 — Calendar** ✅ | §5 month/week/agenda, filter integration, drag-to-reschedule | Unified reminders surface |
-| **5 — Reminders everywhere** | §6 group/category reminders + recurrence, background.js alarm branches | Calendar becomes truly complete |
+| **5 — Reminders everywhere** ✅ | §6 group/category reminders + recurrence, background.js alarm branches | Calendar covers every reminder source |
 | **6 — Stretch layouts + palette** | §3.3 Gallery, §3.4 Graph, command palette (§7) | Breadth & polish |
 
 **Onboarding (§8)** is deliberately **not a single phase** — it ships in two low-risk slices:

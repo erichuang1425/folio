@@ -5,7 +5,7 @@
 // Schema version of the in-storage state. Bump when state shape changes,
 // then add a forward-migration branch in migrate(). Older builds reading
 // data stamped with a higher value get a blocking "newer data" guard.
-const CURRENT_SCHEMA = 5;
+const CURRENT_SCHEMA = 6;
 
 const SUPPORTED_LOCALES = ['en', 'zh-TW'];
 
@@ -42,6 +42,7 @@ const I18N = {
     'action.search': 'Search (Ctrl/Cmd + K)',
     'action.cycleTheme': 'Cycle theme',
     'action.saveAllTabs': 'Save all open tabs',
+    'action.more': 'More',
     'action.settings': 'Settings',
     'settings.title': 'Settings',
     'settings.appearance': 'Appearance',
@@ -72,7 +73,10 @@ const I18N = {
     'settings.privacyBlurHint': 'blur all content (for screen sharing)',
     'settings.autoSwitch': 'Auto-switch workspace on window focus',
     'settings.autoSwitchHint': 'each workspace tied to a browser window',
-    'settings.showTour': 'Show tour again',
+    'settings.showTour': 'Replay welcome',
+    'settings.tips': 'Show tips as you explore',
+    'settings.tipsHint': 'a one-time hint the first time you open a feature',
+    'settings.resetHints': 'Reset tips',
     'settings.shortcuts': 'Shortcuts',
     'settings.archivedItems': 'Archived items',
     'settings.storage': 'Storage',
@@ -96,6 +100,7 @@ const I18N = {
     'action.search': '搜尋 (Ctrl/Cmd + K)',
     'action.cycleTheme': '切換主題',
     'action.saveAllTabs': '儲存所有開啟分頁',
+    'action.more': '更多',
     'action.settings': '設定',
     'settings.title': '設定',
     'settings.appearance': '外觀',
@@ -126,7 +131,10 @@ const I18N = {
     'settings.privacyBlurHint': '模糊所有內容，適合螢幕分享',
     'settings.autoSwitch': '視窗聚焦時自動切換工作區',
     'settings.autoSwitchHint': '每個工作區綁定一個瀏覽器視窗',
-    'settings.showTour': '再次顯示導覽',
+    'settings.showTour': '重播歡迎導覽',
+    'settings.tips': '探索時顯示提示',
+    'settings.tipsHint': '第一次開啟功能時顯示一次性提示',
+    'settings.resetHints': '重設提示',
     'settings.shortcuts': '快捷鍵',
     'settings.archivedItems': '封存項目',
     'settings.storage': '儲存空間',
@@ -174,11 +182,12 @@ const State = (() => {
     workspaces: [], activeWsId: null, archive: [], recentEmoji: [],
     columnWidths: {},
     settings: {
-      theme:'tabento', size:'normal', font:'dm', width:'normal',
+      theme:'light', size:'normal', font:'dm', width:'normal',
       language: browserLanguage(),
       closeTabOnSave:true, hibernate:true, showUrls:true,
       animate:true, confirmDelete:true, sidebarCollapsed:false,
-      blurPrivacy:false, windowSync:false
+      blurPrivacy:false, windowSync:false,
+      onboarding: { welcomeSeen:false, hintsSeen:{}, disabled:false }
     }
   };
   let history = [], future = [];
@@ -257,14 +266,55 @@ const getItemNodes = () => { if (!_itemNodeCache) _itemNodeCache = document.quer
 const INTENT_STATUS = ['active', 'paused', 'someday', 'done', 'reference'];
 const INTENT_TYPE = ['project', 'study', 'research', 'admin', 'life', 'reference', 'other'];
 
+// Allowlist HTML sanitizer for note content. Notes render through innerHTML,
+// and their html can arrive from an imported file or a clipboard paste, so a
+// regex pass isn't safe — `<img src=x onerror=…>` (unquoted handler, no closing
+// tag) walks straight through one. Parse into an inert document instead, drop
+// disallowed elements, and strip every event handler and unsafe URL.
+const SANITIZE_KEEP = new Set(['A','ABBR','B','BLOCKQUOTE','BR','CODE','DEL','DIV','EM','FONT','H1','H2','H3','H4','H5','H6','HR','I','INS','LI','MARK','OL','P','PRE','S','SMALL','SPAN','STRONG','SUB','SUP','U','UL','IMG']);
+const SANITIZE_DROP = new Set(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','LINK','META','BASE','FORM','INPUT','BUTTON','TEXTAREA','SELECT','OPTION','SVG','MATH','NOSCRIPT','TEMPLATE','FRAME','FRAMESET','APPLET','AUDIO','VIDEO','SOURCE']);
+const SANITIZE_URL_ATTRS = new Set(['href','src','xlink:href','action','formaction','background','poster','cite','data']);
+
+function safeUrlValue(value) {
+  // DOMParser has already decoded HTML entities, so a scheme is either literal
+  // or gone. Strip control chars first to defeat `java\tscript:`-style splits.
+  const v = String(value).replace(/[\x00-\x1F\x7F]/g, '').trim();
+  if (!v) return '';
+  if (/^(?:https?:|mailto:|tel:|ftp:)/i.test(v)) return v;
+  if (/^data:image\/(?:png|jpe?g|gif|webp|bmp|x-icon)[;,]/i.test(v)) return v;
+  if (/^[a-z][a-z0-9+.\-]*:/i.test(v)) return '';   // some other scheme → block
+  return v;                                          // relative / anchor / query
+}
+
 function sanitizeHtml(html) {
-  return String(html)
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
-    .replace(/\son\w+="[^"]*"/gi, '')
-    .replace(/\son\w+='[^']*'/gi, '')
-    .replace(/javascript:/gi, '');
+  const doc = new DOMParser().parseFromString(String(html == null ? '' : html), 'text/html');
+  if (!doc.body) return '';
+  for (const el of [...doc.body.querySelectorAll('*')]) {
+    if (!el.isConnected) continue;                   // inside an already-dropped subtree
+    const tag = el.tagName;
+    if (SANITIZE_DROP.has(tag)) { el.remove(); continue; }
+    if (!SANITIZE_KEEP.has(tag)) {
+      // Unknown but not dangerous: keep the text, drop the wrapper.
+      while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
+      el.remove();
+      continue;
+    }
+    for (const attr of [...el.attributes]) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on') || name === 'srcset') { el.removeAttribute(attr.name); continue; }
+      if (name === 'style') {
+        // CSS can't run script in modern Chrome, but url()/expression()/@import
+        // can leak requests. Keep plain declarations, drop anything fetching.
+        if (/url\s*\(|expression\s*\(|javascript:|@import/i.test(attr.value)) el.removeAttribute(attr.name);
+        continue;
+      }
+      if (SANITIZE_URL_ATTRS.has(name)) {
+        const safe = safeUrlValue(attr.value);
+        if (safe) el.setAttribute(attr.name, safe); else el.removeAttribute(attr.name);
+      }
+    }
+  }
+  return doc.body.innerHTML;
 }
 
 function fmtTimeRelative(ts) {
@@ -315,6 +365,13 @@ function findGroup(gId) {
       const g = cat.groups.find(x => x.id === gId);
       if (g) return { ws, cat, group: g };
     }
+  return null;
+}
+function findCategory(cId) {
+  for (const ws of State.get().workspaces) {
+    const cat = ws.categories.find(c => c.id === cId);
+    if (cat) return { ws, cat };
+  }
   return null;
 }
 function findItemInList(list, itemId, ctx) {
@@ -699,6 +756,22 @@ function migrate() {
     // unchanged. Purely additive.
   }
 
+  if (from < 6) {
+    // Schema 6 (§8 — progressive onboarding). Fold the old single
+    // `tourCompleted` flag into a structured record so returning users are
+    // never re-onboarded and each just-in-time hint is tracked on its own.
+    // Absent = fresh install (welcome shows once).
+    s.settings = s.settings || {};
+    const ob = (s.settings.onboarding && typeof s.settings.onboarding === 'object') ? s.settings.onboarding : {};
+    // Pre-6 data had no onboarding record, so the legacy tourCompleted flag is
+    // the authority — a returning user who finished the old tour is not
+    // re-onboarded, a fresh install (flag absent) sees the welcome once.
+    ob.welcomeSeen = !!s.settings.tourCompleted;
+    if (!ob.hintsSeen || typeof ob.hintsSeen !== 'object') ob.hintsSeen = {};
+    if (ob.disabled == null) ob.disabled = false;
+    s.settings.onboarding = ob;
+  }
+
   s.schema = CURRENT_SCHEMA;
 }
 
@@ -985,11 +1058,16 @@ function buildThemeGrid() {
     const card = document.createElement('div');
     card.className = 'theme-card';
     card.dataset.theme = t.id;
+    // A small board-like preview tile (base surface, an accent header bar, two
+    // tinted content cells) reads as a real theme preview instead of the old
+    // loud vertical stripes.
     card.innerHTML = `
-      <div class="th-preview">
-        <div class="tp1" style="background:${t.colors[0]}"></div>
-        <div class="tp2" style="background:${t.colors[1]}"></div>
-        <div class="tp3" style="background:${t.colors[2]}"></div>
+      <div class="th-preview" style="--tp-bg:${t.colors[0]};--tp-a1:${t.colors[1]};--tp-a2:${t.colors[2]}">
+        <span class="th-bar"></span>
+        <span class="th-cells">
+          <span class="th-cell c1"></span>
+          <span class="th-cell c2"></span>
+        </span>
       </div>
       <div class="th-name">${t.label}</div>`;
     card.onclick = () => {
@@ -1005,7 +1083,7 @@ function applySettings() {
   const s = State.get().settings;
   let theme = s.theme;
   if (theme !== 'auto' && !THEMES.some(t => t.id === theme)) {
-    theme = 'tabento';
+    theme = 'light';
     s.theme = theme;
   }
   if (theme === 'auto') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -1218,29 +1296,73 @@ async function openAllHibernated(urls, items) {
 // ════════════════════════════════════════════════════════════════
 // REMINDERS
 // ════════════════════════════════════════════════════════════════
+// The reminder picker is shared by items and by group/category reminders (§6).
+// reminderCtx captures which one is being edited:
+//   { kind:'item',     id:itemId }
+//   { kind:'group',    id:groupId, index }   index absent → adding a new one
+//   { kind:'category', id:catId,   index }
 let reminderCtx = null;
 function openReminderPicker(itemId) {
-  reminderCtx = { itemId };
   const info = findItem(itemId);
-  const dt = document.getElementById('rm-datetime');
-  const d = new Date();
-  d.setHours(d.getHours() + 1); d.setMinutes(0);
-  dt.value = d.toISOString().slice(0, 16);
-  if (info?.item?.reminder) {
-    const existing = new Date(info.item.reminder.at);
-    dt.value = new Date(existing.getTime() - existing.getTimezoneOffset()*60000).toISOString().slice(0, 16);
+  openReminderOverlay({ kind: 'item', id: itemId }, info?.item?.reminder || null, { title: 'Set reminder' });
+}
+function openEntityReminderPicker(kind, entId, index) {
+  const ent = findEntity(kind, entId);
+  const existing = (index != null && Array.isArray(ent?.reminders)) ? ent.reminders[index] : null;
+  const name = ent?.name || '';
+  openReminderOverlay({ kind, id: entId, index }, existing, {
+    title: existing ? 'Edit reminder' : 'Set reminder',
+    showLabel: true,
+    label: existing?.label || '',
+    labelPlaceholder: kind === 'group' ? `e.g. Review ${name}` : `e.g. ${name} routine`,
+  });
+}
+// A datetime-local wants a wall-clock string; convert from an epoch through the
+// local offset so the field shows the same instant the reminder fires.
+function toLocalDatetimeValue(ts) {
+  const d = new Date(ts);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+function openReminderOverlay(ctx, existing, opts = {}) {
+  reminderCtx = ctx;
+  const dflt = new Date(); dflt.setHours(dflt.getHours() + 1, 0, 0, 0);
+  document.getElementById('rm-datetime').value =
+    toLocalDatetimeValue(existing?.at != null ? existing.at : dflt.getTime());
+
+  const h = document.querySelector('#reminder-overlay .modal-hd h2');
+  if (h) h.textContent = opts.title || 'Set reminder';
+
+  const labelField = document.getElementById('rm-label-field');
+  const labelInput = document.getElementById('rm-label');
+  if (labelField) labelField.classList.toggle('hidden', !opts.showLabel);
+  if (labelInput) { labelInput.value = opts.label || ''; labelInput.placeholder = opts.labelPlaceholder || 'Label (optional)'; }
+
+  const recurSel = document.getElementById('rm-recur');
+  if (recurSel) recurSel.value = existing?.recur?.every || '';
+
+  // "Clear/Remove" only makes sense when a reminder already exists.
+  const clearBtn = document.getElementById('rm-clear');
+  if (clearBtn) {
+    clearBtn.classList.toggle('hidden', !existing);
+    clearBtn.textContent = ctx.kind === 'item' ? 'Clear' : 'Remove';
   }
+  document.getElementById('rm-save').textContent = existing ? 'Update' : 'Set';
   document.getElementById('reminder-overlay').classList.remove('hidden');
 }
 function closeReminderPicker() {
   document.getElementById('reminder-overlay').classList.add('hidden');
   reminderCtx = null;
 }
-async function setReminder(itemId, ts) {
+function readRecurControl() {
+  const every = document.getElementById('rm-recur')?.value || '';
+  return every ? { every, interval: 1 } : null;
+}
+async function setReminder(itemId, ts, opts = {}) {
   const info = findItem(itemId);
   if (!info) return;
   State.snapshot('Set reminder');
   info.item.reminder = { at: ts, notified: false };
+  if (opts.recur) info.item.reminder.recur = opts.recur;
   try { await chrome.alarms.create('te-reminder-' + itemId, { when: ts }); } catch {}
   State.persist();
   renderBoard();
@@ -1257,6 +1379,72 @@ async function clearReminder(itemId) {
   renderBoard();
   refreshDetailPane();
   toast('Reminder cleared');
+}
+
+// ── Group / category reminders (§6) ──────────────────────────────
+// Groups and categories carry `reminders[]` (each { at, notified, label?,
+// recur? }); collectReminders already reads them. Alarms are keyed by the
+// entry's array index — `te-greminder-<groupId>-<n>` / `te-creminder-<catId>-<n>`
+// — so every write reconciles the whole set for that entity, keeping indices
+// and scheduled alarms in lock-step even after a middle entry is removed.
+function findEntity(kind, entId) {
+  return kind === 'group' ? (findGroup(entId)?.group || null) : (findCategory(entId)?.cat || null);
+}
+async function reconcileEntityAlarms(kind, entId, reminders) {
+  const prefix = (kind === 'group' ? 'te-greminder-' : 'te-creminder-') + entId + '-';
+  try {
+    const all = await chrome.alarms.getAll();
+    await Promise.all(all.filter(a => a.name.startsWith(prefix)).map(a => chrome.alarms.clear(a.name)));
+  } catch {}
+  const list = reminders || [];
+  for (let n = 0; n < list.length; n++) {
+    const r = list[n];
+    if (r && r.at != null && r.at > Date.now()) {
+      try { await chrome.alarms.create(prefix + n, { when: r.at }); } catch {}
+    }
+  }
+}
+async function setEntityReminder(kind, entId, data, index) {
+  const ent = findEntity(kind, entId);
+  if (!ent) return;
+  State.snapshot(index != null ? 'Edit reminder' : 'Add reminder');
+  if (!Array.isArray(ent.reminders)) ent.reminders = [];
+  const entry = { at: data.at, notified: false, label: (data.label || '').trim() };
+  if (data.recur) entry.recur = data.recur;
+  if (index != null && ent.reminders[index]) ent.reminders[index] = entry;
+  else ent.reminders.push(entry);
+  await reconcileEntityAlarms(kind, entId, ent.reminders);
+  State.persist();
+  renderBoard();
+  toast('Reminder set');
+}
+async function setEntityReminderTime(kind, entId, index, ts) {
+  const ent = findEntity(kind, entId);
+  const r = ent && Array.isArray(ent.reminders) ? ent.reminders[index] : null;
+  if (!r) return;
+  State.snapshot('Reschedule reminder');
+  r.at = ts; r.notified = false;
+  await reconcileEntityAlarms(kind, entId, ent.reminders);
+  State.persist();
+  renderBoard();
+  toast('Reminder rescheduled');
+}
+async function removeEntityReminder(kind, entId, index) {
+  const ent = findEntity(kind, entId);
+  if (!ent || !Array.isArray(ent.reminders) || !ent.reminders[index]) return;
+  State.snapshot('Remove reminder');
+  ent.reminders.splice(index, 1);
+  if (!ent.reminders.length) delete ent.reminders;
+  await reconcileEntityAlarms(kind, entId, ent.reminders);
+  State.persist();
+  renderBoard();
+  toast('Reminder removed');
+}
+function recurLabel(recur) {
+  if (!recur || !recur.every) return '';
+  const n = Math.max(1, recur.interval || 1);
+  if (n === 1) return recur.every === 'day' ? 'daily' : recur.every === 'week' ? 'weekly' : 'monthly';
+  return `every ${n} ${recur.every}s`;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1312,7 +1500,7 @@ function collectReminders({ scope = 'all', filter } = {}) {
       (cat.reminders || []).forEach((r, n) => {
         if (r && r.at != null) out.push({
           at: r.at, notified: !!r.notified, source: 'category',
-          refId: cat.id, alarmId: `te-creminder-${cat.id}-${n}`,
+          refId: cat.id, index: n, alarmId: `te-creminder-${cat.id}-${n}`,
           wsId: ws.id, catId: cat.id,
           title: r.label || cat.name, color: r.color || null,
           recur: r.recur || null,
@@ -1323,7 +1511,7 @@ function collectReminders({ scope = 'all', filter } = {}) {
         (g.reminders || []).forEach((r, n) => {
           if (r && r.at != null) out.push({
             at: r.at, notified: !!r.notified, source: 'group',
-            refId: g.id, alarmId: `te-greminder-${g.id}-${n}`,
+            refId: g.id, index: n, alarmId: `te-greminder-${g.id}-${n}`,
             wsId: ws.id, catId: cat.id, groupId: g.id,
             title: r.label || g.name, color: r.color || g.color || null,
             recur: r.recur || null,
@@ -1458,8 +1646,18 @@ function selectEmoji(e) {
 // ════════════════════════════════════════════════════════════════
 // CONTEXT MENU
 // ════════════════════════════════════════════════════════════════
+// Holds the teardown for the currently-open context menu (outside-click +
+// keyboard listeners). Menu-item clicks call stopPropagation(), so the
+// document-level "click outside to close" handler never fired to remove itself
+// — that leaked a stale closer on every selection, which then swallowed the
+// next open (menu flashed open, the stale closer immediately closed it). We now
+// track a single cleanup and always run it from hideContextMenu(), so a menu
+// re-opens reliably after any selection.
+let _cmCleanup = null;
 function showContextMenu(x, y, items, opts) {
   const menu = document.getElementById('context-menu');
+  // Tear down any previously-open menu's listeners before opening a new one.
+  if (_cmCleanup) { _cmCleanup(); _cmCleanup = null; }
   menu.innerHTML = '';
   items.forEach(it => {
     if (it.sep) menu.appendChild(Object.assign(document.createElement('div'), { className: 'cm-sep' }));
@@ -1498,17 +1696,28 @@ function showContextMenu(x, y, items, opts) {
     }
   };
   menu.addEventListener('keydown', menuKey);
+  const close = e => { if (!menu.contains(e.target)) hideContextMenu(); };
+  // Register the single teardown for this menu — removed centrally by
+  // hideContextMenu() no matter how the menu is dismissed (outside click,
+  // Escape, or a menu-item action that stops propagation).
+  _cmCleanup = () => {
+    document.removeEventListener('click', close);
+    document.removeEventListener('contextmenu', close);
+    menu.removeEventListener('keydown', menuKey);
+  };
   setTimeout(() => {
     if (opts && opts.focusFirst) {
       const first = menu.querySelector('.cm-item');
       if (first) first.focus();
     }
-    const close = e => { if (!menu.contains(e.target)) { hideContextMenu(); document.removeEventListener('click', close); document.removeEventListener('contextmenu', close); menu.removeEventListener('keydown', menuKey); } };
     document.addEventListener('click', close);
     document.addEventListener('contextmenu', close);
   }, 50);
 }
-function hideContextMenu() { document.getElementById('context-menu').classList.add('hidden'); }
+function hideContextMenu() {
+  document.getElementById('context-menu').classList.add('hidden');
+  if (_cmCleanup) { _cmCleanup(); _cmCleanup = null; }
+}
 
 const cmIcons = {
   edit: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L4 10l-2.5.5L2 8l6.5-6.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
@@ -2265,6 +2474,7 @@ function renderCategoryTabs() {
       e.preventDefault();
       showContextMenu(e.pageX, e.pageY, [
         { text:'Rename', icon: cmIcons.edit, action: () => { const nn = prompt('Rename category:', cat.name); if (nn && nn.trim()) { State.snapshot('Rename cat'); cat.name = nn.trim(); State.persist(); renderCategoryTabs(); } } },
+        { text:'Set reminder…', icon: cmIcons.clock, action: () => openEntityReminderPicker('category', cat.id) },
         ws.categories.length > 1 ? { text:'Delete', icon: cmIcons.delete, danger: true, action: () => { if (confirm(`Delete "${cat.name}"?`)) { State.snapshot('Delete cat'); ws.categories = ws.categories.filter(c => c.id !== cat.id); if (ws.activeCatId === cat.id) ws.activeCatId = ws.categories[0].id; State.persist(); renderAll(); } } } : null
       ].filter(Boolean));
     };
@@ -2484,20 +2694,14 @@ function buildGroupCol(g) {
         ${renderIntentPills(g)}
       </div>
       <div class="gcol-acts">
-        <button class="gcol-btn" data-act="intent" title="Edit intention">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1.5a3.6 3.6 0 013.6 3.6c0 2.2-1.5 3.2-3.1 3.8l-.2.1v1.5M6 10.8h.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-        </button>
-        <button class="gcol-btn focus" data-act="focus" title="Expand to full page">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4V2h2M10 4V2H8M2 8v2h2M10 8v2H8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <button class="gcol-btn go" data-act="open-all" title="Open all">
+        <button class="gcol-btn go" data-act="open-all" title="Open all tabs" aria-label="Open all tabs">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2.5H2a1 1 0 00-1 1v6.5A1 1 0 002 11h6.5a1 1 0 001-1V8M7 1h4m0 0v4M11 1L5.5 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <button class="gcol-btn" data-act="dup" title="Duplicate">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="1.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="3.5" y="3.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+        <button class="gcol-btn focus" data-act="focus" title="Open as page" aria-label="Open as page">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4V2h2M10 4V2H8M2 8v2h2M10 8v2H8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <button class="gcol-btn danger" data-act="del" title="Delete">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M4.5 3V1.5h3V3M3 3v7a1 1 0 001 1h4a1 1 0 001-1V3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button class="gcol-btn" data-act="more" title="More…" aria-label="More group actions" aria-haspopup="menu">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="2.5" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="9.5" cy="6" r="1" fill="currentColor"/></svg>
         </button>
       </div>
     </div>
@@ -2542,15 +2746,17 @@ function buildGroupCol(g) {
   hd.addEventListener('keydown', e => {
     if ((e.key === 'Enter' || e.key === ' ') && e.target === hd) { e.preventDefault(); toggleCollapse(); }
   });
-  // Right-click on group
-  hd.addEventListener('contextmenu', e => {
-    e.preventDefault();
+  // Group menu — shared by right-click and the header's compact "More…" button,
+  // so every group action stays reachable even though the hover row now shows
+  // only the two most-used shortcuts (Open all / Open as page).
+  const openGroupMenu = (x, y) => {
     const ws = activeWs();
     const otherCats = ws ? ws.categories.filter(c => c.id !== ws.activeCatId) : [];
     const items = [
       { text:'Edit group…', icon: cmIcons.edit, action: () => openModal('edit-group', g) },
       { text:'Change symbol…', icon: cmIcons.symbol, action: () => openEmojiPicker({ kind:'group', id: g.id }, hd.querySelector('.gcol-sym-wrap')) },
       { text:'Edit intention…', icon: cmIcons.edit, action: () => openIntentEditor('group', g.id) },
+      { text:'Set reminder…', icon: cmIcons.clock, action: () => openEntityReminderPicker('group', g.id) },
       { text: g.collapsed ? 'Expand' : 'Collapse', icon: cmIcons.edit, action: () => { State.snapshot('Toggle'); g.collapsed = !g.collapsed; State.persist(); renderBoard(); } },
       { sep: true },
       { text:'Open all', icon: cmIcons.open, action: () => openGroupAll(g.id) },
@@ -2569,7 +2775,12 @@ function buildGroupCol(g) {
     items.push({ sep: true });
     items.push({ text:'Archive', icon: cmIcons.archive, action: () => archiveGroup(g.id) });
     items.push({ text:'Delete', icon: cmIcons.delete, danger:true, action: () => deleteGroup(g.id) });
-    showContextMenu(e.pageX, e.pageY, items);
+    showContextMenu(x, y, items);
+  };
+  // Right-click on group
+  hd.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    openGroupMenu(e.pageX, e.pageY);
   });
 
   // Symbol
@@ -2592,11 +2803,12 @@ function buildGroupCol(g) {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const act = btn.dataset.act;
-      if (act === 'del') deleteGroup(g.id);
-      else if (act === 'dup') duplicateGroup(g.id);
-      else if (act === 'open-all') openGroupAll(g.id);
+      if (act === 'open-all') openGroupAll(g.id);
       else if (act === 'focus') openGroupPage(g.id);
-      else if (act === 'intent') openIntentEditor('group', g.id);
+      else if (act === 'more') {
+        const r = btn.getBoundingClientRect();
+        openGroupMenu(r.left, r.bottom + 6);
+      }
     });
   });
 
@@ -3231,7 +3443,7 @@ let lastSelectedItemId = null;
 function syncItemSelMode() {
   itemSelMode = explicitSelMode || selectedItemIds.size > 0;
   document.body.classList.toggle('item-sel-mode', itemSelMode);
-  document.getElementById('select-mode-btn')?.classList.toggle('active', itemSelMode);
+  updateModeButtonState();
 }
 function toggleItemSelect(itemId) {
   if (selectedItemIds.has(itemId)) selectedItemIds.delete(itemId);
@@ -4440,23 +4652,38 @@ function bindPasteImportUI() {
 // ════════════════════════════════════════════════════════════════
 // REMINDER UI bind
 // ════════════════════════════════════════════════════════════════
+// Route a picker commit to the item or entity write path, carrying the label
+// (entities only) and the chosen recurrence.
+function commitReminderSet(ts, recur) {
+  const c = reminderCtx; if (!c) return;
+  if (c.kind === 'item') setReminder(c.id, ts, { recur });
+  else {
+    const label = (document.getElementById('rm-label')?.value || '').trim();
+    setEntityReminder(c.kind, c.id, { at: ts, label, recur }, c.index);
+  }
+}
+function commitReminderClear() {
+  const c = reminderCtx; if (!c) return;
+  if (c.kind === 'item') clearReminder(c.id);
+  else if (c.index != null) removeEntityReminder(c.kind, c.id, c.index);
+}
 function bindReminderUI() {
   document.getElementById('rm-x').onclick = closeReminderPicker;
-  document.getElementById('rm-clear').onclick = () => { if (reminderCtx) clearReminder(reminderCtx.itemId); closeReminderPicker(); };
+  document.getElementById('rm-clear').onclick = () => { commitReminderClear(); closeReminderPicker(); };
   document.getElementById('rm-save').onclick = () => {
     if (!reminderCtx) return;
     const dt = document.getElementById('rm-datetime').value;
     if (!dt) return;
     const ts = new Date(dt).getTime();
+    if (isNaN(ts)) return;
     if (ts < Date.now()) { toast('Time is in the past', { danger: true }); return; }
-    setReminder(reminderCtx.itemId, ts);
+    commitReminderSet(ts, readRecurControl());
     closeReminderPicker();
   };
   document.querySelectorAll('.rm-quick button').forEach(b => {
     b.onclick = () => {
-      const offset = +b.dataset.offset;
       if (!reminderCtx) return;
-      setReminder(reminderCtx.itemId, Date.now() + offset);
+      commitReminderSet(Date.now() + (+b.dataset.offset), readRecurControl());
       closeReminderPicker();
     };
   });
@@ -4912,6 +5139,13 @@ function renderGroupPage() {
   });
   page.appendChild(readme);
 
+  // The group's own reminders (§6) — e.g. "review this reading list every
+  // Friday" — listed with edit/remove and an add affordance.
+  const rem = document.createElement('div');
+  rem.className = 'gp-reminders';
+  renderGroupReminders(rem, g);
+  page.appendChild(rem);
+
   // The group's items, reusing the fully-wired bento column (drag/drop, add
   // buttons, context menu, reminders all keep working), sized to the page.
   const body = document.createElement('div');
@@ -4924,6 +5158,54 @@ function renderGroupPage() {
   $b.appendChild(page);
   applySearchFilter();
   return true;
+}
+
+// The reminders strip on a group page: a header with an add button, then one
+// row per reminder with its next fire time, recurrence, and edit/remove.
+function renderGroupReminders(container, g) {
+  container.innerHTML = '';
+  const list = Array.isArray(g.reminders) ? g.reminders : [];
+
+  const head = document.createElement('div');
+  head.className = 'gp-rem-head';
+  head.innerHTML = '<span class="gp-rem-title">Reminders</span>';
+  const add = document.createElement('button');
+  add.type = 'button'; add.className = 'gp-rem-add';
+  add.textContent = list.length ? '+ Add' : '+ Add a reminder';
+  add.onclick = () => openEntityReminderPicker('group', g.id);
+  head.appendChild(add);
+  container.appendChild(head);
+
+  if (!list.length) return;
+  const ul = document.createElement('div');
+  ul.className = 'gp-rem-list';
+  list.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'gp-rem-item' + (r.at < Date.now() && !r.recur ? ' past' : '');
+    const when = new Date(r.at).toLocaleString(appLocale(), { dateStyle: 'medium', timeStyle: 'short' });
+    const rec = r.recur ? ` · repeats ${recurLabel(r.recur)}` : '';
+    const dot = document.createElement('span');
+    dot.className = 'gp-rem-dot';
+    dot.style.setProperty('--dot', reminderDotColor(r.color || g.color));
+    const label = document.createElement('span');
+    label.className = 'gp-rem-label';
+    label.textContent = r.label || g.name;
+    const time = document.createElement('span');
+    time.className = 'gp-rem-when';
+    time.textContent = when + rec;
+    row.appendChild(dot);
+    row.appendChild(label);
+    row.appendChild(time);
+    const edit = document.createElement('button');
+    edit.type = 'button'; edit.className = 'gp-rem-btn'; edit.textContent = 'Edit';
+    edit.onclick = () => openEntityReminderPicker('group', g.id, i);
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'gp-rem-btn danger'; del.textContent = 'Remove';
+    del.onclick = () => removeEntityReminder('group', g.id, i);
+    row.appendChild(edit); row.appendChild(del);
+    ul.appendChild(row);
+  });
+  container.appendChild(ul);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5066,13 +5348,14 @@ function renderItemDetail() {
     const past = it.reminder.at < Date.now();
     const when = document.createElement('span');
     when.className = 'idp-rem-when' + (past ? ' past' : '');
-    when.textContent = `${new Date(it.reminder.at).toLocaleString(appLocale())} · ${fmtTimeRelative(it.reminder.at)}`;
+    const recur = it.reminder.recur ? ` · repeats ${recurLabel(it.reminder.recur)}` : '';
+    when.textContent = `${new Date(it.reminder.at).toLocaleString(appLocale())} · ${fmtTimeRelative(it.reminder.at)}${recur}`;
     remWrap.appendChild(when);
     const change = document.createElement('button'); change.type = 'button'; change.className = 'idp-btn'; change.textContent = 'Change'; change.onclick = () => openReminderPicker(it.id);
     const clr2 = document.createElement('button'); clr2.type = 'button'; clr2.className = 'idp-btn danger'; clr2.textContent = 'Clear'; clr2.onclick = () => clearReminder(it.id);
     remWrap.appendChild(change); remWrap.appendChild(clr2);
   } else {
-    const set = document.createElement('button'); set.type = 'button'; set.className = 'idp-btn'; set.textContent = 'Set reminder…'; set.onclick = () => openReminderPicker(it.id);
+    const set = document.createElement('button'); set.type = 'button'; set.className = 'idp-btn primary'; set.textContent = 'Set reminder…'; set.onclick = () => openReminderPicker(it.id);
     remWrap.appendChild(set);
   }
   rem.appendChild(remWrap);
@@ -6580,26 +6863,32 @@ function openReminderTarget(entry) {
     Router.navigate({ type: 'board', wsId: entry.wsId, catId: entry.catId, query: {} });
   }
 }
-// Right-click a dot → open/reschedule/clear (item reminders route through the
-// shared setReminder/clearReminder path).
+// Right-click a dot → open/reschedule/clear. Item reminders route through the
+// shared setReminder/clearReminder path; group/category reminders through the
+// entity path (§6).
 function calendarDotMenu(entry, x, y) {
   const items = [{ text: 'Open', action: () => openReminderTarget(entry) }];
   if (entry.source === 'item') {
     items.push({ text: 'Reschedule…', action: () => openReminderPicker(entry.refId) });
     items.push({ sep: true });
     items.push({ text: 'Clear reminder', danger: true, action: () => clearReminder(entry.refId) });
+  } else {
+    items.push({ text: 'Edit…', action: () => openEntityReminderPicker(entry.source, entry.refId, entry.index) });
+    items.push({ sep: true });
+    items.push({ text: 'Remove reminder', danger: true, action: () => removeEntityReminder(entry.source, entry.refId, entry.index) });
   }
   showContextMenu(x, y, items);
 }
-// Move an item reminder to a different day, preserving its time-of-day.
+// Move a reminder to a different day, preserving its time-of-day.
 function calRescheduleTo(entry, dayStart) {
-  if (!entry || entry.source !== 'item') return;
+  if (!entry) return;
   const orig = new Date(entry.at);
   const d = new Date(dayStart);
   d.setHours(orig.getHours(), orig.getMinutes(), 0, 0);
   const ts = d.getTime();
   if (ts === entry.at) return;
-  setReminder(entry.refId, ts); // re-renders (renderBoard) + toasts
+  if (entry.source === 'item') setReminder(entry.refId, ts, { recur: entry.recur });
+  else setEntityReminderTime(entry.source, entry.refId, entry.index, ts);
 }
 // Wire a container (day cell / week column) as a drop target for reschedule.
 function calMakeDropTarget(el, dayStart) {
@@ -6633,14 +6922,13 @@ function buildCalDot(entry, showTime) {
     (entry.source !== 'item' ? ` (${entry.source})` : '');
   dot.onclick = e => { e.stopPropagation(); openReminderTarget(entry); };
   dot.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); calendarDotMenu(entry, e.clientX, e.clientY); };
-  if (entry.source === 'item') {
-    dot.draggable = true;
-    dot.addEventListener('dragstart', ev => {
-      calDrag = entry; dot.classList.add('cal-dragging');
-      try { ev.dataTransfer.setData('text/plain', entry.refId); ev.dataTransfer.effectAllowed = 'move'; } catch {}
-    });
-    dot.addEventListener('dragend', () => { calDrag = null; dot.classList.remove('cal-dragging'); });
-  }
+  // Every reminder — item, group, or category — can be dragged to reschedule.
+  dot.draggable = true;
+  dot.addEventListener('dragstart', ev => {
+    calDrag = entry; dot.classList.add('cal-dragging');
+    try { ev.dataTransfer.setData('text/plain', entry.refId); ev.dataTransfer.effectAllowed = 'move'; } catch {}
+  });
+  dot.addEventListener('dragend', () => { calDrag = null; dot.classList.remove('cal-dragging'); });
   return dot;
 }
 
@@ -6963,6 +7251,9 @@ function renderCalendar() {
     if (fi) { fi.focus(); const p = _calFilterRestore.caret; if (p != null) { try { fi.setSelectionRange(p, p); } catch {} } }
     _calFilterRestore = null;
   }
+  // First calendar open: point out that the board's search language works here too.
+  setTimeout(() => coachMark('calendar', '#cal-filter-input',
+    'Filter by search', 'The calendar reads the same operators as the board search — try type:tab, in:work, or color:red to narrow what shows.'), 400);
   return true;
 }
 
@@ -7036,8 +7327,40 @@ function toggleSelectMode() {
 
 function toggleReorderMode() {
   const on = document.body.classList.toggle('reorder-mode');
-  document.getElementById('reorder-mode-btn').classList.toggle('active', on);
+  updateModeButtonState();
   if (on) toast('Reorder mode on — drag to rearrange. Esc to exit.');
+}
+
+// Reflect whether an "organize" mode (item selection or reorder) is active onto
+// the top-bar overflow (⋯) button. These controls moved off the always-visible
+// toolbar into its menu, so the ⋯ button carries their combined active state.
+function updateModeButtonState() {
+  const on = itemSelMode || document.body.classList.contains('reorder-mode');
+  document.getElementById('more-btn')?.classList.toggle('active', on);
+}
+
+// The top-bar overflow (⋯) menu — houses the less-frequent "organize" and
+// tab-management actions (item selection, reorder, save all open tabs) that used
+// to be separate always-visible buttons. Relocating them keeps the default
+// toolbar calm while leaving everything one click away. Reuses the shared
+// context-menu chrome so it matches every theme.
+const MORE_MENU_ICONS = {
+  select: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="1.5" width="9" height="9" rx="2.2" stroke="currentColor" stroke-width="1.2"/><path d="M3.8 6l1.6 1.6L8.4 4.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  reorder: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="4" cy="2.5" r="0.9" fill="currentColor"/><circle cx="8" cy="2.5" r="0.9" fill="currentColor"/><circle cx="4" cy="6" r="0.9" fill="currentColor"/><circle cx="8" cy="6" r="0.9" fill="currentColor"/><circle cx="4" cy="9.5" r="0.9" fill="currentColor"/><circle cx="8" cy="9.5" r="0.9" fill="currentColor"/></svg>',
+  save: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2.7A0.8 0.8 0 012.8 2h5l2.2 2.2v5.1a0.8 0.8 0 01-.8.8H2.8a0.8 0.8 0 01-.8-.8V2.7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M4 2v2.4h4V2M4 10V7h4v3" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>',
+};
+function openMoreMenu(btn) {
+  const selOn = itemSelMode;
+  const reOn = document.body.classList.contains('reorder-mode');
+  const items = [
+    { label: 'Organize' },
+    { text: tr('action.selectionMode'), icon: MORE_MENU_ICONS.select, sub: selOn ? '✓' : '', action: toggleSelectMode },
+    { text: tr('action.reorderMode'), icon: MORE_MENU_ICONS.reorder, sub: reOn ? '✓' : '', action: toggleReorderMode },
+    { sep: true },
+    { text: tr('action.saveAllTabs'), icon: MORE_MENU_ICONS.save, action: saveAllTabs },
+  ];
+  const r = btn.getBoundingClientRect();
+  showContextMenu(r.left, r.bottom + 6, items, { focusFirst: true });
 }
 
 // ── Drag auto-scroll: when dragging near the top/bottom of any scrollable area, scroll it ──
@@ -8535,54 +8858,39 @@ function bindWorkout() {
 // Step shape:
 //   { target: '#sel'|null, title, body, pos?: 'left'|'right'|'above'|'below',
 //     center?: bool — render a centered card with no spotlight (welcome/finish) }
+// A short welcome — three cards, not a nine-step wall. Everything else is
+// taught just-in-time the first time you reach a surface (see coachMark).
 const TOUR_STEPS = [
   {
     center: true,
     title: '👋 Welcome to Tabento',
-    body: 'A calmer place for your tabs. In about 30 seconds you\'ll know how to save, organise, and find anything again. Use ← / → to step through, or Esc to skip.'
-  },
-  {
-    target: '#ws-chips-stack',
-    title: '🏠 Workspaces',
-    body: 'Group your work into separate spaces — Work, Study, Side project. Each one keeps its own tabs, notes, and tools. Switch between them by clicking a chip.'
+    body: 'A calmer home for your tabs. Save what matters, group it your way, and find it again in seconds.'
   },
   {
     target: '#open-tabs',
-    title: '📑 Your open tabs',
-    body: 'Every tab in this window shows up here. Drag one onto the board to save it for later, or use the select button to grab several at once.'
-  },
-  {
-    target: '#board',
-    title: '🗂️ The board',
-    body: 'Drop tabs into groups, mix in notes, jot down to-dos. Right-click anything for more actions, and drag to reorder.',
-    pos: 'left'
+    title: 'Save a tab',
+    body: 'Your open tabs sit here. Drag one onto the board to keep it for later, or grab a few at once with the select button.',
+    pos: 'right'
   },
   {
     target: '#cat-tabs-wrap',
-    title: '📂 Categories',
-    body: 'Cut a workspace into themed sections — Reading, Tasks, Inspiration. Tabs land in the active category by default.'
-  },
-  {
-    target: '#tools-btn',
-    title: '⚡ Productivity tools',
-    body: 'Pomodoro, finance diary, habits, hydration, goals, reading log and more — pop any of them out as a floating widget while you work.'
-  },
-  {
-    target: '#view-mode-btn',
-    title: '🔄 Switch how it looks',
-    body: 'Open the layout menu to view the same links as a bento board, a list, a freeform canvas, a column explorer, or a chronological timeline. Each category remembers its own layout.'
-  },
-  {
-    target: '#search-btn',
-    title: '🔍 Find anything',
-    body: 'Ctrl/⌘ + K searches every tab, note, and archive across all workspaces. Esc closes overlays, and ? opens the full shortcut sheet.'
-  },
-  {
-    center: true,
-    title: '🎉 You\'re ready',
-    body: 'That\'s the lot. You can replay this any time from Settings → Show tour. Now go make something happen.'
+    title: 'Find your way around',
+    body: 'Groups hold tabs, notes, and to-dos; categories and workspaces keep separate spaces. Press ⌘/Ctrl + K to search everything, or ? for shortcuts.',
+    pos: 'below'
   }
 ];
+
+// Onboarding record accessor. Returns the structured onboarding object,
+// creating it (and folding in the legacy tourCompleted flag) if an older
+// session never ran the schema-6 migration path.
+function ensureOnboarding(settings) {
+  const s = settings || State.get().settings;
+  if (!s.onboarding || typeof s.onboarding !== 'object') {
+    s.onboarding = { welcomeSeen: !!s.tourCompleted, hintsSeen: {}, disabled: false };
+  }
+  if (!s.onboarding.hintsSeen || typeof s.onboarding.hintsSeen !== 'object') s.onboarding.hintsSeen = {};
+  return s.onboarding;
+}
 
 let tourIndex = 0;
 
@@ -8599,7 +8907,9 @@ function startTour() {
 }
 function endTour(skipped) {
   document.getElementById('tour-overlay').classList.add('hidden');
-  State.get().settings.tourCompleted = true;
+  const s = State.get().settings;
+  s.tourCompleted = true;              // keep older builds from re-onboarding
+  ensureOnboarding(s).welcomeSeen = true;
   State.persist();
   if (!skipped) toast('You\'re all set');
 }
@@ -8724,6 +9034,79 @@ function bindTour() {
   }));
 }
 
+// ── Just-in-time coach-marks ────────────────────────────────────────
+// One small hint, shown the first time a user reaches a surface — never a
+// queue. Fires at most once per key (persisted in onboarding.hintsSeen),
+// never while another coach-mark or the welcome is up, and only after the
+// welcome has been dismissed. This is how new surfaces onboard themselves
+// without re-inflating the upfront tour.
+let _coachActive = null;   // { key, el, target, reposition, dismiss }
+
+function coachMark(key, targetSel, title, body) {
+  const s = State.get().settings;
+  const ob = ensureOnboarding(s);
+  if (ob.disabled || !ob.welcomeSeen || ob.hintsSeen[key] || _coachActive) return;
+  const target = typeof targetSel === 'string' ? document.querySelector(targetSel) : targetSel;
+  if (!target || !target.getBoundingClientRect) return;
+  const el = document.getElementById('coach');
+  if (!el) return;
+
+  // Mark seen up front so a reload mid-hint doesn't replay it.
+  ob.hintsSeen[key] = true;
+  State.persist();
+
+  el.querySelector('.coach-title').textContent = title;
+  el.querySelector('.coach-body').textContent = body;
+  el.classList.remove('hidden');
+
+  const place = () => {
+    const r = target.getBoundingClientRect();
+    const cw = el.offsetWidth || 260, ch = el.offsetHeight || 96, gap = 12;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    // Prefer below the target, flip above when there's no room.
+    let top = r.bottom + gap;
+    let arrow = 'up';
+    if (top + ch + 8 > vh) { top = r.top - ch - gap; arrow = 'down'; }
+    let left = r.left + r.width / 2 - cw / 2;
+    left = Math.min(vw - cw - 12, Math.max(12, left));
+    top = Math.min(vh - ch - 12, Math.max(12, top));
+    el.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
+    el.dataset.arrow = arrow;
+    // Arrow x-offset so it points at the target centre even after clamping.
+    const ax = Math.min(cw - 20, Math.max(16, r.left + r.width / 2 - left));
+    el.style.setProperty('--coach-ax', ax + 'px');
+  };
+  place();
+  // Show on the next frame so the entrance transition runs from hidden.
+  requestAnimationFrame(() => el.classList.add('coach-in'));
+
+  const reposition = rafThrottle(place);
+  const dismiss = () => {
+    if (_coachActive && _coachActive.key !== key) return;
+    el.classList.remove('coach-in');
+    window.removeEventListener('resize', reposition);
+    window.removeEventListener('scroll', reposition, true);
+    document.removeEventListener('mousedown', onOutside, true);
+    clearTimeout(timer);
+    setTimeout(() => el.classList.add('hidden'), 200);
+    _coachActive = null;
+  };
+  const onOutside = e => { if (!el.contains(e.target)) dismiss(); };
+
+  window.addEventListener('resize', reposition);
+  window.addEventListener('scroll', reposition, true);
+  // Defer the outside-click binding a tick so the click that opened the
+  // surface doesn't immediately dismiss the hint.
+  setTimeout(() => document.addEventListener('mousedown', onOutside, true), 0);
+  el.querySelector('.coach-got').onclick = dismiss;
+  const timer = setTimeout(dismiss, 9000);
+
+  _coachActive = { key, el, target, reposition, dismiss };
+}
+
+// Close the active coach-mark (used by the global Esc handler).
+function dismissCoach() { if (_coachActive) _coachActive.dismiss(); }
+
 // ════════════════════════════════════════════════════════════════
 // BIND STATIC UI
 // ════════════════════════════════════════════════════════════════
@@ -8740,16 +9123,22 @@ function bindStatic() {
   document.getElementById('tab-filter').oninput = _debouncedApplyFilter;
   document.getElementById('tab-filter').onkeydown = e => { if (e.key === 'Escape') { e.target.value = ''; applyFilter(); e.target.blur(); } };
 
-  document.getElementById('theme-btn').onclick = () => {
+  // Cycle theme now lives inside the Settings → Appearance theme section, so it
+  // reads as part of theme customization rather than a primary dashboard action.
+  const themeCycleBtn = document.getElementById('theme-cycle-btn');
+  if (themeCycleBtn) themeCycleBtn.onclick = () => {
     const cycle = THEMES.map(t => t.id);
     const i = cycle.indexOf(State.get().settings.theme);
     State.get().settings.theme = cycle[(i + 1) % cycle.length];
     applySettings();
     State.persist();
+    // Nudge the animation so the control feels responsive to the cycle.
+    themeCycleBtn.classList.remove('spin');
+    void themeCycleBtn.offsetWidth;
+    themeCycleBtn.classList.add('spin');
     const t = THEMES.find(x => x.id === State.get().settings.theme);
     toast(tr('toast.theme', { theme: t?.label || State.get().settings.theme }));
   };
-  document.getElementById('save-session-btn').onclick = saveAllTabs;
   const _drawer = document.getElementById('settings-drawer');
   const _openDrawer = () => { rememberOpener(_drawer); _drawer.classList.remove('hidden'); renderArchiveList(); setTimeout(() => focusFirstIn(_drawer), 50); };
   const _closeDrawer = () => { _drawer.classList.add('hidden'); restoreOpener(_drawer); };
@@ -8834,6 +9223,8 @@ function bindStatic() {
     else if (e.key.toLowerCase() === 'c' && !inField && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) { e.preventDefault(); if (activeCalendar) closeCalendar(); else openCalendar(); }
     else if (e.key === '?' && !inField && !e.ctrlKey && !e.metaKey) { e.preventDefault(); openCheatsheet(); }
     else if (e.key === 'Escape') {
+      // A one-time coach-mark is the lightest layer — dismiss it first.
+      if (_coachActive) { dismissCoach(); return; }
       // Snapshot which layered overlays were open *before* we start closing
       // them, so a single Escape only pops the topmost one — not the group page
       // sitting beneath a modal/menu/tool overlay.
@@ -8887,7 +9278,7 @@ function bindStatic() {
       if (itemSelMode || selectedItemIds.size) clearItemSelection();
       if (document.body.classList.contains('reorder-mode')) {
         document.body.classList.remove('reorder-mode');
-        document.getElementById('reorder-mode-btn').classList.remove('active');
+        updateModeButtonState();
       }
     }
   });
@@ -8910,11 +9301,10 @@ function bindStatic() {
   bindGoals();
   bindWorkout();
 
-  // View modes + selection mode + reorder mode
+  // View modes + calendar + overflow (⋯) menu (selection / reorder / save all)
   document.getElementById('view-mode-btn').onclick = (e) => openLayoutMenu(e.currentTarget);
   document.getElementById('calendar-btn').onclick = () => { if (activeCalendar) closeCalendar(); else openCalendar(); };
-  document.getElementById('select-mode-btn').onclick = toggleSelectMode;
-  document.getElementById('reorder-mode-btn').onclick = toggleReorderMode;
+  document.getElementById('more-btn').onclick = (e) => openMoreMenu(e.currentTarget);
 
   // Apply saved view mode on boot
   setViewMode(getViewMode());
@@ -8923,15 +9313,29 @@ function bindStatic() {
   setupDragAutoScroll();
   setupOpenTabsDropToOpen();
 
-  // Onboarding tour
+  // Onboarding — a short welcome up front, the rest taught just-in-time.
   bindTour();
-  if (!State.get().settings.tourCompleted) {
+  if (!ensureOnboarding(State.get().settings).welcomeSeen) {
     setTimeout(startTour, 600);
   }
   document.getElementById('show-tour-btn').onclick = () => {
     document.getElementById('settings-drawer').classList.add('hidden');
     setTimeout(startTour, 200);
   };
+  const resetHintsBtn = document.getElementById('reset-hints-btn');
+  if (resetHintsBtn) resetHintsBtn.onclick = () => {
+    ensureOnboarding(State.get().settings).hintsSeen = {};
+    State.persist();
+    toast('Tips reset — they\'ll show again as you explore');
+  };
+  const tipsTog = document.getElementById('tog-tips');
+  if (tipsTog) {
+    tipsTog.checked = !ensureOnboarding(State.get().settings).disabled;
+    tipsTog.onchange = e => {
+      ensureOnboarding(State.get().settings).disabled = !e.target.checked;
+      State.persist();
+    };
+  }
 
   // Floating tool widgets - pop-out buttons
   ['pomodoro:pomo-popout', 'finance:fin-popout', 'habits:habit-popout', 'water:water-popout', 'goals:goals-popout', 'subs:subs-popout', 'books:books-popout', 'workout:workout-popout']
@@ -8943,6 +9347,12 @@ function bindStatic() {
 
   // Restore any floating widgets from previous session
   renderFloatingWidgets();
+
+  // Once the board has settled, surface a one-time hint about the layout
+  // switcher — the JIT replacement for the old tour steps. Skipped while the
+  // welcome is still up (welcomeSeen gates it), so it never stacks.
+  setTimeout(() => coachMark('layout', '#view-mode-btn',
+    'More ways to look', 'Switch the same links between board, list, canvas, explorer, and timeline. Each category remembers its own layout.'), 1800);
 }
 
 // ════════════════════════════════════════════════════════════════
