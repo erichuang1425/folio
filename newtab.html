@@ -7,10 +7,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,400&family=Inter:wght@400..700&family=IBM+Plex+Sans:wght@400..600&family=JetBrains+Mono:wght@400..600&family=Lora:wght@400..600&family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/icon16.png">
-  <link rel="icon" type="image/png" sizes="48x48" href="icons/icon48.png">
-  <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png">
-  <link rel="shortcut icon" type="image/png" href="icons/icon16.png">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon48.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="/icons/icon128.png">
+  <link rel="shortcut icon" href="/favicon.ico">
   <link rel="stylesheet" href="newtab.css">
 </head>
 <body>
@@ -122,6 +124,9 @@
           <div class="topbar-divider"></div>
           <button id="view-mode-btn" class="icon-btn" title="Switch layout" data-mode="board" aria-haspopup="menu" data-i18n-title="action.switchLayout">
             <span id="view-mode-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="5" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="3" width="5" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg></span>
+          </button>
+          <button id="calendar-btn" class="icon-btn" title="Calendar (reminders)" aria-pressed="false" data-i18n-title="action.calendar">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3" width="11" height="10.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 6h11M5.5 2v2.2M10.5 2v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="5.6" cy="9" r="0.9" fill="currentColor"/><circle cx="8" cy="9" r="0.9" fill="currentColor"/><circle cx="10.4" cy="9" r="0.9" fill="currentColor"/></svg>
           </button>
           <button id="select-mode-btn" class="icon-btn" title="Selection mode" data-i18n-title="action.selectionMode">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="2.5" width="11" height="11" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 8l2 2 3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -428,6 +433,7 @@
           <dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Z</kbd></dt><dd>Undo</dd>
           <dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></dt><dd>Redo</dd>
           <dt><kbd>S</kbd></dt><dd>Focus sidebar tab filter</dd>
+          <dt><kbd>C</kbd></dt><dd>Open / close the reminders calendar</dd>
           <dt><kbd>↑</kbd> / <kbd>↓</kbd></dt><dd>Move focus between items in a group</dd>
           <dt><kbd>Enter</kbd></dt><dd>Open tab · toggle to-do · expand stack</dd>
           <dt><kbd>M</kbd></dt><dd>Move focused item (or selection) to another group</dd>
