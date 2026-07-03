@@ -36,6 +36,7 @@ const I18N = {
     'action.undo': 'Undo (Ctrl+Z)',
     'action.tools': 'Tools (Pomodoro, Finance, Subs...)',
     'action.switchLayout': 'Switch layout',
+    'action.calendar': 'Calendar (reminders)',
     'action.selectionMode': 'Selection mode',
     'action.reorderMode': 'Reorder mode',
     'action.search': 'Search (Ctrl/Cmd + K)',
@@ -89,6 +90,7 @@ const I18N = {
     'action.undo': '復原 (Ctrl+Z)',
     'action.tools': '工具 (番茄鐘、記帳、訂閱...)',
     'action.switchLayout': '切換版面',
+    'action.calendar': '行事曆（提醒）',
     'action.selectionMode': '選取模式',
     'action.reorderMode': '重新排序模式',
     'action.search': '搜尋 (Ctrl/Cmd + K)',
@@ -378,6 +380,18 @@ let _exFocusAfter = null;
 // Timeline layout (§3.2) time granularity: 'day' | 'week' | 'month'.
 let timelineZoom = 'day';
 
+// Calendar surface (§5). null → not on the calendar; { view, anchor } while it's
+// open. view ∈ CAL_VIEWS; anchor is a ms timestamp *inside* the period being
+// shown (prev/next shift it, "Today" resets it). Ephemeral like timelineZoom:
+// only the view rides the URL (`…/calendar?cal=<view>`); the anchor resets to
+// now on reload, exactly as the timeline's zoom does. Mutually exclusive with
+// activeGroupPage — entering one clears the other.
+let activeCalendar = null;
+// The calendar's own filter string (§5.2) — the board search vocabulary applied
+// to reminders. Ephemeral; reset each time the calendar is entered.
+let calendarFilter = '';
+const CAL_VIEWS = ['month', 'week', 'agenda'];
+
 function currentDetailItemId() {
   return activeGroupPage ? (activeGroupPage.itemId || null) : (boardDetailItemId || null);
 }
@@ -428,6 +442,11 @@ const Router = (() => {
   function currentRoute() {
     const ws = activeWs();
     if (!ws) return null;
+    if (activeCalendar) {
+      // Only the view is durable in the URL; a bare `…/calendar` means month.
+      const q = activeCalendar.view && activeCalendar.view !== 'month' ? { cal: activeCalendar.view } : {};
+      return { type: 'calendar', wsId: ws.id, query: q };
+    }
     if (activeGroupPage) {
       return { type: 'group', wsId: ws.id, groupId: activeGroupPage.groupId, itemId: activeGroupPage.itemId || null, query: {} };
     }
@@ -440,9 +459,8 @@ const Router = (() => {
   }
 
   // Apply a parsed route to State (select workspace / category / layout, or open
-  // a group page). Returns true if anything changed. Unknown ids fall back
-  // gracefully so a stale deep link never wedges the app. The calendar surface
-  // (§5) doesn't exist yet, so that route resolves to its workspace's board.
+  // a group page or the calendar). Returns true if anything changed. Unknown ids
+  // fall back gracefully so a stale deep link never wedges the app.
   function apply(route) {
     if (!route) return false;
     const s = State.get();
@@ -450,7 +468,21 @@ const Router = (() => {
     const ws = s.workspaces.find(w => w.id === route.wsId);
     if (ws && s.activeWsId !== ws.id) { s.activeWsId = ws.id; changed = true; }
 
+    if (route.type === 'calendar') {
+      // The calendar is its own full surface: leave any group page / board detail
+      // pane behind. The view rides the URL; the anchor is ephemeral (defaults to
+      // now), and the filter resets so a deep link opens a clean calendar.
+      if (activeGroupPage) { activeGroupPage = null; changed = true; }
+      if (boardDetailItemId) { boardDetailItemId = null; changed = true; }
+      const view = CAL_VIEWS.includes(route.query && route.query.cal) ? route.query.cal : 'month';
+      if (!activeCalendar) { activeCalendar = { view, anchor: Date.now() }; calendarFilter = ''; changed = true; }
+      else if (activeCalendar.view !== view) { activeCalendar.view = view; changed = true; }
+      return changed;
+    }
+
     if (route.type === 'group') {
+      // Entering a group page leaves the calendar surface behind.
+      if (activeCalendar) { activeCalendar = null; changed = true; }
       // A group page owns the item-detail surface via its path, so any board
       // detail pane is left behind when we enter one.
       if (boardDetailItemId) { boardDetailItemId = null; changed = true; }
@@ -472,8 +504,9 @@ const Router = (() => {
       return changed;
     }
 
-    // Board (and, until §5, calendar) surfaces: leave any open group page.
+    // Board surface: leave any open group page or calendar.
     if (activeGroupPage) { activeGroupPage = null; changed = true; }
+    if (activeCalendar) { activeCalendar = null; changed = true; }
 
     const activeW = activeWs();
     if (activeW && route.type === 'board' && route.catId) {
@@ -952,18 +985,11 @@ function buildThemeGrid() {
     const card = document.createElement('div');
     card.className = 'theme-card';
     card.dataset.theme = t.id;
-    const [bg, accent, pop] = t.colors;
-    card.style.setProperty('--th-bg', bg);
-    card.style.setProperty('--th-accent', accent);
-    card.style.setProperty('--th-pop', pop);
     card.innerHTML = `
       <div class="th-preview">
-        <div class="th-bento" aria-hidden="true">
-          <span class="thb-top"></span>
-          <span class="thb-left"></span>
-          <span class="thb-mid"></span>
-          <span class="thb-right"></span>
-        </div>
+        <div class="tp1" style="background:${t.colors[0]}"></div>
+        <div class="tp2" style="background:${t.colors[1]}"></div>
+        <div class="tp3" style="background:${t.colors[2]}"></div>
       </div>
       <div class="th-name">${t.label}</div>`;
     card.onclick = () => {
@@ -2361,6 +2387,12 @@ const LAYOUT_ORDER = ['board', 'list', 'canvas', 'explorer', 'timeline'];
 // mutates state calls renderBoard() to re-render whatever layout is showing.
 function renderBoard() {
   invalidateItemCache();
+  updateCalendarButton();
+  // The calendar (§5) and group pages (§4.1) are surfaces that sit above the
+  // layout registry: when one is open every re-render keeps showing it. Each
+  // renderer returns false if the user has navigated away, so we fall through to
+  // the normal board in that case.
+  if (activeCalendar && renderCalendar()) return;
   // A group page (§4.1) is a surface that sits above the layout registry: when
   // one is open every re-render keeps showing it. renderGroupPage() returns
   // false if its group vanished or the user navigated away, so we fall through
@@ -2368,7 +2400,7 @@ function renderBoard() {
   if (activeGroupPage && renderGroupPage()) return;
   hideBreadcrumb();
   const $b = document.getElementById('board');
-  $b.classList.remove('group-page-mode', 'list-mode', 'canvas-mode', 'explorer-mode', 'timeline-mode');
+  $b.classList.remove('group-page-mode', 'list-mode', 'canvas-mode', 'explorer-mode', 'timeline-mode', 'calendar-mode');
   const mode = getViewMode();
   document.body.dataset.viewMode = mode;
   updateViewModeButton(mode);
@@ -4857,7 +4889,7 @@ function renderGroupPage() {
   renderBreadcrumb(info.ws, cat, g);
 
   const $b = document.getElementById('board');
-  $b.classList.remove('list-mode', 'canvas-mode');
+  $b.classList.remove('list-mode', 'canvas-mode', 'explorer-mode', 'timeline-mode', 'calendar-mode');
   $b.classList.add('group-page-mode');
   $b.innerHTML = '';
 
@@ -6395,6 +6427,543 @@ function renderTimelineView() {
   wrap.appendChild(track);
   $b.appendChild(wrap);
   applySearchFilter();
+}
+
+// ════════════════════════════════════════════════════════════════
+// CALENDAR (§5 — unified reminders surface)
+// ════════════════════════════════════════════════════════════════
+// A workspace-scoped calendar that projects the reminder aggregator (§2.3) onto
+// a time axis. It is a routed surface (`…/calendar?cal=<view>`), not an overlay,
+// so it deep-links and browser back/forward work. Three views share one data
+// source and one filter language (the board search operators, §5.2): a Month
+// grid, a Week column view, and an Agenda "reminders inbox". Item reminders can
+// be dragged to another day (§5.3) — every write routes through the shared
+// setReminder/clearReminder path so alarm scheduling stays correct.
+
+// Drag-to-reschedule payload (the entry being dragged); null when idle.
+let calDrag = null;
+// Filter-input focus/caret to restore across the re-render each keystroke fires,
+// so typing in the calendar filter never loses the cursor.
+let _calFilterRestore = null;
+let _calFilterTimer = null;
+
+// Named item colors resolve to their theme token; group/category hex colors are
+// used as-is. Absent → the accent.
+const CAL_COLOR_VARS = { red: 'var(--red)', orange: 'var(--orange)', yellow: 'var(--yellow)', green: 'var(--green)', blue: 'var(--blue)' };
+function reminderDotColor(color) {
+  if (!color) return 'var(--accent)';
+  return CAL_COLOR_VARS[color] || color;
+}
+function _calReduceMotion() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+// ── Navigation ──────────────────────────────────────────────────
+function openCalendar() {
+  const ws = activeWs(); if (!ws) return;
+  const view = activeCalendar ? activeCalendar.view : 'month';
+  Router.navigate({ type: 'calendar', wsId: ws.id, query: view !== 'month' ? { cal: view } : {} });
+}
+function closeCalendar() {
+  const ws = activeWs();
+  const cat = activeCat();
+  Router.navigate({ type: 'board', wsId: ws ? ws.id : null, catId: cat ? cat.id : null, query: {} });
+}
+function setCalendarView(view) {
+  if (!CAL_VIEWS.includes(view) || !activeCalendar || activeCalendar.view === view) return;
+  const ws = activeWs(); if (!ws) return;
+  Router.navigate({ type: 'calendar', wsId: ws.id, query: view !== 'month' ? { cal: view } : {} });
+}
+// Prev/next page the anchor by the active granularity. Not a route change (the
+// anchor is ephemeral), so it just re-renders.
+function shiftCalendar(dir) {
+  if (!activeCalendar) return;
+  const a = new Date(activeCalendar.anchor);
+  if (activeCalendar.view === 'month') a.setMonth(a.getMonth() + dir, 1);
+  else a.setDate(a.getDate() + dir * 7);
+  activeCalendar.anchor = a.getTime();
+  renderBoard();
+}
+function calendarToday() {
+  if (!activeCalendar) return;
+  activeCalendar.anchor = Date.now();
+  renderBoard();
+}
+// Reflect calendar-open state on the top-bar button (called from renderBoard,
+// which runs before the calendar's own early-return, so it toggles both ways).
+function updateCalendarButton() {
+  const b = document.getElementById('calendar-btn');
+  if (b) { b.classList.toggle('active', !!activeCalendar); b.setAttribute('aria-pressed', activeCalendar ? 'true' : 'false'); }
+}
+
+// ── Data + filtering ────────────────────────────────────────────
+// Every reminder in the active workspace, enriched with the group/category name
+// so the in:/category: filter operators can match by name.
+function buildCalendarEntries() {
+  const ws = activeWs();
+  if (!ws) return [];
+  const catName = Object.create(null), groupName = Object.create(null);
+  ws.categories.forEach(c => {
+    catName[c.id] = c.name;
+    c.groups.forEach(g => { groupName[g.id] = g.name; });
+  });
+  return collectReminders({ scope: ws.id }).map(e => Object.assign({}, e, {
+    catName: catName[e.catId] || '',
+    groupName: e.groupId ? (groupName[e.groupId] || '') : '',
+  }));
+}
+
+// Parse the calendar filter string into a predicate over reminder entries,
+// reusing the board's operator grammar (§5.2): type:, color:, source:, in:,
+// category:, bare/"quoted" text, all with `-` negation. Returns null for an
+// empty query (meaning "keep everything").
+function parseCalendarFilter(str) {
+  const raw = String(str || '').toLowerCase().trim();
+  if (!raw) return null;
+  const pos = { type: [], color: [], source: [], in: [], category: [], text: [] };
+  const neg = { type: [], color: [], source: [], in: [], category: [], text: [] };
+  (raw.match(/-?"[^"]*"|\S+/g) || []).forEach(tok => {
+    let bucket = pos;
+    if (tok[0] === '-' && tok.length > 1) { bucket = neg; tok = tok.slice(1); }
+    if (tok.length > 1 && tok[0] === '"' && tok[tok.length - 1] === '"') {
+      const p = tok.slice(1, -1).trim(); if (p) bucket.text.push(p); return;
+    }
+    let m;
+    if ((m = /^type:(.+)$/.exec(tok))) m[1].split(',').forEach(t => { const ct = SEARCH_TYPES[t]; if (ct && !bucket.type.includes(ct)) bucket.type.push(ct); });
+    else if ((m = /^colou?r:(.+)$/.exec(tok))) m[1].split(',').forEach(c => { if (SEARCH_COLORS.includes(c)) bucket.color.push(c); });
+    else if ((m = /^source:(.+)$/.exec(tok))) m[1].split(',').forEach(s => { if (['item', 'group', 'category'].includes(s)) bucket.source.push(s); });
+    else if ((m = /^(?:in|group):(.+)$/.exec(tok))) m[1].split(',').forEach(v => { v = v.trim(); if (v) bucket.in.push(v); });
+    else if ((m = /^(?:category|cat):(.+)$/.exec(tok))) m[1].split(',').forEach(v => { v = v.trim(); if (v) bucket.category.push(v); });
+    else bucket.text.push(tok);
+  });
+  const inName = e => (e.groupName || '').toLowerCase();
+  const catNm = e => (e.catName || '').toLowerCase();
+  const title = e => (e.title || '').toLowerCase();
+  const keep = e => (
+    (!pos.type.length || pos.type.includes(e.itemType)) &&
+    (!pos.color.length || pos.color.includes(e.color)) &&
+    (!pos.source.length || pos.source.includes(e.source)) &&
+    (!pos.in.length || pos.in.some(f => inName(e).includes(f))) &&
+    (!pos.category.length || pos.category.some(f => catNm(e).includes(f))) &&
+    (!pos.text.length || pos.text.every(n => title(e).includes(n)))
+  );
+  const drop = e => (
+    (neg.type.length && neg.type.includes(e.itemType)) ||
+    (neg.color.length && neg.color.includes(e.color)) ||
+    (neg.source.length && neg.source.includes(e.source)) ||
+    (neg.in.length && neg.in.some(f => inName(e).includes(f))) ||
+    (neg.category.length && neg.category.some(f => catNm(e).includes(f))) ||
+    (neg.text.length && neg.text.some(n => title(e).includes(n)))
+  );
+  return e => keep(e) && !drop(e);
+}
+
+// Bucket entries by local day-start (ms), each day's list sorted by time.
+function calGroupByDay(entries) {
+  const m = new Map();
+  entries.forEach(e => { const k = _tlStartOfDay(e.at); if (!m.has(k)) m.set(k, []); m.get(k).push(e); });
+  m.forEach(list => list.sort((a, b) => a.at - b.at));
+  return m;
+}
+
+// ── Interactions ────────────────────────────────────────────────
+// Click a dot → jump to a contextful destination (the item's group page with its
+// detail pane open, the group page, or the category board). Browser Back returns
+// to the calendar.
+function openReminderTarget(entry) {
+  if (entry.source === 'item') {
+    if (!findItem(entry.refId)) { toast('Item no longer exists', { danger: true }); renderBoard(); return; }
+    Router.navigate({ type: 'group', wsId: entry.wsId, groupId: entry.groupId, itemId: entry.refId, query: {} });
+  } else if (entry.source === 'group') {
+    Router.navigate({ type: 'group', wsId: entry.wsId, groupId: entry.groupId, itemId: null, query: {} });
+  } else {
+    Router.navigate({ type: 'board', wsId: entry.wsId, catId: entry.catId, query: {} });
+  }
+}
+// Right-click a dot → open/reschedule/clear (item reminders route through the
+// shared setReminder/clearReminder path).
+function calendarDotMenu(entry, x, y) {
+  const items = [{ text: 'Open', action: () => openReminderTarget(entry) }];
+  if (entry.source === 'item') {
+    items.push({ text: 'Reschedule…', action: () => openReminderPicker(entry.refId) });
+    items.push({ sep: true });
+    items.push({ text: 'Clear reminder', danger: true, action: () => clearReminder(entry.refId) });
+  }
+  showContextMenu(x, y, items);
+}
+// Move an item reminder to a different day, preserving its time-of-day.
+function calRescheduleTo(entry, dayStart) {
+  if (!entry || entry.source !== 'item') return;
+  const orig = new Date(entry.at);
+  const d = new Date(dayStart);
+  d.setHours(orig.getHours(), orig.getMinutes(), 0, 0);
+  const ts = d.getTime();
+  if (ts === entry.at) return;
+  setReminder(entry.refId, ts); // re-renders (renderBoard) + toasts
+}
+// Wire a container (day cell / week column) as a drop target for reschedule.
+function calMakeDropTarget(el, dayStart) {
+  el.addEventListener('dragover', e => {
+    if (!calDrag) return;
+    e.preventDefault();
+    try { e.dataTransfer.dropEffect = 'move'; } catch {}
+    el.classList.add('cal-drop');
+  });
+  el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('cal-drop'); });
+  el.addEventListener('drop', e => {
+    if (!calDrag) return;
+    e.preventDefault();
+    el.classList.remove('cal-drop');
+    const entry = calDrag; calDrag = null;
+    calRescheduleTo(entry, dayStart);
+  });
+}
+
+// A single reminder chip. `showTime` prefixes the time (week/agenda); month cells
+// keep it in the tooltip to stay compact.
+function buildCalDot(entry, showTime) {
+  const dot = document.createElement('button');
+  dot.type = 'button';
+  dot.className = 'cal-dot' + (entry.at < Date.now() ? ' past' : '') + (entry.notified ? ' notified' : '');
+  dot.style.setProperty('--dot', reminderDotColor(entry.color));
+  const hm = new Date(entry.at).toLocaleTimeString(appLocale(), { hour: 'numeric', minute: '2-digit' });
+  dot.innerHTML = (showTime ? `<span class="cal-dot-time">${esc(hm)}</span>` : '') +
+    `<span class="cal-dot-title">${esc(entry.title)}</span>`;
+  dot.title = `${entry.title} — ${new Date(entry.at).toLocaleString(appLocale(), { dateStyle: 'medium', timeStyle: 'short' })}` +
+    (entry.source !== 'item' ? ` (${entry.source})` : '');
+  dot.onclick = e => { e.stopPropagation(); openReminderTarget(entry); };
+  dot.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); calendarDotMenu(entry, e.clientX, e.clientY); };
+  if (entry.source === 'item') {
+    dot.draggable = true;
+    dot.addEventListener('dragstart', ev => {
+      calDrag = entry; dot.classList.add('cal-dragging');
+      try { ev.dataTransfer.setData('text/plain', entry.refId); ev.dataTransfer.effectAllowed = 'move'; } catch {}
+    });
+    dot.addEventListener('dragend', () => { calDrag = null; dot.classList.remove('cal-dragging'); });
+  }
+  return dot;
+}
+
+// The persistent "Past due" rail (§5.1). Returns null when nothing is overdue.
+function buildPastDueRail(entries) {
+  const now = Date.now();
+  const overdue = entries.filter(e => e.at < now).sort((a, b) => b.at - a.at);
+  if (!overdue.length) return null;
+  const rail = document.createElement('div');
+  rail.className = 'cal-pastdue';
+  const hd = document.createElement('div');
+  hd.className = 'cal-pastdue-hd';
+  hd.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4.6" stroke="currentColor" stroke-width="1.2"/><path d="M6 3.4v3l1.8 1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span>Past due</span><span class="cal-pastdue-n">${overdue.length}</span>`;
+  const strip = document.createElement('div');
+  strip.className = 'cal-pastdue-strip';
+  overdue.slice(0, 40).forEach(e => strip.appendChild(buildCalDot(e, true)));
+  rail.appendChild(hd); rail.appendChild(strip);
+  return rail;
+}
+
+// A day's full reminder list as a context menu (from a cell's "+N more").
+function openCalDayList(dayStart, list, x, y) {
+  const items = [{ label: new Date(dayStart).toLocaleDateString(appLocale(), { weekday: 'long', month: 'long', day: 'numeric' }) }];
+  list.forEach(e => items.push({
+    text: e.title,
+    sub: new Date(e.at).toLocaleTimeString(appLocale(), { hour: 'numeric', minute: '2-digit' }),
+    action: () => openReminderTarget(e),
+  }));
+  showContextMenu(x, y, items);
+}
+
+// ── View builders ───────────────────────────────────────────────
+function calPeriodLabel() {
+  if (!activeCalendar) return '';
+  if (activeCalendar.view === 'agenda') return 'Upcoming';
+  const nowYear = new Date().getFullYear();
+  if (activeCalendar.view === 'week') {
+    const start = _tlStartOfWeek(activeCalendar.anchor);
+    const a = new Date(start), b = new Date(start); b.setDate(b.getDate() + 6);
+    const sameMonth = a.getMonth() === b.getMonth();
+    const left = a.toLocaleDateString(appLocale(), { month: 'short', day: 'numeric' });
+    const right = b.toLocaleDateString(appLocale(), sameMonth ? { day: 'numeric' } : { month: 'short', day: 'numeric' });
+    return `${left} – ${right}` + (a.getFullYear() !== nowYear ? `, ${a.getFullYear()}` : '');
+  }
+  return new Date(activeCalendar.anchor).toLocaleDateString(appLocale(), { month: 'long', year: 'numeric' });
+}
+
+function buildCalToolbar(shownCount, totalCount) {
+  const bar = document.createElement('div');
+  bar.className = 'cal-toolbar';
+  const isAgenda = activeCalendar.view === 'agenda';
+
+  // Left cluster: period label + prev/today/next (paging is hidden in agenda).
+  const nav = document.createElement('div');
+  nav.className = 'cal-nav';
+  const title = document.createElement('div');
+  title.className = 'cal-title';
+  title.textContent = calPeriodLabel();
+  nav.appendChild(title);
+  if (!isAgenda) {
+    const mkNav = (label, aria, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'cal-nav-btn'; b.setAttribute('aria-label', aria);
+      b.textContent = label; b.onclick = fn; return b;
+    };
+    const grp = document.createElement('div');
+    grp.className = 'cal-nav-grp';
+    grp.appendChild(mkNav('‹', 'Previous', () => shiftCalendar(-1)));
+    const today = document.createElement('button');
+    today.type = 'button'; today.className = 'cal-today-btn'; today.textContent = 'Today';
+    today.onclick = calendarToday;
+    grp.appendChild(today);
+    grp.appendChild(mkNav('›', 'Next', () => shiftCalendar(1)));
+    nav.appendChild(grp);
+  }
+  bar.appendChild(nav);
+
+  // Middle: view segmented control.
+  const seg = document.createElement('div');
+  seg.className = 'cal-seg';
+  [['month', 'Month'], ['week', 'Week'], ['agenda', 'Agenda']].forEach(([v, label]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'cal-seg-btn' + (activeCalendar.view === v ? ' active' : '');
+    b.textContent = label;
+    b.onclick = () => setCalendarView(v);
+    seg.appendChild(b);
+  });
+  bar.appendChild(seg);
+
+  // Right: filter input (the differentiator, §5.2).
+  const filter = document.createElement('div');
+  filter.className = 'cal-filter';
+  filter.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+  const input = document.createElement('input');
+  input.id = 'cal-filter-input';
+  input.type = 'text';
+  input.autocomplete = 'off';
+  input.placeholder = 'Filter — type:tab, in:work, color:red, -source:group';
+  input.value = calendarFilter;
+  input.addEventListener('input', () => {
+    calendarFilter = input.value;
+    _calFilterRestore = { caret: input.selectionStart };
+    clearTimeout(_calFilterTimer);
+    _calFilterTimer = setTimeout(() => renderBoard(), 130);
+  });
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); if (input.value) { input.value = ''; calendarFilter = ''; renderBoard(); } else input.blur(); } });
+  filter.appendChild(input);
+  if (calendarFilter) {
+    const count = document.createElement('span');
+    count.className = 'cal-filter-count';
+    count.textContent = `${shownCount}/${totalCount}`;
+    filter.appendChild(count);
+  }
+  bar.appendChild(filter);
+
+  return bar;
+}
+
+function _calEmptyNote(text) {
+  const n = document.createElement('div');
+  n.className = 'cal-empty-note';
+  n.textContent = text;
+  return n;
+}
+
+function buildCalMonth(entries) {
+  const body = document.createElement('div');
+  body.className = 'cal-body';
+  const rail = buildPastDueRail(entries);
+  if (rail) body.appendChild(rail);
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-grid';
+
+  // Weekday header (Mon-first, matching the timeline's week start).
+  const hdCur = new Date(_tlStartOfWeek(Date.now()));
+  for (let i = 0; i < 7; i++) {
+    const h = document.createElement('div');
+    h.className = 'cal-weekhd';
+    h.textContent = hdCur.toLocaleDateString(appLocale(), { weekday: 'short' });
+    grid.appendChild(h);
+    hdCur.setDate(hdCur.getDate() + 1);
+  }
+
+  const byDay = calGroupByDay(entries);
+  const todayStart = _tlStartOfDay(Date.now());
+  const monthStart = _tlStartOfMonth(activeCalendar.anchor);
+  const curMonth = new Date(monthStart).getMonth();
+  const reduce = _calReduceMotion();
+  // Iterate with Date arithmetic (DST-safe) from the Monday of the month's first week.
+  const cur = new Date(_tlStartOfWeek(monthStart));
+  const MAX_DOTS = 4;
+  for (let i = 0; i < 42; i++) {
+    const dayStart = _tlStartOfDay(cur.getTime());
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell';
+    if (dayStart === todayStart) cell.classList.add('today');
+    if (cur.getMonth() !== curMonth) cell.classList.add('dim');
+    if (!reduce) { cell.style.setProperty('--i', Math.min(i, 27)); cell.classList.add('cal-anim'); }
+
+    const dnum = document.createElement('div');
+    dnum.className = 'cal-date';
+    dnum.textContent = cur.getDate();
+    cell.appendChild(dnum);
+
+    const list = byDay.get(dayStart) || [];
+    const dots = document.createElement('div');
+    dots.className = 'cal-cell-dots';
+    list.slice(0, MAX_DOTS).forEach(e => dots.appendChild(buildCalDot(e, false)));
+    if (list.length > MAX_DOTS) {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'cal-more';
+      more.textContent = `+${list.length - MAX_DOTS} more`;
+      more.onclick = ev => { ev.stopPropagation(); openCalDayList(dayStart, list, ev.clientX, ev.clientY); };
+      dots.appendChild(more);
+    }
+    cell.appendChild(dots);
+    calMakeDropTarget(cell, dayStart);
+    grid.appendChild(cell);
+    cur.setDate(cur.getDate() + 1);
+  }
+  body.appendChild(grid);
+  return body;
+}
+
+function buildCalWeek(entries) {
+  const body = document.createElement('div');
+  body.className = 'cal-body';
+  const rail = buildPastDueRail(entries);
+  if (rail) body.appendChild(rail);
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-week';
+  const byDay = calGroupByDay(entries);
+  const todayStart = _tlStartOfDay(Date.now());
+  const cur = new Date(_tlStartOfWeek(activeCalendar.anchor));
+  const reduce = _calReduceMotion();
+  for (let i = 0; i < 7; i++) {
+    const dayStart = _tlStartOfDay(cur.getTime());
+    const col = document.createElement('div');
+    col.className = 'cal-week-col' + (dayStart === todayStart ? ' today' : '');
+    if (!reduce) { col.style.setProperty('--i', i); col.classList.add('cal-anim'); }
+    const hd = document.createElement('div');
+    hd.className = 'cal-week-colhd';
+    hd.innerHTML = `<span class="cal-week-dow">${esc(cur.toLocaleDateString(appLocale(), { weekday: 'short' }))}</span><span class="cal-week-dnum">${cur.getDate()}</span>`;
+    col.appendChild(hd);
+    const colBody = document.createElement('div');
+    colBody.className = 'cal-week-colbody';
+    const list = byDay.get(dayStart) || [];
+    if (!list.length) { const em = document.createElement('div'); em.className = 'cal-week-empty'; colBody.appendChild(em); }
+    list.forEach(e => colBody.appendChild(buildCalDot(e, true)));
+    col.appendChild(colBody);
+    calMakeDropTarget(col, dayStart);
+    grid.appendChild(col);
+    cur.setDate(cur.getDate() + 1);
+  }
+  body.appendChild(grid);
+  return body;
+}
+
+function _calAgendaDayLabel(dayStart) {
+  const todayStart = _tlStartOfDay(Date.now());
+  const tmr = new Date(todayStart); tmr.setDate(tmr.getDate() + 1);
+  if (dayStart === todayStart) return 'Today';
+  if (dayStart === _tlStartOfDay(tmr.getTime())) return 'Tomorrow';
+  return new Date(dayStart).toLocaleDateString(appLocale(), { weekday: 'long', month: 'short', day: 'numeric' });
+}
+function _calAgendaSection(label, list, past) {
+  const sec = document.createElement('div');
+  sec.className = 'cal-ag-sec' + (past ? ' past' : '');
+  const hd = document.createElement('div');
+  hd.className = 'cal-ag-hd';
+  hd.textContent = label;
+  sec.appendChild(hd);
+  list.forEach(e => {
+    const row = document.createElement('div');
+    row.className = 'cal-ag-row';
+    row.appendChild(buildCalDot(e, true));
+    const rel = document.createElement('span');
+    rel.className = 'cal-ag-rel';
+    rel.textContent = fmtTimeRelative(e.at);
+    row.appendChild(rel);
+    sec.appendChild(row);
+  });
+  return sec;
+}
+function buildCalAgenda(entries) {
+  const body = document.createElement('div');
+  body.className = 'cal-body cal-agenda';
+  if (!entries.length) { body.appendChild(_calEmptyNote('No reminders here.')); return body; }
+  const now = Date.now();
+  const overdue = entries.filter(e => e.at < now).sort((a, b) => a.at - b.at);
+  const upcoming = entries.filter(e => e.at >= now).sort((a, b) => a.at - b.at);
+  if (overdue.length) body.appendChild(_calAgendaSection('Past due', overdue, true));
+  const byDay = calGroupByDay(upcoming);
+  const days = [...byDay.keys()].sort((a, b) => a - b);
+  if (!upcoming.length && overdue.length) body.appendChild(_calEmptyNote('Nothing upcoming.'));
+  days.forEach(d => body.appendChild(_calAgendaSection(_calAgendaDayLabel(d), byDay.get(d), false)));
+  return body;
+}
+
+// Workspace › Calendar breadcrumb (mirrors renderBreadcrumb's chrome).
+function renderCalendarBreadcrumb(ws) {
+  const bar = document.getElementById('breadcrumb-bar');
+  if (!bar) return;
+  bar.classList.remove('hidden');
+  bar.innerHTML = '';
+  const back = document.createElement('button');
+  back.className = 'bc-back';
+  back.type = 'button';
+  back.title = 'Back to board';
+  back.innerHTML = `<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Back`;
+  back.onclick = closeCalendar;
+  bar.appendChild(back);
+  const crumb = (label, sym, onClick) => {
+    const b = document.createElement('button');
+    b.className = 'bc-crumb' + (onClick ? '' : ' current');
+    b.type = 'button';
+    b.innerHTML = (sym ? `<span class="bc-sym">${esc(sym)}</span>` : '') + `<span>${esc(label)}</span>`;
+    if (onClick) b.onclick = onClick; else b.setAttribute('aria-current', 'page');
+    return b;
+  };
+  const sep = () => { const s = document.createElement('span'); s.className = 'bc-sep'; s.textContent = '›'; return s; };
+  bar.appendChild(crumb(ws.name, ws.symbol, closeCalendar));
+  bar.appendChild(sep());
+  bar.appendChild(crumb('Calendar', '📅', null));
+}
+
+// Render the calendar surface into #board. Returns false (letting the board
+// render) if there's no active workspace, mirroring renderGroupPage's contract.
+function renderCalendar() {
+  const ws = activeWs();
+  if (!ws || !activeCalendar) { activeCalendar = null; return false; }
+  renderCalendarBreadcrumb(ws);
+
+  const $b = document.getElementById('board');
+  $b.classList.remove('list-mode', 'canvas-mode', 'explorer-mode', 'timeline-mode', 'group-page-mode');
+  $b.classList.add('calendar-mode');
+  $b.innerHTML = '';
+
+  const all = buildCalendarEntries();
+  const pred = parseCalendarFilter(calendarFilter);
+  const shown = pred ? all.filter(pred) : all;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'cal-wrap';
+  wrap.appendChild(buildCalToolbar(shown.length, all.length));
+  if (!all.length) wrap.appendChild(_calEmptyNote('No reminders in this workspace yet — set one on any item to see it here.'));
+  else if (!shown.length) wrap.appendChild(_calEmptyNote('No reminders match this filter.'));
+
+  const view = activeCalendar.view;
+  wrap.appendChild(view === 'agenda' ? buildCalAgenda(shown) : view === 'week' ? buildCalWeek(shown) : buildCalMonth(shown));
+  $b.appendChild(wrap);
+
+  // Restore the filter input's focus/caret across the keystroke-triggered render.
+  if (_calFilterRestore) {
+    const fi = document.getElementById('cal-filter-input');
+    if (fi) { fi.focus(); const p = _calFilterRestore.caret; if (p != null) { try { fi.setSelectionRange(p, p); } catch {} } }
+    _calFilterRestore = null;
+  }
+  return true;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -8262,6 +8831,7 @@ function bindStatic() {
     else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !inField) { e.preventDefault(); performUndo(); }
     else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z' && !inField) { e.preventDefault(); performRedo(); }
     else if (e.key === 's' && !inField) { e.preventDefault(); document.getElementById('tab-filter').focus(); }
+    else if (e.key.toLowerCase() === 'c' && !inField && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) { e.preventDefault(); if (activeCalendar) closeCalendar(); else openCalendar(); }
     else if (e.key === '?' && !inField && !e.ctrlKey && !e.metaKey) { e.preventDefault(); openCheatsheet(); }
     else if (e.key === 'Escape') {
       // Snapshot which layered overlays were open *before* we start closing
@@ -8308,6 +8878,8 @@ function bindStatic() {
         closeItemDetail();
       } else if (activeGroupPage && !inField && !_overlayWasOpen) {
         closeGroupPage();
+      } else if (activeCalendar && !inField && !_overlayWasOpen) {
+        closeCalendar();
       }
       if (selectedTabIds.size) { selectedTabIds.clear(); lastClickedTabId = null; updateSelectedBadge(); renderOpenTabs(); }
       // clearItemSelection() resets the selection, the sticky mode, the body
@@ -8340,6 +8912,7 @@ function bindStatic() {
 
   // View modes + selection mode + reorder mode
   document.getElementById('view-mode-btn').onclick = (e) => openLayoutMenu(e.currentTarget);
+  document.getElementById('calendar-btn').onclick = () => { if (activeCalendar) closeCalendar(); else openCalendar(); };
   document.getElementById('select-mode-btn').onclick = toggleSelectMode;
   document.getElementById('reorder-mode-btn').onclick = toggleReorderMode;
 
