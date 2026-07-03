@@ -961,13 +961,24 @@ body[data-anim="off"] .cat-tabs-wrap::after {
   background: none; border: none; outline: none;
   color: var(--text); font: 600 15px var(--font);
   width: 100%; padding: 0; letter-spacing: -0.012em;
-  /* Reserve room for the 5-icon action row (below) so a long name always
-     ellipsizes before it instead of running under the icons on hover.
-     Kept constant (not hover-conditional) so the title never reflows. */
+  /* Calm default view: the name uses (almost) the full header width, so long
+     group names like "Getting started" read in full instead of being clipped
+     for action buttons that aren't even showing. The compact 3-icon row only
+     appears on hover, and the tail is masked beneath it then (below) — no
+     reserved gap, no reflow. The full name is also available via the native
+     tooltip (title attribute) and the detail page. */
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  padding-right: 128px;
+  padding-right: 12px;
 }
-.gcol-name:focus { padding-right: 0; }
+/* On hover/focus the action row fades in over the right edge; fade the name's
+   tail beneath it with a mask (not reserved padding) so it never collides or
+   reflows. Short names end before the fade zone, so they're unaffected. */
+.gcol:hover .gcol-name,
+.gcol-hd:focus-within .gcol-name {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 96px), transparent calc(100% - 58px));
+  mask-image: linear-gradient(to right, #000 calc(100% - 96px), transparent calc(100% - 58px));
+}
+.gcol-name:focus { padding-right: 0; -webkit-mask-image: none; mask-image: none; }
 .gcol-meta {
   display: flex; align-items: center; gap: 5px;
   font-size: 11px; color: var(--text3); margin-top: 2px;
@@ -988,21 +999,26 @@ body[data-anim="off"] .cat-tabs-wrap::after {
    so the name never sits under this zone; the backing is fully opaque
    (not a soft fade) as a second guard against text bleeding through. */
 .gcol-acts {
-  position: absolute; top: 9px; right: 9px; bottom: 9px;
-  display: flex; align-items: center; gap: 1px;
+  position: absolute; top: 8px; right: 8px; bottom: 8px;
+  display: flex; align-items: center; gap: 2px;
   opacity: 0; pointer-events: none;
-  padding-left: 10px;
-  /* Matches the header's own tinted top band (see .gcol-hd background)
-     rather than plain --panel, so no visible seam shows behind the icons. */
-  background: color-mix(in srgb, var(--gcol-tint, transparent) 18%, var(--panel));
-  transition: opacity var(--trans);
+  padding-left: 22px;
+  /* Feather the left edge into the header rather than laying a hard opaque
+     block over it — the controls read as a light contextual overlay that hugs
+     the corner, not a panel that covers the bento. A small slide-in adds a
+     premium, intentional feel on hover. */
+  background: linear-gradient(to right,
+    transparent,
+    color-mix(in srgb, var(--gcol-tint, transparent) 16%, var(--panel)) 45%);
+  transform: translateX(6px);
+  transition: opacity var(--trans), transform var(--trans);
 }
 .gcol:hover .gcol-acts,
-.gcol-hd:focus-within .gcol-acts { opacity: 1; pointer-events: auto; }
+.gcol-hd:focus-within .gcol-acts { opacity: 1; pointer-events: auto; transform: translateX(0); }
 .gcol-btn {
-  width: 26px; height: 26px;
+  width: 24px; height: 24px;
   background: none; border: 1px solid transparent;
-  color: var(--text3); cursor: pointer; border-radius: 6px;
+  color: var(--text3); cursor: pointer; border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
   transition: all var(--trans);
 }
@@ -1927,28 +1943,69 @@ body[data-show-urls="off"] .item-url { display: none; }
 .drawer-sec .sub { font-size: 11px; color: var(--text3); text-align: center; }
 .drawer-sec small { font-size: 10.5px; color: var(--text3); }
 
-/* Theme grid */
+/* Theme grid — clean mini preview tiles (no loud stripe blocks). Each tile
+   mocks a themed board: base surface, an accent header bar, two tinted cells. */
 .theme-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
 }
 .theme-card {
-  padding: 10px; border-radius: 9px;
-  border: 1.5px solid var(--border);
-  cursor: pointer; display: flex; flex-direction: column; gap: 4px;
-  transition: all var(--trans);
-  overflow: hidden;
+  padding: 6px; border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  cursor: pointer; display: flex; flex-direction: column; gap: 7px;
+  transition: transform var(--trans), border-color var(--trans), box-shadow var(--trans);
 }
-.theme-card:hover { transform: translateY(-2px); border-color: var(--border2); }
-.theme-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-bg) 20%, transparent); }
+.theme-card:hover { transform: translateY(-2px); border-color: var(--border2); box-shadow: var(--card-shadow); }
+.theme-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent);
+}
 .theme-card .th-preview {
-  height: 30px; border-radius: 5px;
-  display: flex;
+  position: relative;
+  height: 46px; border-radius: 8px;
+  background: var(--tp-bg);
+  box-shadow: inset 0 0 0 1px rgba(128,128,128,0.16);
   overflow: hidden;
+  padding: 7px;
+  display: flex; flex-direction: column; gap: 5px;
 }
-.theme-card .tp1 { flex: 1; }
-.theme-card .tp2 { flex: 0 0 6px; }
-.theme-card .tp3 { flex: 0 0 2px; }
-.theme-card .th-name { font: 500 11px var(--font); text-align: center; color: var(--text); }
+.theme-card .th-bar {
+  height: 5px; width: 55%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--tp-a1), var(--tp-a2));
+}
+.theme-card .th-cells { display: flex; gap: 5px; flex: 1; min-height: 0; }
+.theme-card .th-cell { flex: 1; border-radius: 5px; }
+.theme-card .th-cell.c1 { background: color-mix(in srgb, var(--tp-a1) 52%, var(--tp-bg)); }
+.theme-card .th-cell.c2 { background: color-mix(in srgb, var(--tp-a2) 52%, var(--tp-bg)); }
+.theme-card.active .th-preview::after {
+  content: '';
+  position: absolute; top: 5px; right: 5px;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--accent) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2.6 6.2l2.1 2.1 4.7-5' fill='none' stroke='white' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>") center/11px no-repeat;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.theme-card .th-name {
+  font: 500 11px var(--font); text-align: center; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Section header row — a label with a small trailing action (e.g. the theme
+   "Cycle theme" control that moved out of the top bar). */
+.sec-hd-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px;
+}
+.mini-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 9px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg2);
+  color: var(--text2); font: 500 11px var(--font);
+  cursor: pointer; transition: all var(--trans); white-space: nowrap;
+}
+.mini-btn:hover { color: var(--text); border-color: var(--border2); background: var(--bg3); }
+.mini-btn svg { flex-shrink: 0; }
+.mini-btn.spin svg { animation: miniSpin 0.5s var(--spring); }
+@keyframes miniSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
 
 /* Seg */
 .seg {

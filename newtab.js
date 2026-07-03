@@ -42,6 +42,7 @@ const I18N = {
     'action.search': 'Search (Ctrl/Cmd + K)',
     'action.cycleTheme': 'Cycle theme',
     'action.saveAllTabs': 'Save all open tabs',
+    'action.more': 'More',
     'action.settings': 'Settings',
     'settings.title': 'Settings',
     'settings.appearance': 'Appearance',
@@ -96,6 +97,7 @@ const I18N = {
     'action.search': '搜尋 (Ctrl/Cmd + K)',
     'action.cycleTheme': '切換主題',
     'action.saveAllTabs': '儲存所有開啟分頁',
+    'action.more': '更多',
     'action.settings': '設定',
     'settings.title': '設定',
     'settings.appearance': '外觀',
@@ -985,11 +987,16 @@ function buildThemeGrid() {
     const card = document.createElement('div');
     card.className = 'theme-card';
     card.dataset.theme = t.id;
+    // A small board-like preview tile (base surface, an accent header bar, two
+    // tinted content cells) reads as a real theme preview instead of the old
+    // loud vertical stripes.
     card.innerHTML = `
-      <div class="th-preview">
-        <div class="tp1" style="background:${t.colors[0]}"></div>
-        <div class="tp2" style="background:${t.colors[1]}"></div>
-        <div class="tp3" style="background:${t.colors[2]}"></div>
+      <div class="th-preview" style="--tp-bg:${t.colors[0]};--tp-a1:${t.colors[1]};--tp-a2:${t.colors[2]}">
+        <span class="th-bar"></span>
+        <span class="th-cells">
+          <span class="th-cell c1"></span>
+          <span class="th-cell c2"></span>
+        </span>
       </div>
       <div class="th-name">${t.label}</div>`;
     card.onclick = () => {
@@ -1458,8 +1465,18 @@ function selectEmoji(e) {
 // ════════════════════════════════════════════════════════════════
 // CONTEXT MENU
 // ════════════════════════════════════════════════════════════════
+// Holds the teardown for the currently-open context menu (outside-click +
+// keyboard listeners). Menu-item clicks call stopPropagation(), so the
+// document-level "click outside to close" handler never fired to remove itself
+// — that leaked a stale closer on every selection, which then swallowed the
+// next open (menu flashed open, the stale closer immediately closed it). We now
+// track a single cleanup and always run it from hideContextMenu(), so a menu
+// re-opens reliably after any selection.
+let _cmCleanup = null;
 function showContextMenu(x, y, items, opts) {
   const menu = document.getElementById('context-menu');
+  // Tear down any previously-open menu's listeners before opening a new one.
+  if (_cmCleanup) { _cmCleanup(); _cmCleanup = null; }
   menu.innerHTML = '';
   items.forEach(it => {
     if (it.sep) menu.appendChild(Object.assign(document.createElement('div'), { className: 'cm-sep' }));
@@ -1498,17 +1515,28 @@ function showContextMenu(x, y, items, opts) {
     }
   };
   menu.addEventListener('keydown', menuKey);
+  const close = e => { if (!menu.contains(e.target)) hideContextMenu(); };
+  // Register the single teardown for this menu — removed centrally by
+  // hideContextMenu() no matter how the menu is dismissed (outside click,
+  // Escape, or a menu-item action that stops propagation).
+  _cmCleanup = () => {
+    document.removeEventListener('click', close);
+    document.removeEventListener('contextmenu', close);
+    menu.removeEventListener('keydown', menuKey);
+  };
   setTimeout(() => {
     if (opts && opts.focusFirst) {
       const first = menu.querySelector('.cm-item');
       if (first) first.focus();
     }
-    const close = e => { if (!menu.contains(e.target)) { hideContextMenu(); document.removeEventListener('click', close); document.removeEventListener('contextmenu', close); menu.removeEventListener('keydown', menuKey); } };
     document.addEventListener('click', close);
     document.addEventListener('contextmenu', close);
   }, 50);
 }
-function hideContextMenu() { document.getElementById('context-menu').classList.add('hidden'); }
+function hideContextMenu() {
+  document.getElementById('context-menu').classList.add('hidden');
+  if (_cmCleanup) { _cmCleanup(); _cmCleanup = null; }
+}
 
 const cmIcons = {
   edit: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L4 10l-2.5.5L2 8l6.5-6.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
@@ -2484,20 +2512,14 @@ function buildGroupCol(g) {
         ${renderIntentPills(g)}
       </div>
       <div class="gcol-acts">
-        <button class="gcol-btn" data-act="intent" title="Edit intention">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1.5a3.6 3.6 0 013.6 3.6c0 2.2-1.5 3.2-3.1 3.8l-.2.1v1.5M6 10.8h.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-        </button>
-        <button class="gcol-btn focus" data-act="focus" title="Expand to full page">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4V2h2M10 4V2H8M2 8v2h2M10 8v2H8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <button class="gcol-btn go" data-act="open-all" title="Open all">
+        <button class="gcol-btn go" data-act="open-all" title="Open all tabs" aria-label="Open all tabs">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2.5H2a1 1 0 00-1 1v6.5A1 1 0 002 11h6.5a1 1 0 001-1V8M7 1h4m0 0v4M11 1L5.5 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <button class="gcol-btn" data-act="dup" title="Duplicate">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="1.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="3.5" y="3.5" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+        <button class="gcol-btn focus" data-act="focus" title="Open as page" aria-label="Open as page">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4V2h2M10 4V2H8M2 8v2h2M10 8v2H8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <button class="gcol-btn danger" data-act="del" title="Delete">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M4.5 3V1.5h3V3M3 3v7a1 1 0 001 1h4a1 1 0 001-1V3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button class="gcol-btn" data-act="more" title="More…" aria-label="More group actions" aria-haspopup="menu">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="2.5" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="9.5" cy="6" r="1" fill="currentColor"/></svg>
         </button>
       </div>
     </div>
@@ -2542,9 +2564,10 @@ function buildGroupCol(g) {
   hd.addEventListener('keydown', e => {
     if ((e.key === 'Enter' || e.key === ' ') && e.target === hd) { e.preventDefault(); toggleCollapse(); }
   });
-  // Right-click on group
-  hd.addEventListener('contextmenu', e => {
-    e.preventDefault();
+  // Group menu — shared by right-click and the header's compact "More…" button,
+  // so every group action stays reachable even though the hover row now shows
+  // only the two most-used shortcuts (Open all / Open as page).
+  const openGroupMenu = (x, y) => {
     const ws = activeWs();
     const otherCats = ws ? ws.categories.filter(c => c.id !== ws.activeCatId) : [];
     const items = [
@@ -2569,7 +2592,12 @@ function buildGroupCol(g) {
     items.push({ sep: true });
     items.push({ text:'Archive', icon: cmIcons.archive, action: () => archiveGroup(g.id) });
     items.push({ text:'Delete', icon: cmIcons.delete, danger:true, action: () => deleteGroup(g.id) });
-    showContextMenu(e.pageX, e.pageY, items);
+    showContextMenu(x, y, items);
+  };
+  // Right-click on group
+  hd.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    openGroupMenu(e.pageX, e.pageY);
   });
 
   // Symbol
@@ -2592,11 +2620,12 @@ function buildGroupCol(g) {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const act = btn.dataset.act;
-      if (act === 'del') deleteGroup(g.id);
-      else if (act === 'dup') duplicateGroup(g.id);
-      else if (act === 'open-all') openGroupAll(g.id);
+      if (act === 'open-all') openGroupAll(g.id);
       else if (act === 'focus') openGroupPage(g.id);
-      else if (act === 'intent') openIntentEditor('group', g.id);
+      else if (act === 'more') {
+        const r = btn.getBoundingClientRect();
+        openGroupMenu(r.left, r.bottom + 6);
+      }
     });
   });
 
@@ -3231,7 +3260,7 @@ let lastSelectedItemId = null;
 function syncItemSelMode() {
   itemSelMode = explicitSelMode || selectedItemIds.size > 0;
   document.body.classList.toggle('item-sel-mode', itemSelMode);
-  document.getElementById('select-mode-btn')?.classList.toggle('active', itemSelMode);
+  updateModeButtonState();
 }
 function toggleItemSelect(itemId) {
   if (selectedItemIds.has(itemId)) selectedItemIds.delete(itemId);
@@ -7036,8 +7065,40 @@ function toggleSelectMode() {
 
 function toggleReorderMode() {
   const on = document.body.classList.toggle('reorder-mode');
-  document.getElementById('reorder-mode-btn').classList.toggle('active', on);
+  updateModeButtonState();
   if (on) toast('Reorder mode on — drag to rearrange. Esc to exit.');
+}
+
+// Reflect whether an "organize" mode (item selection or reorder) is active onto
+// the top-bar overflow (⋯) button. These controls moved off the always-visible
+// toolbar into its menu, so the ⋯ button carries their combined active state.
+function updateModeButtonState() {
+  const on = itemSelMode || document.body.classList.contains('reorder-mode');
+  document.getElementById('more-btn')?.classList.toggle('active', on);
+}
+
+// The top-bar overflow (⋯) menu — houses the less-frequent "organize" and
+// tab-management actions (item selection, reorder, save all open tabs) that used
+// to be separate always-visible buttons. Relocating them keeps the default
+// toolbar calm while leaving everything one click away. Reuses the shared
+// context-menu chrome so it matches every theme.
+const MORE_MENU_ICONS = {
+  select: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="1.5" width="9" height="9" rx="2.2" stroke="currentColor" stroke-width="1.2"/><path d="M3.8 6l1.6 1.6L8.4 4.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  reorder: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="4" cy="2.5" r="0.9" fill="currentColor"/><circle cx="8" cy="2.5" r="0.9" fill="currentColor"/><circle cx="4" cy="6" r="0.9" fill="currentColor"/><circle cx="8" cy="6" r="0.9" fill="currentColor"/><circle cx="4" cy="9.5" r="0.9" fill="currentColor"/><circle cx="8" cy="9.5" r="0.9" fill="currentColor"/></svg>',
+  save: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2.7A0.8 0.8 0 012.8 2h5l2.2 2.2v5.1a0.8 0.8 0 01-.8.8H2.8a0.8 0.8 0 01-.8-.8V2.7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M4 2v2.4h4V2M4 10V7h4v3" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>',
+};
+function openMoreMenu(btn) {
+  const selOn = itemSelMode;
+  const reOn = document.body.classList.contains('reorder-mode');
+  const items = [
+    { label: 'Organize' },
+    { text: tr('action.selectionMode'), icon: MORE_MENU_ICONS.select, sub: selOn ? '✓' : '', action: toggleSelectMode },
+    { text: tr('action.reorderMode'), icon: MORE_MENU_ICONS.reorder, sub: reOn ? '✓' : '', action: toggleReorderMode },
+    { sep: true },
+    { text: tr('action.saveAllTabs'), icon: MORE_MENU_ICONS.save, action: saveAllTabs },
+  ];
+  const r = btn.getBoundingClientRect();
+  showContextMenu(r.left, r.bottom + 6, items, { focusFirst: true });
 }
 
 // ── Drag auto-scroll: when dragging near the top/bottom of any scrollable area, scroll it ──
@@ -8740,16 +8801,22 @@ function bindStatic() {
   document.getElementById('tab-filter').oninput = _debouncedApplyFilter;
   document.getElementById('tab-filter').onkeydown = e => { if (e.key === 'Escape') { e.target.value = ''; applyFilter(); e.target.blur(); } };
 
-  document.getElementById('theme-btn').onclick = () => {
+  // Cycle theme now lives inside the Settings → Appearance theme section, so it
+  // reads as part of theme customization rather than a primary dashboard action.
+  const themeCycleBtn = document.getElementById('theme-cycle-btn');
+  if (themeCycleBtn) themeCycleBtn.onclick = () => {
     const cycle = THEMES.map(t => t.id);
     const i = cycle.indexOf(State.get().settings.theme);
     State.get().settings.theme = cycle[(i + 1) % cycle.length];
     applySettings();
     State.persist();
+    // Nudge the animation so the control feels responsive to the cycle.
+    themeCycleBtn.classList.remove('spin');
+    void themeCycleBtn.offsetWidth;
+    themeCycleBtn.classList.add('spin');
     const t = THEMES.find(x => x.id === State.get().settings.theme);
     toast(tr('toast.theme', { theme: t?.label || State.get().settings.theme }));
   };
-  document.getElementById('save-session-btn').onclick = saveAllTabs;
   const _drawer = document.getElementById('settings-drawer');
   const _openDrawer = () => { rememberOpener(_drawer); _drawer.classList.remove('hidden'); renderArchiveList(); setTimeout(() => focusFirstIn(_drawer), 50); };
   const _closeDrawer = () => { _drawer.classList.add('hidden'); restoreOpener(_drawer); };
@@ -8887,7 +8954,7 @@ function bindStatic() {
       if (itemSelMode || selectedItemIds.size) clearItemSelection();
       if (document.body.classList.contains('reorder-mode')) {
         document.body.classList.remove('reorder-mode');
-        document.getElementById('reorder-mode-btn').classList.remove('active');
+        updateModeButtonState();
       }
     }
   });
@@ -8910,11 +8977,10 @@ function bindStatic() {
   bindGoals();
   bindWorkout();
 
-  // View modes + selection mode + reorder mode
+  // View modes + calendar + overflow (⋯) menu (selection / reorder / save all)
   document.getElementById('view-mode-btn').onclick = (e) => openLayoutMenu(e.currentTarget);
   document.getElementById('calendar-btn').onclick = () => { if (activeCalendar) closeCalendar(); else openCalendar(); };
-  document.getElementById('select-mode-btn').onclick = toggleSelectMode;
-  document.getElementById('reorder-mode-btn').onclick = toggleReorderMode;
+  document.getElementById('more-btn').onclick = (e) => openMoreMenu(e.currentTarget);
 
   // Apply saved view mode on boot
   setViewMode(getViewMode());
