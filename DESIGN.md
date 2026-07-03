@@ -215,3 +215,10 @@ differentiator we can market honestly.
   `hintsSeen`, `disabled`) replaces the single `tourCompleted` flag under **schema 6**; the migration folds
   the old flag in so returning users are never re-onboarded. Settings → Behavior gains **Replay welcome**,
   **Reset tips**, and a **Show tips as you explore** switch. No new host access; purely local state.
+- **2026-07-03** — Polish pass for smaller windows and a quieter board. The sidebar width is now
+  `clamp(184px, 19vw, 240px)`, so it holds its 240px on the common ≥1264px new-tab widths and eases
+  down to a 184px floor on narrower or split windows instead of crowding the board; `#board`, `#topbar`,
+  and `.ws-bar` trim their outer padding at the 1180px and 940px breakpoints. The board scrolls
+  horizontally, so nothing wraps — the columns keep the user's chosen `--gw`. Each column footer now
+  reads as one filled **Add tab** plus three ghost note/todo/stack affordances that tint only on hover,
+  instead of a row of four bordered boxes. CSS-only; no data or behavior change.

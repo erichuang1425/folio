@@ -60,7 +60,10 @@
 [data-font="system"]    { --font: system-ui, -apple-system, sans-serif; }
 
 :root {
-  --sidebar: 240px; --sidebar-min: 64px; --topbar: 56px;
+  /* Sidebar scales gently with the viewport so the board keeps its breathing
+     room on smaller new-tab and split-window sizes; unchanged (240px) at the
+     common ≥1264px widths, easing down to a 184px floor below that. */
+  --sidebar: clamp(184px, 19vw, 240px); --sidebar-min: 64px; --topbar: 56px;
 
   /* Spacing scale (4px base) */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
@@ -685,6 +688,21 @@ body[data-anim="off"] .cat-tabs-wrap::after {
 #board::-webkit-scrollbar-track { background: transparent; }
 #board::-webkit-scrollbar-thumb { background: var(--bg5); border-radius: 4px; }
 
+/* ── Responsive shell ──────────────────────────────────────────────
+   Tighten the chrome's outer padding as the window narrows so the board
+   and columns keep more room, without touching the user's column-width
+   preference. The board itself scrolls horizontally, so nothing wraps —
+   these just trim dead space at smaller new-tab / split-window sizes. */
+@media (max-width: 1180px) {
+  #board  { padding: 20px 16px; gap: 14px; }
+  #topbar { padding: 0 14px; }
+}
+@media (max-width: 940px) {
+  #board  { padding: 16px 12px; gap: 12px; }
+  #topbar { padding: 0 12px; gap: 8px; }
+  .ws-bar { padding: 8px; }
+}
+
 .board-empty {
   flex: 1;
   display: flex; flex-direction: column;
@@ -971,8 +989,14 @@ body.resizing { cursor: nwse-resize !important; user-select: none; }
   background: color-mix(in srgb, var(--accent-bg) 8%, var(--bg2));
   border-color: color-mix(in srgb, var(--accent-bg) 28%, var(--border));
 }
+/* Secondary quick-adds (note/todo/stack) read as quiet ghost affordances so
+   each column footer is one confident action + lightweight options, not a row
+   of four equal boxes. They gain a subtle tint only on hover (below). */
 .gcol-ft button:not(.primary) {
   padding: 0;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text3);
 }
 .gcol-ft button:not(.primary) span {
   display: none;
@@ -985,6 +1009,10 @@ body.resizing { cursor: nwse-resize !important; user-select: none; }
 .gcol-ft button:hover {
   border-color: var(--accent); color: var(--accent);
   background: color-mix(in srgb, var(--accent-bg) 10%, var(--bg2));
+}
+.gcol-ft button:not(.primary):hover {
+  border-color: transparent; color: var(--accent);
+  background: color-mix(in srgb, var(--accent-bg) 12%, transparent);
 }
 
 /* ═══ ITEMS ═══ */
