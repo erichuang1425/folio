@@ -3,23 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Tab</title>
+  <title>Tabento</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,400&family=Inter:wght@400..700&family=IBM+Plex+Sans:wght@400..600&family=JetBrains+Mono:wght@400..600&family=Lora:wght@400..600&family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/icon16.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/icon48.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png">
+  <link rel="shortcut icon" type="image/png" href="icons/icon16.png">
   <link rel="stylesheet" href="newtab.css">
 </head>
 <body>
   <script>
     // Pre-init: apply saved theme/size/font/width before any paint to
     // eliminate the dark->light flash on launch. Reads a localStorage
-    // mirror written by applySettings(); falls back to prefers-color-scheme.
+    // mirror written by applySettings(); falls back to Tabento on first launch.
     // Also marks body as loading so it fades in once renderAll() finishes.
     (function () {
       var b = document.body, m = {};
       try { m = JSON.parse(localStorage.getItem('te_settings_mirror') || '{}') || {}; } catch (e) {}
+      function supportedLang(value) {
+        var lang = String(value || 'en').trim();
+        return /^zh(?:[-_]|$)/i.test(lang) ? 'zh-TW' : 'en';
+      }
+      var lang = supportedLang(m.language || (navigator.languages && navigator.languages[0]) || navigator.language || 'en');
+      document.documentElement.lang = lang;
       var theme = m.theme;
-      if (!theme || theme === 'auto') {
+      if (!theme) {
+        theme = 'tabento';
+      } else if (theme === 'auto') {
         theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
       }
       b.dataset.theme = theme;
@@ -43,16 +55,16 @@
       <div class="ws-bar">
         <div id="ws-chips-stack"></div>
         <div class="ws-bar-actions">
-          <button id="sidebar-toggle" class="icon-btn sm" title="Collapse sidebar">
+          <button id="sidebar-toggle" class="icon-btn sm" title="Collapse sidebar" data-i18n-title="action.collapseSidebar">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <rect x="2" y="2.5" width="10" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
               <path d="M5.5 2.5v9" stroke="currentColor" stroke-width="1.2"/>
             </svg>
           </button>
-          <button id="add-ws-btn" class="icon-btn sm" title="New workspace">
+          <button id="add-ws-btn" class="icon-btn sm" title="New workspace" data-i18n-title="action.newWorkspace">
             <svg width="13" height="13" viewBox="0 0 13 13"><path d="M6.5 2v9M2 6.5h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           </button>
-          <button id="ws-menu-btn" class="icon-btn sm" title="All workspaces">
+          <button id="ws-menu-btn" class="icon-btn sm" title="All workspaces" data-i18n-title="action.allWorkspaces">
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1.5" y="1.5" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="7.5" y="1.5" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="1.5" y="7.5" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="7.5" y="7.5" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>
           </button>
         </div>
@@ -63,7 +75,7 @@
       <div class="side-hd">
         <div>
           <span id="open-count">0</span>
-          <span class="muted">open tabs</span>
+          <span class="muted" data-i18n="shell.openTabs">open tabs</span>
         </div>
         <span id="selected-badge" class="hidden">0 selected</span>
       </div>
@@ -76,7 +88,7 @@
             <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
             <path d="M10 10l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
-          <input id="tab-filter" type="text" placeholder="Filter tabs" autocomplete="off">
+          <input id="tab-filter" type="text" placeholder="Filter tabs" data-i18n-placeholder="shell.filterTabs" autocomplete="off">
           <kbd>S</kbd>
         </div>
       </div>
@@ -96,37 +108,37 @@
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M4 2l3.5 3.5L4 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
-          <button id="add-cat-btn" class="icon-btn sm" title="New category">
+          <button id="add-cat-btn" class="icon-btn sm" title="New category" data-i18n-title="action.newCategory">
             <svg width="13" height="13" viewBox="0 0 13 13"><path d="M6.5 2v9M2 6.5h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           </button>
         </div>
         <div class="tb-right">
-          <button id="undo-btn" class="icon-btn" title="Undo (Ctrl+Z)">
+          <button id="undo-btn" class="icon-btn" title="Undo (Ctrl+Z)" data-i18n-title="action.undo">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4.5 4L2 6.5 4.5 9M2 6.5h7.5a3.5 3.5 0 010 7H6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button id="tools-btn" class="icon-btn" title="Tools (Pomodoro, Finance, Subs…)">
+          <button id="tools-btn" class="icon-btn" title="Tools (Pomodoro, Finance, Subs…)" data-i18n-title="action.tools">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M11.5 2.5l2 2-3 3-2-2 3-3zM10 4l-7.5 7.5L4 13l7.5-7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="topbar-divider"></div>
-          <button id="view-mode-btn" class="icon-btn" title="Switch layout" data-mode="board" aria-haspopup="menu">
+          <button id="view-mode-btn" class="icon-btn" title="Switch layout" data-mode="board" aria-haspopup="menu" data-i18n-title="action.switchLayout">
             <span id="view-mode-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="5" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="3" width="5" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg></span>
           </button>
-          <button id="select-mode-btn" class="icon-btn" title="Selection mode">
+          <button id="select-mode-btn" class="icon-btn" title="Selection mode" data-i18n-title="action.selectionMode">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="2.5" width="11" height="11" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 8l2 2 3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button id="reorder-mode-btn" class="icon-btn" title="Reorder mode">
+          <button id="reorder-mode-btn" class="icon-btn" title="Reorder mode" data-i18n-title="action.reorderMode">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="4" r="1" fill="currentColor"/><circle cx="11" cy="4" r="1" fill="currentColor"/><circle cx="5" cy="8" r="1" fill="currentColor"/><circle cx="11" cy="8" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="11" cy="12" r="1" fill="currentColor"/></svg>
           </button>
-          <button id="search-btn" class="icon-btn" title="Search (Ctrl/⌘ + K)">
+          <button id="search-btn" class="icon-btn" title="Search (Ctrl/⌘ + K)" data-i18n-title="action.search">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5L13 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           </button>
-          <button id="theme-btn" class="icon-btn" title="Cycle theme">
+          <button id="theme-btn" class="icon-btn" title="Cycle theme" data-i18n-title="action.cycleTheme">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 9A5.5 5.5 0 017 2.5a5.5 5.5 0 106.5 6.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
           </button>
-          <button id="save-session-btn" class="icon-btn" title="Save all open tabs">
+          <button id="save-session-btn" class="icon-btn" title="Save all open tabs" data-i18n-title="action.saveAllTabs">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2.5 3.5A1 1 0 013.5 2.5h7l2.5 2.5v7.5a1 1 0 01-1 1h-9a1 1 0 01-1-1v-9z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 2.5v3h5.5v-3M5 13.5V9h6v4.5" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
           </button>
-          <button id="settings-btn" class="icon-btn" title="Settings">
+          <button id="settings-btn" class="icon-btn" title="Settings" data-i18n-title="action.settings">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.3" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5v1.8M8 12.7v1.8M14.5 8h-1.8M3.3 8H1.5M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3M12.6 12.6l-1.3-1.3M4.7 4.7L3.4 3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
           </button>
         </div>
@@ -433,45 +445,54 @@
   <div id="settings-drawer" class="hidden">
     <div class="drawer-bd">
       <div class="drawer-hd">
-        <h2>Settings</h2>
+        <h2 data-i18n="settings.title">Settings</h2>
         <button id="drawer-x" class="icon-btn">
           <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         </button>
       </div>
 
       <div class="drawer-tabs" id="drawer-tabs">
-        <button class="dt active" data-tab="appearance">Appearance</button>
-        <button class="dt" data-tab="behavior">Behavior</button>
-        <button class="dt" data-tab="archive">Archive</button>
-        <button class="dt" data-tab="data">Data</button>
+        <button class="dt active" data-tab="appearance" data-i18n="settings.appearance">Appearance</button>
+        <button class="dt" data-tab="behavior" data-i18n="settings.behavior">Behavior</button>
+        <button class="dt" data-tab="archive" data-i18n="settings.archive">Archive</button>
+        <button class="dt" data-tab="data" data-i18n="settings.data">Data</button>
       </div>
 
       <div class="drawer-sections" id="dp-appearance">
         <div class="drawer-sec">
-          <div class="field-lbl">Theme</div>
+          <div class="field-lbl" data-i18n="settings.theme">Theme</div>
           <div class="theme-grid" id="theme-grid"></div>
         </div>
 
         <div class="drawer-sec">
-          <div class="field-lbl">Item size</div>
+          <div class="field-lbl" data-i18n="settings.language">Language</div>
+          <div class="seg" id="seg-language">
+            <button data-val="en" data-i18n="settings.language.en">English</button>
+            <button data-val="zh-TW" data-i18n="settings.language.zhTW">Traditional Chinese</button>
+          </div>
+          <small data-i18n="settings.language.hint">New users start with the closest supported browser language.</small>
+        </div>
+
+        <div class="drawer-sec">
+          <div class="field-lbl" data-i18n="settings.itemSize">Item size</div>
           <div class="seg" id="seg-size">
-            <button data-val="compact">Compact</button>
-            <button data-val="normal" class="active">Normal</button>
-            <button data-val="large">Large</button>
+            <button data-val="compact" data-i18n="settings.size.compact">Compact</button>
+            <button data-val="normal" class="active" data-i18n="settings.size.normal">Normal</button>
+            <button data-val="large" data-i18n="settings.size.large">Large</button>
           </div>
         </div>
 
         <div class="drawer-sec">
-          <div class="field-lbl">Column width</div>
+          <div class="field-lbl" data-i18n="settings.columnWidth">Column width</div>
           <div class="seg" id="seg-width">
-            <button data-val="narrow">Narrow</button>
-            <button data-val="normal" class="active">Normal</button>
-            <button data-val="wide">Wide</button>
+            <button data-val="narrow" data-i18n="settings.width.narrow">Narrow</button>
+            <button data-val="normal" class="active" data-i18n="settings.width.normal">Normal</button>
+            <button data-val="wide" data-i18n="settings.width.wide">Wide</button>
           </div>
         </div>
 
         <div class="drawer-sec">
-          <div class="field-lbl">Font family</div>
+          <div class="field-lbl" data-i18n="settings.fontFamily">Font family</div>
           <div class="seg-vert" id="seg-font">
             <button data-val="dm" style="font-family:'DM Sans', sans-serif;">DM Sans<span class="m">clean &amp; modern</span></button>
             <button data-val="inter" style="font-family:'Inter', sans-serif;">Inter<span class="m">precise &amp; neutral</span></button>
@@ -488,47 +509,47 @@
       <div class="drawer-sections hidden" id="dp-behavior">
         <div class="drawer-sec">
           <label class="toggle-row">
-            <span>Close tabs when saved</span>
+            <span data-i18n="settings.closeTabs">Close tabs when saved</span>
             <input type="checkbox" id="tog-close" checked>
             <span class="tog"></span>
           </label>
           <label class="toggle-row">
-            <span>Open saved tabs hibernated<br><small>uses zero memory until clicked</small></span>
+            <span><span data-i18n="settings.hibernate">Open saved tabs hibernated</span><br><small data-i18n="settings.hibernateHint">uses zero memory until clicked</small></span>
             <input type="checkbox" id="tog-hibernate" checked>
             <span class="tog"></span>
           </label>
           <label class="toggle-row">
-            <span>Show URLs on cards</span>
+            <span data-i18n="settings.showUrls">Show URLs on cards</span>
             <input type="checkbox" id="tog-urls" checked>
             <span class="tog"></span>
           </label>
           <label class="toggle-row">
-            <span>Animations</span>
+            <span data-i18n="settings.animations">Animations</span>
             <input type="checkbox" id="tog-anim" checked>
             <span class="tog"></span>
           </label>
           <label class="toggle-row">
-            <span>Confirm before deleting groups</span>
+            <span data-i18n="settings.confirmDelete">Confirm before deleting groups</span>
             <input type="checkbox" id="tog-confirm" checked>
             <span class="tog"></span>
           </label>
           <label class="toggle-row">
-            <span>Privacy blur mode<br><small>blur all content (for screen sharing)</small></span>
+            <span><span data-i18n="settings.privacyBlur">Privacy blur mode</span><br><small data-i18n="settings.privacyBlurHint">blur all content (for screen sharing)</small></span>
             <input type="checkbox" id="tog-blur">
             <span class="tog"></span>
           </label>
           <label class="toggle-row">
-            <span>Auto-switch workspace on window focus<br><small>each workspace tied to a browser window</small></span>
+            <span><span data-i18n="settings.autoSwitch">Auto-switch workspace on window focus</span><br><small data-i18n="settings.autoSwitchHint">each workspace tied to a browser window</small></span>
             <input type="checkbox" id="tog-autoswitch">
             <span class="tog"></span>
           </label>
           <button id="show-tour-btn" class="btn-secondary" style="margin-top:10px">
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="vertical-align:-2px;margin-right:5px"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M5 5.5a1.5 1.5 0 113 0c0 .8-1.5 1-1.5 2M6.5 9.5v.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-            Show tour again
+            <span data-i18n="settings.showTour">Show tour again</span>
           </button>
         </div>
         <div class="drawer-sec">
-          <div class="field-lbl">Shortcuts</div>
+          <div class="field-lbl" data-i18n="settings.shortcuts">Shortcuts</div>
           <div class="kbd-list">
             <div><kbd>⌘/Ctrl</kbd><kbd>K</kbd><span>Search</span></div>
             <div><kbd>⌘/Ctrl</kbd><kbd>Z</kbd><span>Undo</span></div>
@@ -544,7 +565,7 @@
 
       <div class="drawer-sections hidden" id="dp-archive">
         <div class="drawer-sec">
-          <div class="field-lbl">Archived items</div>
+          <div class="field-lbl" data-i18n="settings.archivedItems">Archived items</div>
           <div id="archive-list"></div>
         </div>
       </div>
@@ -559,7 +580,7 @@
         <div class="drawer-sec">
           <button id="export-btn" class="btn-side">
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v7.5m0 0l3-3m-3 3l-3-3M2 10.5v1a1 1 0 001 1h7a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" transform="rotate(180 6.5 6.5)"/></svg>
-            Export all data as JSON
+            <span data-i18n="settings.exportJson">Export all data as JSON</span>
           </button>
           <label for="import-file" class="btn-side">
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v7.5m0 0l3-3m-3 3l-3-3M2 10.5v1a1 1 0 001 1h7a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>

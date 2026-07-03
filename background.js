@@ -1,6 +1,13 @@
 /* ═══ Tabento background.js ═══ */
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const normalizeLanguage = value => /^zh(?:[-_]|$)/i.test(String(value || '').trim()) ? 'zh-TW' : 'en';
+const browserLanguage = () => {
+  const nav = typeof navigator !== 'undefined' ? navigator : {};
+  const lang = nav.languages?.[0] || nav.language || 'en';
+  return normalizeLanguage(lang);
+};
+const appLocale = s => normalizeLanguage(s?.settings?.language || browserLanguage());
 
 async function getState() {
   const d = await chrome.storage.local.get('te');
@@ -32,6 +39,8 @@ async function ensureDefault(s) {
   if (!s) {
     s = { workspaces: [], activeWsId: null, archive: [], settings: {} };
   }
+  if (!s.settings) s.settings = {};
+  s.settings.language = normalizeLanguage(s.settings.language || browserLanguage());
   if (!s.workspaces?.length) {
     const cat = { id: uid(), name: 'Quicklinks', groups: [] };
     const inbox = { id: uid(), name: 'Inbox', symbol: '📥', color: '#6366f1', collapsed: false, items: [] };
@@ -113,7 +122,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const now = new Date();
     cat.groups.push({
       id: uid(), symbol:'💾', color:'#06b6d4', collapsed:false,
-      name: `Session ${now.toLocaleDateString('en',{month:'short',day:'numeric'})} ${now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`,
+      name: `Session ${now.toLocaleDateString(appLocale(s), { month:'short', day:'numeric' })} ${now.toLocaleTimeString(appLocale(s), { hour:'2-digit', minute:'2-digit' })}`,
       items: valid.map(t => ({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }))
     });
     await setState(s);

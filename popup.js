@@ -5,6 +5,12 @@ const favUrl = u => { try { return `https://www.google.com/s2/favicons?domain=${
 const dispUrl = u => { try { return new URL(u).hostname; } catch { return u; } };
 const isProto = u => !u || u.startsWith('chrome') || u.startsWith('edge') || u.startsWith('about');
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const normalizeLanguage = value => /^zh(?:[-_]|$)/i.test(String(value || '').trim()) ? 'zh-TW' : 'en';
+const browserLanguage = () => {
+  const lang = navigator.languages?.[0] || navigator.language || 'en';
+  return normalizeLanguage(lang);
+};
+const appLocale = () => normalizeLanguage(state?.settings?.language || browserLanguage());
 
 let all = [], state = null, pendingTab = null;
 
@@ -117,7 +123,7 @@ $('qs-all').onclick = async () => {
   const now = new Date();
   cat.groups.push({
     id: uid(), symbol:'💾', color:'#06b6d4', collapsed:false,
-    name:`Session ${now.toLocaleDateString('en',{month:'short',day:'numeric'})} ${now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`,
+    name:`Session ${now.toLocaleDateString(appLocale(), { month:'short', day:'numeric' })} ${now.toLocaleTimeString(appLocale(), { hour:'2-digit', minute:'2-digit' })}`,
     items: all.map(t => ({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }))
   });
   await chrome.storage.local.set({ te: state });

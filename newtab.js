@@ -7,6 +7,162 @@
 // data stamped with a higher value get a blocking "newer data" guard.
 const CURRENT_SCHEMA = 5;
 
+const SUPPORTED_LOCALES = ['en', 'zh-TW'];
+
+function browserLanguage() {
+  const nav = typeof navigator !== 'undefined' ? navigator : {};
+  const lang = (Array.isArray(nav.languages) && nav.languages[0]) || nav.language || 'en';
+  return normalizeLanguage(lang);
+}
+
+function normalizeLanguage(value) {
+  const lang = String(value || 'en').trim();
+  if (/^zh(?:[-_]|$)/i.test(lang)) return 'zh-TW';
+  return SUPPORTED_LOCALES.includes(lang) ? lang : 'en';
+}
+
+function appLocale() {
+  return normalizeLanguage(State.get().settings.language || browserLanguage());
+}
+
+const I18N = {
+  en: {
+    'shell.openTabs': 'open tabs',
+    'shell.filterTabs': 'Filter tabs',
+    'action.collapseSidebar': 'Collapse sidebar',
+    'action.newWorkspace': 'New workspace',
+    'action.allWorkspaces': 'All workspaces',
+    'action.newCategory': 'New category',
+    'action.undo': 'Undo (Ctrl+Z)',
+    'action.tools': 'Tools (Pomodoro, Finance, Subs...)',
+    'action.switchLayout': 'Switch layout',
+    'action.selectionMode': 'Selection mode',
+    'action.reorderMode': 'Reorder mode',
+    'action.search': 'Search (Ctrl/Cmd + K)',
+    'action.cycleTheme': 'Cycle theme',
+    'action.saveAllTabs': 'Save all open tabs',
+    'action.settings': 'Settings',
+    'settings.title': 'Settings',
+    'settings.appearance': 'Appearance',
+    'settings.behavior': 'Behavior',
+    'settings.archive': 'Archive',
+    'settings.data': 'Data',
+    'settings.theme': 'Theme',
+    'settings.language': 'Language',
+    'settings.language.en': 'English',
+    'settings.language.zhTW': 'Traditional Chinese',
+    'settings.language.hint': 'New users start with the closest supported browser language.',
+    'settings.itemSize': 'Item size',
+    'settings.size.compact': 'Compact',
+    'settings.size.normal': 'Normal',
+    'settings.size.large': 'Large',
+    'settings.columnWidth': 'Column width',
+    'settings.width.narrow': 'Narrow',
+    'settings.width.normal': 'Normal',
+    'settings.width.wide': 'Wide',
+    'settings.fontFamily': 'Font family',
+    'settings.closeTabs': 'Close tabs when saved',
+    'settings.hibernate': 'Open saved tabs hibernated',
+    'settings.hibernateHint': 'uses zero memory until clicked',
+    'settings.showUrls': 'Show URLs on cards',
+    'settings.animations': 'Animations',
+    'settings.confirmDelete': 'Confirm before deleting groups',
+    'settings.privacyBlur': 'Privacy blur mode',
+    'settings.privacyBlurHint': 'blur all content (for screen sharing)',
+    'settings.autoSwitch': 'Auto-switch workspace on window focus',
+    'settings.autoSwitchHint': 'each workspace tied to a browser window',
+    'settings.showTour': 'Show tour again',
+    'settings.shortcuts': 'Shortcuts',
+    'settings.archivedItems': 'Archived items',
+    'settings.storage': 'Storage',
+    'settings.exportJson': 'Export all data as JSON',
+    'toast.theme': 'Theme: {theme}',
+    'toast.language': 'Language: {language}'
+  },
+  'zh-TW': {
+    'shell.openTabs': '開啟分頁',
+    'shell.filterTabs': '篩選分頁',
+    'action.collapseSidebar': '收合側邊欄',
+    'action.newWorkspace': '新增工作區',
+    'action.allWorkspaces': '所有工作區',
+    'action.newCategory': '新增分類',
+    'action.undo': '復原 (Ctrl+Z)',
+    'action.tools': '工具 (番茄鐘、記帳、訂閱...)',
+    'action.switchLayout': '切換版面',
+    'action.selectionMode': '選取模式',
+    'action.reorderMode': '重新排序模式',
+    'action.search': '搜尋 (Ctrl/Cmd + K)',
+    'action.cycleTheme': '切換主題',
+    'action.saveAllTabs': '儲存所有開啟分頁',
+    'action.settings': '設定',
+    'settings.title': '設定',
+    'settings.appearance': '外觀',
+    'settings.behavior': '行為',
+    'settings.archive': '封存',
+    'settings.data': '資料',
+    'settings.theme': '主題',
+    'settings.language': '語言',
+    'settings.language.en': 'English',
+    'settings.language.zhTW': '繁體中文',
+    'settings.language.hint': '新使用者會依瀏覽器語言自動選擇最接近的支援語言。',
+    'settings.itemSize': '項目大小',
+    'settings.size.compact': '精簡',
+    'settings.size.normal': '標準',
+    'settings.size.large': '大型',
+    'settings.columnWidth': '欄寬',
+    'settings.width.narrow': '窄',
+    'settings.width.normal': '標準',
+    'settings.width.wide': '寬',
+    'settings.fontFamily': '字體',
+    'settings.closeTabs': '儲存後關閉分頁',
+    'settings.hibernate': '以休眠模式開啟已儲存分頁',
+    'settings.hibernateHint': '點開前不占用記憶體',
+    'settings.showUrls': '在卡片上顯示網址',
+    'settings.animations': '動畫',
+    'settings.confirmDelete': '刪除群組前先確認',
+    'settings.privacyBlur': '隱私模糊模式',
+    'settings.privacyBlurHint': '模糊所有內容，適合螢幕分享',
+    'settings.autoSwitch': '視窗聚焦時自動切換工作區',
+    'settings.autoSwitchHint': '每個工作區綁定一個瀏覽器視窗',
+    'settings.showTour': '再次顯示導覽',
+    'settings.shortcuts': '快捷鍵',
+    'settings.archivedItems': '封存項目',
+    'settings.storage': '儲存空間',
+    'settings.exportJson': '匯出所有資料為 JSON',
+    'toast.theme': '主題：{theme}',
+    'toast.language': '語言：{language}'
+  }
+};
+
+function tr(key, vars = {}) {
+  const table = I18N[appLocale()] || I18N.en;
+  let text = table[key] || I18N.en[key] || key;
+  Object.entries(vars).forEach(([name, value]) => {
+    text = text.replaceAll(`{${name}}`, value);
+  });
+  return text;
+}
+
+function applyLocale() {
+  const lang = appLocale();
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = tr(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.title = tr(el.dataset.i18nTitle);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = tr(el.dataset.i18nPlaceholder);
+  });
+  document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+    el.setAttribute('aria-label', tr(el.dataset.i18nAriaLabel));
+  });
+  document.querySelectorAll('#seg-language button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.val === lang);
+  });
+}
+
 // ════════════════════════════════════════════════════════════════
 // STATE + UNDO
 // ════════════════════════════════════════════════════════════════
@@ -17,6 +173,7 @@ const State = (() => {
     columnWidths: {},
     settings: {
       theme:'tabento', size:'normal', font:'dm', width:'normal',
+      language: browserLanguage(),
       closeTabOnSave:true, hibernate:true, showUrls:true,
       animate:true, confirmDelete:true, sidebarCollapsed:false,
       blurPrivacy:false, windowSync:false
@@ -746,6 +903,8 @@ function bindBoardArrowNav() {
 
 function ensureDefault() {
   const s = State.get();
+  if (!s.settings) s.settings = {};
+  s.settings.language = normalizeLanguage(s.settings.language || browserLanguage());
   if (!s.workspaces.length) {
     const cat = { id: uid(), name:'Pinned', groups:[] };
     const cat2 = { id: uid(), name:'Later', groups:[] };
@@ -793,11 +952,18 @@ function buildThemeGrid() {
     const card = document.createElement('div');
     card.className = 'theme-card';
     card.dataset.theme = t.id;
+    const [bg, accent, pop] = t.colors;
+    card.style.setProperty('--th-bg', bg);
+    card.style.setProperty('--th-accent', accent);
+    card.style.setProperty('--th-pop', pop);
     card.innerHTML = `
       <div class="th-preview">
-        <div class="tp1" style="background:${t.colors[0]}"></div>
-        <div class="tp2" style="background:${t.colors[1]}"></div>
-        <div class="tp3" style="background:${t.colors[2]}"></div>
+        <div class="th-bento" aria-hidden="true">
+          <span class="thb-top"></span>
+          <span class="thb-left"></span>
+          <span class="thb-mid"></span>
+          <span class="thb-right"></span>
+        </div>
       </div>
       <div class="th-name">${t.label}</div>`;
     card.onclick = () => {
@@ -812,7 +978,14 @@ function buildThemeGrid() {
 function applySettings() {
   const s = State.get().settings;
   let theme = s.theme;
+  if (theme !== 'auto' && !THEMES.some(t => t.id === theme)) {
+    theme = 'tabento';
+    s.theme = theme;
+  }
   if (theme === 'auto') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  const language = normalizeLanguage(s.language || browserLanguage());
+  s.language = language;
+  document.documentElement.lang = language;
   document.body.dataset.theme = theme;
   document.body.dataset.size = s.size;
   document.body.dataset.font = s.font;
@@ -826,7 +999,8 @@ function applySettings() {
   try {
     localStorage.setItem('te_settings_mirror', JSON.stringify({
       theme: s.theme, size: s.size, font: s.font,
-      width: s.width || 'normal', anim: s.animate ? 'on' : 'off'
+      width: s.width || 'normal', anim: s.animate ? 'on' : 'off',
+      language
     }));
   } catch {}
 
@@ -840,6 +1014,7 @@ function applySettings() {
   });
   const togs = [['tog-close','closeTabOnSave'],['tog-hibernate','hibernate'],['tog-urls','showUrls'],['tog-anim','animate'],['tog-confirm','confirmDelete'],['tog-blur','blurPrivacy'],['tog-autoswitch','autoSwitchWorkspace']];
   togs.forEach(([id, key]) => { const el = document.getElementById(id); if (el) el.checked = !!s[key]; });
+  applyLocale();
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1609,6 +1784,43 @@ let currentActiveTabId = null;
 let selectedTabIds = new Set();
 let lastClickedTabId = null;
 
+function openTabSelectionOrder() {
+  const visibleRows = Array.from(document.querySelectorAll('#open-tabs .otab:not(.hidden)'));
+  const visibleIds = visibleRows.map(el => Number(el.dataset.tid)).filter(Number.isFinite);
+  return visibleIds.length ? visibleIds : allOpenTabs.map(t => t.id);
+}
+
+function selectOpenTabRangeTo(tabId) {
+  if (lastClickedTabId == null) lastClickedTabId = tabId;
+  let order = openTabSelectionOrder();
+  let aI = order.indexOf(lastClickedTabId);
+  let bI = order.indexOf(tabId);
+  if (aI < 0 || bI < 0) {
+    order = allOpenTabs.map(t => t.id);
+    aI = order.indexOf(lastClickedTabId);
+    bI = order.indexOf(tabId);
+  }
+  if (aI < 0 || bI < 0) {
+    selectedTabIds.add(tabId);
+    lastClickedTabId = tabId;
+    return;
+  }
+  const [lo, hi] = aI < bI ? [aI, bI] : [bI, aI];
+  for (let k = lo; k <= hi; k++) selectedTabIds.add(order[k]);
+}
+
+function toggleOpenTabSelection(tabId, { range = false } = {}) {
+  if (range) {
+    selectOpenTabRangeTo(tabId);
+  } else {
+    if (selectedTabIds.has(tabId)) selectedTabIds.delete(tabId);
+    else selectedTabIds.add(tabId);
+    lastClickedTabId = selectedTabIds.size ? tabId : null;
+  }
+  updateSelectedBadge();
+  renderOpenTabs();
+}
+
 async function refreshOpenTabs() {
   try {
     const [activeArr, all] = await Promise.all([
@@ -1649,54 +1861,35 @@ function renderOpenTabs() {
     el.title = t.title || t.url;
     const fav = t.favIconUrl || favUrl(t.url);
     el.innerHTML = `
-      <span class="otab-check" aria-label="Select"></span>
+      <span class="otab-check" role="checkbox" aria-checked="${selectedTabIds.has(t.id)}" aria-label="Select tab"></span>
       <img src="${esc(fav)}" alt="" loading="lazy" decoding="async" onerror="this.src='${BLANK_FAV}'">
       <span class="otab-title">${esc(t.title || t.url)}</span>`;
 
     // Checkbox area click — toggles selection without switching tab
     el.querySelector('.otab-check').addEventListener('click', (e) => {
       e.stopPropagation();
-      if (selectedTabIds.has(t.id)) selectedTabIds.delete(t.id);
-      else selectedTabIds.add(t.id);
-      lastClickedTabId = t.id;
-      updateSelectedBadge();
-      renderOpenTabs();
+      toggleOpenTabSelection(t.id, { range: e.shiftKey });
     });
 
     el.addEventListener('click', (e) => {
       // Ignore clicks that happen to be on the check
       if (e.target.closest('.otab-check')) return;
 
-      if (e.shiftKey && lastClickedTabId != null) {
-        const aI = allOpenTabs.findIndex(x => x.id === lastClickedTabId);
-        const bI = allOpenTabs.findIndex(x => x.id === t.id);
-        if (aI > -1 && bI > -1) {
-          const [lo, hi] = aI < bI ? [aI, bI] : [bI, aI];
-          for (let k = lo; k <= hi; k++) selectedTabIds.add(allOpenTabs[k].id);
-        }
-        lastClickedTabId = t.id;
-        updateSelectedBadge();
-        renderOpenTabs();
+      if (e.shiftKey) {
+        toggleOpenTabSelection(t.id, { range: true });
         return;
       }
       if (e.ctrlKey || e.metaKey) {
-        if (selectedTabIds.has(t.id)) selectedTabIds.delete(t.id);
-        else selectedTabIds.add(t.id);
-        lastClickedTabId = t.id;
-        updateSelectedBadge();
-        renderOpenTabs();
+        toggleOpenTabSelection(t.id);
         return;
       }
       // In selection mode: click to add/toggle, not switch
       if (selectedTabIds.size > 0) {
-        if (selectedTabIds.has(t.id)) selectedTabIds.delete(t.id);
-        else selectedTabIds.add(t.id);
-        lastClickedTabId = t.id;
-        updateSelectedBadge();
-        renderOpenTabs();
+        toggleOpenTabSelection(t.id);
         return;
       }
       // Plain click → switch tab
+      lastClickedTabId = t.id;
       chrome.tabs.update(t.id, { active: true }).catch(()=>{});
     });
 
@@ -1705,7 +1898,7 @@ function renderOpenTabs() {
       const batch = selectedTabIds.has(t.id) && selectedTabIds.size > 1;
       showContextMenu(e.pageX, e.pageY, [
         { text:'Switch to tab', icon: cmIcons.open, action: () => chrome.tabs.update(t.id, { active: true }) },
-        { text: selectedTabIds.has(t.id) ? 'Deselect' : 'Select', icon: cmIcons.edit, action: () => { if (selectedTabIds.has(t.id)) selectedTabIds.delete(t.id); else selectedTabIds.add(t.id); lastClickedTabId = t.id; updateSelectedBadge(); renderOpenTabs(); } },
+        { text: selectedTabIds.has(t.id) ? 'Deselect' : 'Select', icon: cmIcons.edit, action: () => toggleOpenTabSelection(t.id) },
         batch ? { text:`Save ${selectedTabIds.size} selected as new group`, icon: cmIcons.stack, action: () => saveSelectedAsGroup() } : null,
         { sep: true },
         { text: batch ? `Save ${selectedTabIds.size} tabs to Inbox` : 'Save to Inbox', icon: cmIcons.archive, action: () => batch ? saveSelectedToInbox() : saveTabToInbox(t) },
@@ -1850,7 +2043,7 @@ async function saveSelectedAsGroup() {
   const now = new Date();
   const g = {
     id: uid(), symbol:'📂', color:'#6366f1', collapsed:false,
-    name: `${tabs.length} tabs ${now.toLocaleDateString('en',{month:'short',day:'numeric'})}`,
+    name: `${tabs.length} tabs ${now.toLocaleDateString(appLocale(), { month:'short', day:'numeric' })}`,
     items: tabs.map(t => stampNew({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }))
   };
   cat.groups.push(g);
@@ -1858,6 +2051,45 @@ async function saveSelectedAsGroup() {
   selectedTabIds.clear();
   State.persist(); renderBoard(); updateSelectedBadge();
   toast(`Saved ${tabs.length} tabs`, { undo: true });
+}
+
+async function addSidebarOrActiveTabToGroup(g) {
+  const selectedTabs = allOpenTabs.filter(t => selectedTabIds.has(t.id));
+  if (selectedTabs.length) {
+    const addedTabs = selectedTabs.filter(t => !g.items.find(it => it.type === 'tab' && it.url === t.url));
+    if (!addedTabs.length) return toast('Already saved', { danger: true });
+    State.snapshot(`Add ${addedTabs.length} tabs`);
+    addedTabs.forEach(t => {
+      g.items.push(stampNew({ id: uid(), type:'tab', title:t.title || 'Untitled', url:t.url, fav:t.favIconUrl || '' }));
+    });
+    if (State.get().settings.closeTabOnSave) {
+      for (const t of addedTabs) {
+        try { await chrome.tabs.remove(t.id); } catch {}
+      }
+    }
+    selectedTabIds.clear();
+    lastClickedTabId = null;
+    State.persist();
+    renderBoard();
+    updateSelectedBadge();
+    toast(`Added ${addedTabs.length} ${addedTabs.length === 1 ? 'tab' : 'tabs'}`, { undo: true });
+    return;
+  }
+
+  const [t] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!t || isProto(t.url)) {
+    toast('Select a tab on the left to add it here');
+    return;
+  }
+  if (g.items.find(it => it.type === 'tab' && it.url === t.url)) return toast('Already saved');
+  State.snapshot('Add tab');
+  g.items.push(stampNew({ id: uid(), type:'tab', title:t.title || 'Untitled', url:t.url, fav:t.favIconUrl || '' }));
+  if (State.get().settings.closeTabOnSave) {
+    try { await chrome.tabs.remove(t.id); } catch {}
+  }
+  State.persist();
+  renderBoard();
+  toast('Tab added', { undo: true });
 }
 
 async function saveAllTabs() {
@@ -1869,7 +2101,7 @@ async function saveAllTabs() {
   const now = new Date();
   cat.groups.push({
     id: uid(), symbol:'💾', color:'#06b6d4', collapsed:false,
-    name:`Session ${now.toLocaleDateString('en',{month:'short',day:'numeric'})} ${now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`,
+    name:`Session ${now.toLocaleDateString(appLocale(), { month:'short', day:'numeric' })} ${now.toLocaleTimeString(appLocale(), { hour:'2-digit', minute:'2-digit' })}`,
     items: valid.map(t => stampNew({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }))
   });
   if (State.get().settings.closeTabOnSave) {
@@ -2211,7 +2443,7 @@ function buildGroupCol(g) {
         <span>${esc(g.symbol || '📁')}</span>
       </div>
       <div class="gcol-info">
-        <input class="gcol-name" value="${esc(g.name)}" spellcheck="false">
+        <input class="gcol-name" value="${esc(g.name)}" title="${esc(g.name)}" spellcheck="false">
         <div class="gcol-meta">
           <span class="chev"><svg width="8" height="8" viewBox="0 0 8 8"><path d="M2 3l2 2 2-2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg></span>
           <span>${itemCnt} ${itemCnt === 1 ? 'item' : 'items'}</span>
@@ -2241,21 +2473,21 @@ function buildGroupCol(g) {
       <div class="gcol-cards"></div>
     </div>
     <div class="gcol-ft">
-      <button data-act="add-tab">
+      <button class="primary" data-act="add-tab" title="Add selected sidebar tabs or the active browser tab">
         <svg width="10" height="10" viewBox="0 0 11 11"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        Current tab
+        <span>Add tab</span>
       </button>
-      <button data-act="add-note">
+      <button data-act="add-note" title="Add note" aria-label="Add note">
         <svg width="10" height="10" viewBox="0 0 11 11" fill="none"><path d="M2 1.5h5l2 2V9a0.5 0.5 0 01-.5.5H2a0.5 0.5 0 01-.5-.5V2a0.5 0.5 0 01.5-.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
-        Note
+        <span>Note</span>
       </button>
-      <button data-act="add-todo">
+      <button data-act="add-todo" title="Add to-do" aria-label="Add to-do">
         <svg width="10" height="10" viewBox="0 0 11 11" fill="none"><rect x="1.5" y="1.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M3.5 5.5l1.5 1.5 3-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        To-do
+        <span>To-do</span>
       </button>
-      <button data-act="add-stack">
+      <button data-act="add-stack" title="Add stack" aria-label="Add stack">
         <svg width="10" height="10" viewBox="0 0 11 11" fill="none"><path d="M2 3l3.5-1.5L9 3 5.5 4.5 2 3zM2 5.5L5.5 7 9 5.5M2 8L5.5 9.5 9 8" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
-        Stack
+        <span>Stack</span>
       </button>
     </div>
     <div class="gcol-resize"></div>
@@ -2272,7 +2504,7 @@ function buildGroupCol(g) {
     State.persist();
   };
   hd.addEventListener('click', e => {
-    if (e.target.closest('input') || e.target.closest('button') || e.target.closest('.gcol-sym-wrap')) return;
+    if (e.target.closest('input') || e.target.closest('button') || e.target.closest('.gcol-sym-wrap') || e.target.closest('.gcol-acts')) return;
     toggleCollapse();
   });
   hd.addEventListener('keydown', e => {
@@ -2319,7 +2551,7 @@ function buildGroupCol(g) {
   nm.addEventListener('click', e => e.stopPropagation());
   nm.addEventListener('blur', () => {
     const v = nm.value.trim() || g.name;
-    if (v !== g.name) { State.snapshot('Rename'); g.name = v; State.persist(); }
+    if (v !== g.name) { State.snapshot('Rename'); g.name = v; nm.title = v; State.persist(); }
   });
   nm.addEventListener('keydown', e => { if (e.key === 'Enter') nm.blur(); if (e.key === 'Escape') { nm.value = g.name; nm.blur(); } });
 
@@ -2341,14 +2573,7 @@ function buildGroupCol(g) {
     btn.addEventListener('click', async () => {
       const act = btn.dataset.act;
       if (act === 'add-tab') {
-        const [t] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (t && !isProto(t.url)) {
-          if (g.items.find(it => it.type === 'tab' && it.url === t.url)) return toast('Already saved');
-          State.snapshot('Add current tab');
-          g.items.push(stampNew({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }));
-          if (State.get().settings.closeTabOnSave) try { await chrome.tabs.remove(t.id); } catch {}
-          State.persist(); renderBoard(); toast('Tab saved', { undo: true });
-        }
+        await addSidebarOrActiveTabToGroup(g);
       } else if (act === 'add-note') {
         State.snapshot('Add note');
         const n = stampNew({ id: uid(), type:'note', html:'' });
@@ -2382,7 +2607,7 @@ function buildGroupCol(g) {
 
   // Column reorder (drag group header)
   col.addEventListener('dragstart', e => {
-    if (e.target.closest('input') || e.target.closest('button') || e.target.closest('.item') || e.target.closest('.gcol-resize')) return;
+    if (e.target.closest('input') || e.target.closest('button') || e.target.closest('.item') || e.target.closest('.gcol-resize') || e.target.closest('.gcol-acts')) return;
     drag = { kind:'group', srcId: g.id };
     col.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
@@ -2522,7 +2747,8 @@ function attachItemSelection(el, it) {
   chk.addEventListener('click', (ev) => {
     ev.stopPropagation();
     ev.preventDefault();
-    toggleItemSelect(it.id);
+    if (ev.shiftKey) selectRangeTo(it.id);
+    else toggleItemSelect(it.id);
   });
   // Place inside item-top (flex row with fav + title) for tabs/notes/todos
   // For stacks, place inside stack-hd
@@ -2531,9 +2757,9 @@ function attachItemSelection(el, it) {
 
   // Whole-item click toggles selection when in selection mode
   el.addEventListener('click', (ev) => {
-    if (!itemSelMode) return;
+    if (!itemSelMode && !ev.shiftKey) return;
     // Don't capture clicks on the checkbox itself or buttons
-    if (ev.target.closest('.item-check') || ev.target.closest('button')) return;
+    if (ev.target.closest('.item-check') || ev.target.closest('button') || ev.target.closest('input, textarea, select, [contenteditable="true"]')) return;
     ev.stopPropagation();
     ev.preventDefault();
     if (ev.shiftKey) selectRangeTo(it.id);
@@ -2541,9 +2767,40 @@ function attachItemSelection(el, it) {
   }, true);  // capture phase to beat link openers
 }
 
-// Range selection within the same parent list
+function visibleItemSelectionOrder() {
+  const root = document.getElementById('board') || document;
+  return Array.from(root.querySelectorAll('.item[data-id], .lv-stack[data-id]'))
+    .filter(el => {
+      if (el.classList.contains('hidden') || !el.getClientRects().length) return false;
+      const closedStack = el.parentElement?.closest('.stack:not(.expanded):not(.search-expand), .lv-stack:not(.expanded):not(.search-expand)');
+      return !closedStack;
+    })
+    .map(el => el.dataset.id)
+    .filter(id => id && findItem(id));
+}
+
+// Range selection in the current visual order, with a data-list fallback.
 function selectRangeTo(itemId) {
-  if (!lastSelectedItemId) { toggleItemSelect(itemId); lastSelectedItemId = itemId; return; }
+  if (!lastSelectedItemId) {
+    selectedItemIds.add(itemId);
+    lastSelectedItemId = itemId;
+    syncItemSelMode();
+    renderBoard();
+    renderItemSelToolbar();
+    return;
+  }
+  const order = visibleItemSelectionOrder();
+  const aI = order.indexOf(lastSelectedItemId);
+  const bI = order.indexOf(itemId);
+  if (aI > -1 && bI > -1) {
+    const [lo, hi] = aI < bI ? [aI, bI] : [bI, aI];
+    for (let i = lo; i <= hi; i++) selectedItemIds.add(order[i]);
+    lastSelectedItemId = itemId;
+    syncItemSelMode();
+    renderBoard();
+    renderItemSelToolbar();
+    return;
+  }
   const a = findItem(lastSelectedItemId), b = findItem(itemId);
   if (!a || !b || a.parent !== b.parent) { toggleItemSelect(itemId); lastSelectedItemId = itemId; return; }
   const [lo, hi] = a.index < b.index ? [a.index, b.index] : [b.index, a.index];
@@ -3180,7 +3437,7 @@ function attachItemDrag(el, it, parentItems, group) {
     e.stopPropagation();
     drag = { kind:'item', id: it.id, srcList: parentItems };
     el.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = it.type === 'tab' && it.url ? 'copyMove' : 'move';
     try { e.dataTransfer.setData('text/plain', it.url || ''); } catch {}
   });
   el.addEventListener('dragend', () => {
@@ -3768,7 +4025,7 @@ async function saveWindowAsWorkspace(win) {
   if (!tabs.length) return toast('No saveable tabs');
   State.snapshot('Save window as workspace');
   const ws = {
-    id: uid(), name: `Window ${new Date().toLocaleDateString('en',{month:'short',day:'numeric'})}`, symbol:'🪟',
+    id: uid(), name: `Window ${new Date().toLocaleDateString(appLocale(), { month:'short', day:'numeric' })}`, symbol:'🪟',
     categories: [{ id: uid(), name:'Quicklinks', groups: [{
       id: uid(), name:'Tabs', symbol:'📁', color:'#06b6d4', collapsed:false,
       items: tabs.map(t => stampNew({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }))
@@ -3919,7 +4176,7 @@ function openImportPreview() {
   const { counts, filename, exportedAt, schema } = importCtx;
   document.getElementById('import-filename').textContent = filename || '—';
   document.getElementById('import-date').textContent = exportedAt
-    ? new Date(exportedAt).toLocaleString()
+    ? new Date(exportedAt).toLocaleString(appLocale())
     : 'Unknown';
   document.getElementById('import-schema').textContent =
     schema === 'legacy' ? 'Legacy' : (schema != null ? String(schema) : '—');
@@ -4218,7 +4475,7 @@ function formatMoney(val, currency = 'USD') {
   const sym = CURRENCY_SYMBOL[currency] || '$';
   const n = Math.abs(val);
   const decimals = (currency === 'JPY' || currency === 'KRW') ? 0 : 2;
-  return `${val < 0 ? '-' : ''}${sym}${n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+  return `${val < 0 ? '-' : ''}${sym}${n.toLocaleString(appLocale(), { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
 function daysUntil(dateStr) {
@@ -4314,7 +4571,7 @@ function renderSubs() {
       else if (days === 1) { nextLabel = 'Tomorrow'; nextClass = 'soon'; }
       else if (days <= 3) { nextLabel = `In ${days} days`; nextClass = 'soon'; }
       else if (days <= 30) { nextLabel = `In ${days} days`; }
-      else { const d = new Date(sub.nextBilling); nextLabel = d.toLocaleDateString('en',{month:'short',day:'numeric'}); }
+      else { const d = new Date(sub.nextBilling); nextLabel = d.toLocaleDateString(appLocale(), { month:'short', day:'numeric' }); }
     }
     const period = sub.period || 'monthly';
     const periodLabel = period === 'monthly' ? '/mo' : period === 'yearly' ? '/yr' : period === 'weekly' ? '/wk' : period === 'quarterly' ? '/qtr' : '';
@@ -4777,7 +5034,7 @@ function renderItemDetail() {
     const past = it.reminder.at < Date.now();
     const when = document.createElement('span');
     when.className = 'idp-rem-when' + (past ? ' past' : '');
-    when.textContent = `${new Date(it.reminder.at).toLocaleString()} · ${fmtTimeRelative(it.reminder.at)}`;
+    when.textContent = `${new Date(it.reminder.at).toLocaleString(appLocale())} · ${fmtTimeRelative(it.reminder.at)}`;
     remWrap.appendChild(when);
     const change = document.createElement('button'); change.type = 'button'; change.className = 'idp-btn'; change.textContent = 'Change'; change.onclick = () => openReminderPicker(it.id);
     const clr2 = document.createElement('button'); clr2.type = 'button'; clr2.className = 'idp-btn danger'; clr2.textContent = 'Clear'; clr2.onclick = () => clearReminder(it.id);
@@ -5344,6 +5601,79 @@ function getCanvasPositions() {
   return cat.canvasPositions;
 }
 
+function getCanvasGroupEl(gId) {
+  return Array.from(document.querySelectorAll('.gcol.cv-group')).find(el => el.dataset.gid === gId);
+}
+
+function canvasGroupRect(g, positions, fallback) {
+  const el = getCanvasGroupEl(g.id);
+  const pos = positions[g.id] || { x: 0, y: 0 };
+  return {
+    x: Number(pos.x) || 0,
+    y: Number(pos.y) || 0,
+    w: el?.offsetWidth || fallback.w,
+    h: el?.offsetHeight || fallback.h
+  };
+}
+
+function canvasRectsOverlap(a, b, gap = 24) {
+  return a.x < b.x + b.w + gap &&
+    a.x + a.w + gap > b.x &&
+    a.y < b.y + b.h + gap &&
+    a.y + a.h + gap > b.y;
+}
+
+function findOpenCanvasPosition(group, groups, positions) {
+  const board = document.getElementById('board');
+  const colW = parseFloat(getComputedStyle(document.body).getPropertyValue('--gw')) || 290;
+  const fallback = { w: colW, h: 330 };
+  const occupied = groups
+    .filter(g => g.id !== group.id && positions[g.id])
+    .map(g => canvasGroupRect(g, positions, fallback));
+
+  const startX = Math.max(30, (board?.scrollLeft || 0) + 30);
+  const startY = Math.max(30, (board?.scrollTop || 0) + 30);
+  const stepX = Math.max(fallback.w + 30, 320);
+  const stepY = Math.max(fallback.h + 36, 366);
+  const columns = Math.max(3, Math.ceil((board?.clientWidth || 960) / stepX) + 1);
+
+  for (let row = 0; row < 24; row++) {
+    for (let col = 0; col < columns; col++) {
+      const candidate = { x: startX + col * stepX, y: startY + row * stepY, ...fallback };
+      if (!occupied.some(rect => canvasRectsOverlap(candidate, rect))) return { x: candidate.x, y: candidate.y };
+    }
+  }
+
+  const below = occupied.reduce((max, rect) => Math.max(max, rect.y + rect.h), startY);
+  return { x: startX, y: below + 36 };
+}
+
+function placeMissingCanvasPositions(cat, positions) {
+  let changed = false;
+  const live = new Set(cat.groups.map(g => g.id));
+  Object.keys(positions).forEach(id => {
+    if (!live.has(id)) { delete positions[id]; changed = true; }
+  });
+  cat.groups.forEach(g => {
+    if (!positions[g.id]) {
+      positions[g.id] = findOpenCanvasPosition(g, cat.groups, positions);
+      changed = true;
+    }
+  });
+  const anchors = new Set();
+  cat.groups.forEach(g => {
+    const pos = positions[g.id];
+    const key = `${Math.round((Number(pos?.x) || 0) / 20)}:${Math.round((Number(pos?.y) || 0) / 20)}`;
+    if (anchors.has(key)) {
+      positions[g.id] = findOpenCanvasPosition(g, cat.groups, positions);
+      changed = true;
+    }
+    const next = positions[g.id];
+    anchors.add(`${Math.round((Number(next?.x) || 0) / 20)}:${Math.round((Number(next?.y) || 0) / 20)}`);
+  });
+  return changed;
+}
+
 function renderCanvasView() {
   const $b = document.getElementById('board');
   $b.innerHTML = '';
@@ -5361,17 +5691,8 @@ function renderCanvasView() {
   wrap.className = 'cv-canvas';
   $b.appendChild(wrap);
 
-  // Auto-layout for groups without saved positions
   const positions = getCanvasPositions();
-  let nextX = 30, nextY = 30, rowH = 0;
-  cat.groups.forEach((g, i) => {
-    if (!positions[g.id]) {
-      // Auto-place in a flow grid
-      positions[g.id] = { x: nextX, y: nextY };
-      nextX += 320;
-      if (nextX > 960) { nextX = 30; nextY += 380; }
-    }
-  });
+  if (placeMissingCanvasPositions(cat, positions)) State.persist();
 
   cat.groups.forEach(g => {
     const pos = positions[g.id] || { x: 30, y: 30 };
@@ -5387,7 +5708,7 @@ function renderCanvasView() {
       let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
       hd.addEventListener('mousedown', (e) => {
         // Don't drag when clicking buttons or symbol or input
-        if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.gcol-sym-wrap')) return;
+        if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.gcol-sym-wrap') || e.target.closest('.gcol-acts')) return;
         dragging = true;
         startX = e.clientX; startY = e.clientY;
         startLeft = parseFloat(col.style.left) || 0;
@@ -5495,7 +5816,7 @@ function buildLvGroup(g) {
     <div class="lv-group-acts">
       <button class="lv-act-btn" data-act="focus" title="Expand to full page"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 4V2h2M10 4V2H8M2 8v2h2M10 8v2H8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="lv-act-btn" data-act="open-all" title="Open all"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M4 2.5H2a1 1 0 00-1 1v6.5A1 1 0 002 11h6.5a1 1 0 001-1V8M7 1h4m0 0v4M11 1L5.5 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button class="lv-act-btn" data-act="add-tab" title="Add current tab"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+      <button class="lv-act-btn" data-act="add-tab" title="Add selected sidebar tabs or the active browser tab"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
       <button class="lv-act-btn" data-act="more" title="More"><svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor"><circle cx="3" cy="6" r="1"/><circle cx="6" cy="6" r="1"/><circle cx="9" cy="6" r="1"/></svg></button>
     </div>`;
 
@@ -5527,14 +5848,7 @@ function buildLvGroup(g) {
     if (act === 'focus') openGroupPage(g.id);
     else if (act === 'open-all') openGroupAll(g.id);
     else if (act === 'add-tab') {
-      const [t] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (t && !isProto(t.url)) {
-        if (g.items.find(it => it.type === 'tab' && it.url === t.url)) return toast('Already saved');
-        State.snapshot('Add tab');
-        g.items.push(stampNew({ id: uid(), type:'tab', title:t.title||'Untitled', url:t.url, fav:t.favIconUrl||'' }));
-        if (State.get().settings.closeTabOnSave) try { await chrome.tabs.remove(t.id); } catch {}
-        State.persist(); renderBoard();
-      }
+      await addSidebarOrActiveTabToGroup(g);
     }
     else if (act === 'more') showContextMenu(e.pageX, e.pageY, [
       { text:'Edit group…', icon: cmIcons.edit, action: () => openModal('edit-group', g) },
@@ -5628,6 +5942,13 @@ function buildLvStack(it, parentItems, group, depth) {
     <span class="lv-stack-cnt">${cnt}</span>`;
   hd.addEventListener('click', e => {
     if (e.target.closest('.lv-stack-sym') || e.target.closest('.item-check')) return;
+    if (itemSelMode || e.shiftKey) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (e.shiftKey) selectRangeTo(it.id);
+      else toggleItemSelect(it.id);
+      return;
+    }
     State.snapshot('Toggle stack');
     it.expanded = !it.expanded;
     wrap.classList.toggle('expanded');
@@ -5649,8 +5970,13 @@ function buildLvStack(it, parentItems, group, depth) {
   // Selection checkbox for stack
   const stackChk = document.createElement('span');
   stackChk.className = 'item-check';
-  if (selectedItemIds.has(it.id)) stackChk.classList.add('checked');
-  stackChk.addEventListener('click', (ev) => { ev.stopPropagation(); ev.preventDefault(); toggleItemSelect(it.id); });
+  if (selectedItemIds.has(it.id)) { stackChk.classList.add('checked'); wrap.classList.add('item-selected'); }
+  stackChk.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    ev.preventDefault();
+    if (ev.shiftKey) selectRangeTo(it.id);
+    else toggleItemSelect(it.id);
+  });
   hd.insertBefore(stackChk, hd.firstChild.nextSibling);
 
   const inner = document.createElement('div');
@@ -5933,9 +6259,9 @@ function _tlBucketStart(ts, zoom) {
 function _tlBucketLabel(start, zoom) {
   const d = new Date(start);
   const sameYear = d.getFullYear() === new Date().getFullYear();
-  if (zoom === 'month') return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  if (zoom === 'week') return 'Week of ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + (sameYear ? '' : ', ' + d.getFullYear());
-  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + (sameYear ? '' : ', ' + d.getFullYear());
+  if (zoom === 'month') return d.toLocaleDateString(appLocale(), { month: 'long', year: 'numeric' });
+  if (zoom === 'week') return 'Week of ' + d.toLocaleDateString(appLocale(), { month: 'short', day: 'numeric' }) + (sameYear ? '' : ', ' + d.getFullYear());
+  return d.toLocaleDateString(appLocale(), { weekday: 'short', month: 'short', day: 'numeric' }) + (sameYear ? '' : ', ' + d.getFullYear());
 }
 
 function setTimelineZoom(z) {
@@ -6181,26 +6507,36 @@ function setupDragAutoScroll() {
 function setupOpenTabsDropToOpen() {
   const zone = document.getElementById('open-tabs');
   if (!zone) return;
-  zone.addEventListener('dragover', (e) => {
-    if (drag?.kind !== 'item') return;
+
+  const getDraggedSavedTab = () => {
+    if (drag?.kind !== 'item') return null;
     const info = findItem(drag.id);
-    if (!info || info.item.type !== 'tab') return;
+    if (!info || info.item.type !== 'tab' || !info.item.url) return null;
+    return info.item;
+  };
+
+  const acceptSavedTabDrop = (e) => {
+    const item = getDraggedSavedTab();
+    if (!item) return null;
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
     zone.classList.add('dragover');
-  });
+    return item;
+  };
+
+  zone.addEventListener('dragenter', acceptSavedTabDrop, true);
+  zone.addEventListener('dragover', acceptSavedTabDrop, true);
   zone.addEventListener('dragleave', (e) => {
     if (zone.contains(e.relatedTarget)) return;
     zone.classList.remove('dragover');
   });
   zone.addEventListener('drop', (e) => {
-    if (drag?.kind !== 'item') return;
-    const info = findItem(drag.id);
+    const item = acceptSavedTabDrop(e);
     zone.classList.remove('dragover');
-    if (!info || info.item.type !== 'tab') return;
-    e.preventDefault();
-    openTabMaybeHibernated(info.item.url);
-  });
+    if (!item) return;
+    openTabMaybeHibernated(item.url, { focus: true }).catch(() => toast('Could not open tab', { danger: true }));
+  }, true);
 }
 function openToolsHub() { document.getElementById('tools-hub').classList.remove('hidden'); }
 function closeToolsHub() { document.getElementById('tools-hub').classList.add('hidden'); }
@@ -6318,7 +6654,7 @@ function renderPomo() {
   if (pomoState.running) {
     document.title = `${m}:${String(s).padStart(2,'0')} · Tabento`;
   } else {
-    document.title = 'New Tab';
+    document.title = 'Tabento';
   }
 
   renderPomoTasks();
@@ -6359,7 +6695,7 @@ function tickPomo() {
   if (!_pomoTimeEl) _pomoTimeEl = document.getElementById('pomo-time');
   if (_pomoTimeEl) _pomoTimeEl.textContent = timeText;
   // document.title writes are surprisingly expensive — only change when needed.
-  const nextTitle = pomoState.running ? `${timeText} · Tabento` : 'New Tab';
+  const nextTitle = pomoState.running ? `${timeText} · Tabento` : 'Tabento';
   if (nextTitle !== _pomoLastTitle) { document.title = nextTitle; _pomoLastTitle = nextTitle; }
 }
 function startPomoTimer() {
@@ -6585,7 +6921,7 @@ function renderFin() {
   // Stats
   const fmt = v => {
     const dec = (cur === 'JPY' || cur === 'KRW') ? 0 : 2;
-    return `${sym}${v.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec })}`;
+    return `${sym}${v.toLocaleString(appLocale(), { minimumFractionDigits: dec, maximumFractionDigits: dec })}`;
   };
   document.getElementById('fin-spent').textContent = fmt(total);
   document.getElementById('fin-count').textContent = txns.length;
@@ -6634,9 +6970,9 @@ function renderFin() {
       const cat = FIN_CATS.find(c => c.id === t.category) || FIN_CATS[FIN_CATS.length-1];
       const tSym = FIN_CUR_SYM[t.currency] || '$';
       const dec = (t.currency === 'JPY' || t.currency === 'KRW') ? 0 : 2;
-      const amtStr = `${tSym}${Number(t.amount).toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec })}`;
+      const amtStr = `${tSym}${Number(t.amount).toLocaleString(appLocale(), { minimumFractionDigits: dec, maximumFractionDigits: dec })}`;
       const d = new Date(t.date);
-      const dateStr = d.toLocaleDateString('en', { month:'short', day:'numeric' });
+      const dateStr = d.toLocaleDateString(appLocale(), { month:'short', day:'numeric' });
       const row = document.createElement('div');
       row.className = 'fin-tx-row';
       row.dataset.txId = t.id;
@@ -7092,7 +7428,7 @@ function renderWaterSidebar() {
   const days = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today); d.setDate(d.getDate() - i);
-    days.push({ key: d.toISOString().slice(0,10), label: d.toLocaleDateString('en', { weekday: 'narrow' }), count: w.days[d.toISOString().slice(0,10)] || 0 });
+    days.push({ key: d.toISOString().slice(0,10), label: d.toLocaleDateString(appLocale(), { weekday: 'narrow' }), count: w.days[d.toISOString().slice(0,10)] || 0 });
   }
   // Bars
   const $bars = document.getElementById('water-week');
@@ -7233,7 +7569,7 @@ function renderBooks() {
       card.className = 'bk-card';
       card.innerHTML = `
         <div class="bk-title">${esc(b.title)}</div>
-        <div class="bk-author">${esc(b.author || 'Unknown author')}${b.date && b.status === 'finished' ? ' · ' + new Date(b.date).toLocaleDateString('en', { month:'short', year:'numeric' }) : ''}</div>
+        <div class="bk-author">${esc(b.author || 'Unknown author')}${b.date && b.status === 'finished' ? ' · ' + new Date(b.date).toLocaleDateString(appLocale(), { month:'short', year:'numeric' }) : ''}</div>
         <div class="bk-actions">
           ${b.status !== 'reading' ? `<button data-act="reading">📖 Reading</button>` : ''}
           ${b.status !== 'finished' ? `<button data-act="finished">✅ Done</button>` : ''}
@@ -7380,7 +7716,7 @@ function renderGoals() {
       if (daysLeft != null) {
         if (daysLeft < 0) { dueCls = 'overdue'; dueTxt = `${-daysLeft}d overdue`; }
         else if (daysLeft <= 7) { dueCls = 'soon'; dueTxt = `${daysLeft}d left`; }
-        else { dueTxt = new Date(g.due).toLocaleDateString('en', { month:'short', day:'numeric', year:'numeric' }); }
+        else { dueTxt = new Date(g.due).toLocaleDateString(appLocale(), { month:'short', day:'numeric', year:'numeric' }); }
       }
       const row = document.createElement('div');
       row.className = 'goal-row';
@@ -7523,7 +7859,7 @@ function renderWorkout() {
         <div class="wo-icon">💪</div>
         <div class="wo-info">
           <div class="wo-name">${esc(w.name)}</div>
-          <div class="wo-meta">${d.toLocaleDateString('en', { weekday:'short', month:'short', day:'numeric' })} · ${w.duration || '?'} min${w.note ? ' · ' + esc(w.note) : ''}</div>
+          <div class="wo-meta">${d.toLocaleDateString(appLocale(), { weekday:'short', month:'short', day:'numeric' })} · ${w.duration || '?'} min${w.note ? ' · ' + esc(w.note) : ''}</div>
         </div>
         <button class="wo-del"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M4.5 3V1.5h3V3M3 3v7a1 1 0 001 1h4a1 1 0 001-1V3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
       row.querySelector('.wo-del').onclick = () => {
@@ -7644,7 +7980,7 @@ const TOUR_STEPS = [
   {
     target: '#open-tabs',
     title: '📑 Your open tabs',
-    body: 'Every tab in this window shows up here. Drag one onto the board to save it for later, or use the checkbox to grab several at once.'
+    body: 'Every tab in this window shows up here. Drag one onto the board to save it for later, or use the select button to grab several at once.'
   },
   {
     target: '#board',
@@ -7836,13 +8172,13 @@ function bindStatic() {
   document.getElementById('tab-filter').onkeydown = e => { if (e.key === 'Escape') { e.target.value = ''; applyFilter(); e.target.blur(); } };
 
   document.getElementById('theme-btn').onclick = () => {
-    const cycle = ['tabento','tabento-dark','aurora','dark','light','dracula','nord','rose-pine','tokyo-night','solarized-dark','solarized-light','gruvbox','catppuccin','sepia','mono'];
+    const cycle = THEMES.map(t => t.id);
     const i = cycle.indexOf(State.get().settings.theme);
     State.get().settings.theme = cycle[(i + 1) % cycle.length];
     applySettings();
     State.persist();
     const t = THEMES.find(x => x.id === State.get().settings.theme);
-    toast(`Theme: ${t?.label || State.get().settings.theme}`);
+    toast(tr('toast.theme', { theme: t?.label || State.get().settings.theme }));
   };
   document.getElementById('save-session-btn').onclick = saveAllTabs;
   const _drawer = document.getElementById('settings-drawer');
@@ -7894,6 +8230,13 @@ function bindStatic() {
   });
 
   // Settings controls
+  document.querySelectorAll('#seg-language button').forEach(b => b.onclick = () => {
+    const next = normalizeLanguage(b.dataset.val);
+    State.get().settings.language = next;
+    applySettings();
+    State.persist();
+    toast(tr('toast.language', { language: tr(next === 'zh-TW' ? 'settings.language.zhTW' : 'settings.language.en') }));
+  });
   document.querySelectorAll('#seg-size button').forEach(b => b.onclick = () => { State.get().settings.size = b.dataset.val; applySettings(); State.persist(); });
   document.querySelectorAll('#seg-width button').forEach(b => b.onclick = () => { State.get().settings.width = b.dataset.val; applySettings(); State.persist(); });
   document.querySelectorAll('#seg-font button').forEach(b => b.onclick = () => { State.get().settings.font = b.dataset.val; applySettings(); State.persist(); });
