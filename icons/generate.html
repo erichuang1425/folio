@@ -21,14 +21,15 @@
 </head>
 <body>
   <h1>Tabento icon generator</h1>
-  <p>Renders <code>icon-source-clean.png</code> to the three PNG sizes the MV3 manifest needs. Click
+  <p>Renders <code>icon-source-clean.png</code> to the PNG sizes the MV3 manifest needs. Click
      <b>Download all</b>, then save the files into this <code>icons/</code> folder, replacing
-     the old <code>icon16.png</code> / <code>icon48.png</code> / <code>icon128.png</code>.</p>
+     the old <code>icon16.png</code> / <code>icon32.png</code> / <code>icon48.png</code> /
+     <code>icon128.png</code>.</p>
   <div class="row" id="previews"></div>
-  <button id="dl">Download all (16, 48, 128)</button>
+  <button id="dl">Download all (16, 32, 48, 128)</button>
 
 <script>
-const SIZES = [16, 48, 128];
+const SIZES = [16, 32, 48, 128];
 
 const img = new Image();
 const canvases = {};

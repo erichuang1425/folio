@@ -20,6 +20,20 @@ board) and survives reload. Tags feed a new **`tag:`** search operator (with `-`
 negation), covers/tag-chips/detail hints surface on the cards, and everything is
 behind schema 5 (absent = today's behavior). Opened from a card's details button
 or the "Details…" context-menu action.
+Phase 3 (Layout engine, §3) has landed: an Explorer (Miller-column) layout and an
+animated Timeline layout join board/list/canvas behind the layout registry,
+switched from a top-bar **layout menu** (`openLayoutMenu`, §7) and persisted per
+category (`category.layout`).
+Phase 4 (Calendar, §5) has landed: a workspace-scoped calendar surface
+(`renderCalendar`) routed at `#/ws/<id>/calendar?cal=<view>` with **Month**,
+**Week**, and **Agenda** views over the reminder aggregator (§2.3). It reuses the
+board search vocabulary as a live filter (`parseCalendarFilter` —
+`type:`/`color:`/`source:`/`in:`/`category:`/text with `-` negation), surfaces
+overdue reminders in a persistent **Past due** rail, supports drag-to-reschedule
+(time-of-day preserved, routed through the shared `setReminder`) and click-through
+to an item's group page + detail pane, with a top-bar entry point, the `C`
+keyboard shortcut, and a Workspace › Calendar breadcrumb — all additive, no schema
+change (reminders already live on items).
 
 This document plans a set of **major** features for Tabento: spatial, animated, design-forward
 interfaces and the systems work needed to make them cohere. Every proposal here is grounded in
@@ -393,9 +407,9 @@ Each phase is independently shippable and leaves the app fully working.
 |---|---|---|
 | **0 — Spine** ✅ | Hash router (§2.1), layout registry (§2.2), reminder aggregator (§2.3), `createdAt` on new items | Everything below; no user-visible change beyond deep-linkable board |
 | **1 — Group Pages** ✅ | §4.1 group route + shell, migrate `openGroupFocus` to it, breadcrumb + back/forward | Groups become manageable pages |
-| **2 — Link content** | §4.2 detail pane, additive item fields, `tag:` operator, migration | Rich per-link context |
-| **3 — Explorer + Timeline** | §3.1, §3.2, layout switcher (§7), per-category layout persistence | The headline new layouts |
-| **4 — Calendar** | §5 month/week/agenda, filter integration, drag-to-reschedule | Unified reminders surface |
+| **2 — Link content** ✅ | §4.2 detail pane, additive item fields, `tag:` operator, migration | Rich per-link context |
+| **3 — Explorer + Timeline** ✅ | §3.1, §3.2, layout switcher (§7), per-category layout persistence | The headline new layouts |
+| **4 — Calendar** ✅ | §5 month/week/agenda, filter integration, drag-to-reschedule | Unified reminders surface |
 | **5 — Reminders everywhere** | §6 group/category reminders + recurrence, background.js alarm branches | Calendar becomes truly complete |
 | **6 — Stretch layouts + palette** | §3.3 Gallery, §3.4 Graph, command palette (§7) | Breadth & polish |
 
