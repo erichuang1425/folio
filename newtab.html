@@ -550,10 +550,21 @@
             <input type="checkbox" id="tog-autoswitch">
             <span class="tog"></span>
           </label>
-          <button id="show-tour-btn" class="btn-secondary" style="margin-top:10px">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="vertical-align:-2px;margin-right:5px"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M5 5.5a1.5 1.5 0 113 0c0 .8-1.5 1-1.5 2M6.5 9.5v.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-            <span data-i18n="settings.showTour">Show tour again</span>
-          </button>
+          <label class="toggle-row">
+            <span><span data-i18n="settings.tips">Show tips as you explore</span><br><small data-i18n="settings.tipsHint">a one-time hint the first time you open a feature</small></span>
+            <input type="checkbox" id="tog-tips" checked>
+            <span class="tog"></span>
+          </label>
+          <div class="onboarding-actions">
+            <button id="show-tour-btn" class="btn-secondary">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="vertical-align:-2px;margin-right:5px"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M5 5.5a1.5 1.5 0 113 0c0 .8-1.5 1-1.5 2M6.5 9.5v.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <span data-i18n="settings.showTour">Replay welcome</span>
+            </button>
+            <button id="reset-hints-btn" class="btn-secondary">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="vertical-align:-2px;margin-right:5px"><path d="M2.5 6.5a4 4 0 104-4M2.5 6.5V4M2.5 6.5H5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span data-i18n="settings.resetHints">Reset tips</span>
+            </button>
+          </div>
         </div>
         <div class="drawer-sec">
           <div class="field-lbl" data-i18n="settings.shortcuts">Shortcuts</div>
@@ -849,6 +860,13 @@
       </div>
       <div class="tour-hint">← / → to navigate · Esc to close</div>
     </div>
+  </div>
+
+  <!-- ══════ JUST-IN-TIME COACH-MARK ══════ -->
+  <div id="coach" class="hidden" role="status" aria-live="polite" data-arrow="up">
+    <div class="coach-title"></div>
+    <div class="coach-body"></div>
+    <button class="coach-got" type="button">Got it</button>
   </div>
 
   <!-- ══════ TOOLS HUB ══════ -->

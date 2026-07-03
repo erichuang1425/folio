@@ -206,3 +206,12 @@ differentiator we can market honestly.
   "14", still purely local. Covers, tag chips, and a "has detail" hint surface on the cards; every
   item type gains a **Details…** context action and tabs get a details button. All behind **schema 5**
   (absent fields = today's behavior; older exports import unchanged).
+- **2026-07-03** — Reworked **first-run onboarding** ([IMPROVEMENTS §8](docs/IMPROVEMENTS.md)) toward a
+  calmer, more intentional feel. The nine-step spotlight wall is now a **three-card welcome** (what
+  Tabento is → save a tab → find your way around); everything else is taught **just-in-time** by a
+  small, non-modal **coach-mark** (`coachMark`) that fires at most once per surface — the first layout-menu
+  reach and the first calendar open — reusing one reusable element, transform-positioned (composite-only)
+  and reduced-motion aware. A structured `settings.onboarding` record (`welcomeSeen`, per-surface
+  `hintsSeen`, `disabled`) replaces the single `tourCompleted` flag under **schema 6**; the migration folds
+  the old flag in so returning users are never re-onboarded. Settings → Behavior gains **Replay welcome**,
+  **Reset tips**, and a **Show tips as you explore** switch. No new host access; purely local state.

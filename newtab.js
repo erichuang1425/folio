@@ -5,7 +5,7 @@
 // Schema version of the in-storage state. Bump when state shape changes,
 // then add a forward-migration branch in migrate(). Older builds reading
 // data stamped with a higher value get a blocking "newer data" guard.
-const CURRENT_SCHEMA = 5;
+const CURRENT_SCHEMA = 6;
 
 const SUPPORTED_LOCALES = ['en', 'zh-TW'];
 
@@ -73,7 +73,10 @@ const I18N = {
     'settings.privacyBlurHint': 'blur all content (for screen sharing)',
     'settings.autoSwitch': 'Auto-switch workspace on window focus',
     'settings.autoSwitchHint': 'each workspace tied to a browser window',
-    'settings.showTour': 'Show tour again',
+    'settings.showTour': 'Replay welcome',
+    'settings.tips': 'Show tips as you explore',
+    'settings.tipsHint': 'a one-time hint the first time you open a feature',
+    'settings.resetHints': 'Reset tips',
     'settings.shortcuts': 'Shortcuts',
     'settings.archivedItems': 'Archived items',
     'settings.storage': 'Storage',
@@ -128,7 +131,10 @@ const I18N = {
     'settings.privacyBlurHint': '模糊所有內容，適合螢幕分享',
     'settings.autoSwitch': '視窗聚焦時自動切換工作區',
     'settings.autoSwitchHint': '每個工作區綁定一個瀏覽器視窗',
-    'settings.showTour': '再次顯示導覽',
+    'settings.showTour': '重播歡迎導覽',
+    'settings.tips': '探索時顯示提示',
+    'settings.tipsHint': '第一次開啟功能時顯示一次性提示',
+    'settings.resetHints': '重設提示',
     'settings.shortcuts': '快捷鍵',
     'settings.archivedItems': '封存項目',
     'settings.storage': '儲存空間',
@@ -180,7 +186,8 @@ const State = (() => {
       language: browserLanguage(),
       closeTabOnSave:true, hibernate:true, showUrls:true,
       animate:true, confirmDelete:true, sidebarCollapsed:false,
-      blurPrivacy:false, windowSync:false
+      blurPrivacy:false, windowSync:false,
+      onboarding: { welcomeSeen:false, hintsSeen:{}, disabled:false }
     }
   };
   let history = [], future = [];
@@ -699,6 +706,22 @@ function migrate() {
     // Every field is absent by default (absent = today's behavior), so there is
     // nothing to rewrite: bare links stay valid and older exports import
     // unchanged. Purely additive.
+  }
+
+  if (from < 6) {
+    // Schema 6 (§8 — progressive onboarding). Fold the old single
+    // `tourCompleted` flag into a structured record so returning users are
+    // never re-onboarded and each just-in-time hint is tracked on its own.
+    // Absent = fresh install (welcome shows once).
+    s.settings = s.settings || {};
+    const ob = (s.settings.onboarding && typeof s.settings.onboarding === 'object') ? s.settings.onboarding : {};
+    // Pre-6 data had no onboarding record, so the legacy tourCompleted flag is
+    // the authority — a returning user who finished the old tour is not
+    // re-onboarded, a fresh install (flag absent) sees the welcome once.
+    ob.welcomeSeen = !!s.settings.tourCompleted;
+    if (!ob.hintsSeen || typeof ob.hintsSeen !== 'object') ob.hintsSeen = {};
+    if (ob.disabled == null) ob.disabled = false;
+    s.settings.onboarding = ob;
   }
 
   s.schema = CURRENT_SCHEMA;
@@ -6992,6 +7015,9 @@ function renderCalendar() {
     if (fi) { fi.focus(); const p = _calFilterRestore.caret; if (p != null) { try { fi.setSelectionRange(p, p); } catch {} } }
     _calFilterRestore = null;
   }
+  // First calendar open: point out that the board's search language works here too.
+  setTimeout(() => coachMark('calendar', '#cal-filter-input',
+    'Filter by search', 'The calendar reads the same operators as the board search — try type:tab, in:work, or color:red to narrow what shows.'), 400);
   return true;
 }
 
@@ -8596,54 +8622,39 @@ function bindWorkout() {
 // Step shape:
 //   { target: '#sel'|null, title, body, pos?: 'left'|'right'|'above'|'below',
 //     center?: bool — render a centered card with no spotlight (welcome/finish) }
+// A short welcome — three cards, not a nine-step wall. Everything else is
+// taught just-in-time the first time you reach a surface (see coachMark).
 const TOUR_STEPS = [
   {
     center: true,
     title: '👋 Welcome to Tabento',
-    body: 'A calmer place for your tabs. In about 30 seconds you\'ll know how to save, organise, and find anything again. Use ← / → to step through, or Esc to skip.'
-  },
-  {
-    target: '#ws-chips-stack',
-    title: '🏠 Workspaces',
-    body: 'Group your work into separate spaces — Work, Study, Side project. Each one keeps its own tabs, notes, and tools. Switch between them by clicking a chip.'
+    body: 'A calmer home for your tabs. Save what matters, group it your way, and find it again in seconds.'
   },
   {
     target: '#open-tabs',
-    title: '📑 Your open tabs',
-    body: 'Every tab in this window shows up here. Drag one onto the board to save it for later, or use the select button to grab several at once.'
-  },
-  {
-    target: '#board',
-    title: '🗂️ The board',
-    body: 'Drop tabs into groups, mix in notes, jot down to-dos. Right-click anything for more actions, and drag to reorder.',
-    pos: 'left'
+    title: 'Save a tab',
+    body: 'Your open tabs sit here. Drag one onto the board to keep it for later, or grab a few at once with the select button.',
+    pos: 'right'
   },
   {
     target: '#cat-tabs-wrap',
-    title: '📂 Categories',
-    body: 'Cut a workspace into themed sections — Reading, Tasks, Inspiration. Tabs land in the active category by default.'
-  },
-  {
-    target: '#tools-btn',
-    title: '⚡ Productivity tools',
-    body: 'Pomodoro, finance diary, habits, hydration, goals, reading log and more — pop any of them out as a floating widget while you work.'
-  },
-  {
-    target: '#view-mode-btn',
-    title: '🔄 Switch how it looks',
-    body: 'Open the layout menu to view the same links as a bento board, a list, a freeform canvas, a column explorer, or a chronological timeline. Each category remembers its own layout.'
-  },
-  {
-    target: '#search-btn',
-    title: '🔍 Find anything',
-    body: 'Ctrl/⌘ + K searches every tab, note, and archive across all workspaces. Esc closes overlays, and ? opens the full shortcut sheet.'
-  },
-  {
-    center: true,
-    title: '🎉 You\'re ready',
-    body: 'That\'s the lot. You can replay this any time from Settings → Show tour. Now go make something happen.'
+    title: 'Find your way around',
+    body: 'Groups hold tabs, notes, and to-dos; categories and workspaces keep separate spaces. Press ⌘/Ctrl + K to search everything, or ? for shortcuts.',
+    pos: 'below'
   }
 ];
+
+// Onboarding record accessor. Returns the structured onboarding object,
+// creating it (and folding in the legacy tourCompleted flag) if an older
+// session never ran the schema-6 migration path.
+function ensureOnboarding(settings) {
+  const s = settings || State.get().settings;
+  if (!s.onboarding || typeof s.onboarding !== 'object') {
+    s.onboarding = { welcomeSeen: !!s.tourCompleted, hintsSeen: {}, disabled: false };
+  }
+  if (!s.onboarding.hintsSeen || typeof s.onboarding.hintsSeen !== 'object') s.onboarding.hintsSeen = {};
+  return s.onboarding;
+}
 
 let tourIndex = 0;
 
@@ -8660,7 +8671,9 @@ function startTour() {
 }
 function endTour(skipped) {
   document.getElementById('tour-overlay').classList.add('hidden');
-  State.get().settings.tourCompleted = true;
+  const s = State.get().settings;
+  s.tourCompleted = true;              // keep older builds from re-onboarding
+  ensureOnboarding(s).welcomeSeen = true;
   State.persist();
   if (!skipped) toast('You\'re all set');
 }
@@ -8785,6 +8798,79 @@ function bindTour() {
   }));
 }
 
+// ── Just-in-time coach-marks ────────────────────────────────────────
+// One small hint, shown the first time a user reaches a surface — never a
+// queue. Fires at most once per key (persisted in onboarding.hintsSeen),
+// never while another coach-mark or the welcome is up, and only after the
+// welcome has been dismissed. This is how new surfaces onboard themselves
+// without re-inflating the upfront tour.
+let _coachActive = null;   // { key, el, target, reposition, dismiss }
+
+function coachMark(key, targetSel, title, body) {
+  const s = State.get().settings;
+  const ob = ensureOnboarding(s);
+  if (ob.disabled || !ob.welcomeSeen || ob.hintsSeen[key] || _coachActive) return;
+  const target = typeof targetSel === 'string' ? document.querySelector(targetSel) : targetSel;
+  if (!target || !target.getBoundingClientRect) return;
+  const el = document.getElementById('coach');
+  if (!el) return;
+
+  // Mark seen up front so a reload mid-hint doesn't replay it.
+  ob.hintsSeen[key] = true;
+  State.persist();
+
+  el.querySelector('.coach-title').textContent = title;
+  el.querySelector('.coach-body').textContent = body;
+  el.classList.remove('hidden');
+
+  const place = () => {
+    const r = target.getBoundingClientRect();
+    const cw = el.offsetWidth || 260, ch = el.offsetHeight || 96, gap = 12;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    // Prefer below the target, flip above when there's no room.
+    let top = r.bottom + gap;
+    let arrow = 'up';
+    if (top + ch + 8 > vh) { top = r.top - ch - gap; arrow = 'down'; }
+    let left = r.left + r.width / 2 - cw / 2;
+    left = Math.min(vw - cw - 12, Math.max(12, left));
+    top = Math.min(vh - ch - 12, Math.max(12, top));
+    el.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
+    el.dataset.arrow = arrow;
+    // Arrow x-offset so it points at the target centre even after clamping.
+    const ax = Math.min(cw - 20, Math.max(16, r.left + r.width / 2 - left));
+    el.style.setProperty('--coach-ax', ax + 'px');
+  };
+  place();
+  // Show on the next frame so the entrance transition runs from hidden.
+  requestAnimationFrame(() => el.classList.add('coach-in'));
+
+  const reposition = rafThrottle(place);
+  const dismiss = () => {
+    if (_coachActive && _coachActive.key !== key) return;
+    el.classList.remove('coach-in');
+    window.removeEventListener('resize', reposition);
+    window.removeEventListener('scroll', reposition, true);
+    document.removeEventListener('mousedown', onOutside, true);
+    clearTimeout(timer);
+    setTimeout(() => el.classList.add('hidden'), 200);
+    _coachActive = null;
+  };
+  const onOutside = e => { if (!el.contains(e.target)) dismiss(); };
+
+  window.addEventListener('resize', reposition);
+  window.addEventListener('scroll', reposition, true);
+  // Defer the outside-click binding a tick so the click that opened the
+  // surface doesn't immediately dismiss the hint.
+  setTimeout(() => document.addEventListener('mousedown', onOutside, true), 0);
+  el.querySelector('.coach-got').onclick = dismiss;
+  const timer = setTimeout(dismiss, 9000);
+
+  _coachActive = { key, el, target, reposition, dismiss };
+}
+
+// Close the active coach-mark (used by the global Esc handler).
+function dismissCoach() { if (_coachActive) _coachActive.dismiss(); }
+
 // ════════════════════════════════════════════════════════════════
 // BIND STATIC UI
 // ════════════════════════════════════════════════════════════════
@@ -8901,6 +8987,8 @@ function bindStatic() {
     else if (e.key.toLowerCase() === 'c' && !inField && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) { e.preventDefault(); if (activeCalendar) closeCalendar(); else openCalendar(); }
     else if (e.key === '?' && !inField && !e.ctrlKey && !e.metaKey) { e.preventDefault(); openCheatsheet(); }
     else if (e.key === 'Escape') {
+      // A one-time coach-mark is the lightest layer — dismiss it first.
+      if (_coachActive) { dismissCoach(); return; }
       // Snapshot which layered overlays were open *before* we start closing
       // them, so a single Escape only pops the topmost one — not the group page
       // sitting beneath a modal/menu/tool overlay.
@@ -8989,15 +9077,29 @@ function bindStatic() {
   setupDragAutoScroll();
   setupOpenTabsDropToOpen();
 
-  // Onboarding tour
+  // Onboarding — a short welcome up front, the rest taught just-in-time.
   bindTour();
-  if (!State.get().settings.tourCompleted) {
+  if (!ensureOnboarding(State.get().settings).welcomeSeen) {
     setTimeout(startTour, 600);
   }
   document.getElementById('show-tour-btn').onclick = () => {
     document.getElementById('settings-drawer').classList.add('hidden');
     setTimeout(startTour, 200);
   };
+  const resetHintsBtn = document.getElementById('reset-hints-btn');
+  if (resetHintsBtn) resetHintsBtn.onclick = () => {
+    ensureOnboarding(State.get().settings).hintsSeen = {};
+    State.persist();
+    toast('Tips reset — they\'ll show again as you explore');
+  };
+  const tipsTog = document.getElementById('tog-tips');
+  if (tipsTog) {
+    tipsTog.checked = !ensureOnboarding(State.get().settings).disabled;
+    tipsTog.onchange = e => {
+      ensureOnboarding(State.get().settings).disabled = !e.target.checked;
+      State.persist();
+    };
+  }
 
   // Floating tool widgets - pop-out buttons
   ['pomodoro:pomo-popout', 'finance:fin-popout', 'habits:habit-popout', 'water:water-popout', 'goals:goals-popout', 'subs:subs-popout', 'books:books-popout', 'workout:workout-popout']
@@ -9009,6 +9111,12 @@ function bindStatic() {
 
   // Restore any floating widgets from previous session
   renderFloatingWidgets();
+
+  // Once the board has settled, surface a one-time hint about the layout
+  // switcher — the JIT replacement for the old tour steps. Skipped while the
+  // welcome is still up (welcomeSeen gates it), so it never stacks.
+  setTimeout(() => coachMark('layout', '#view-mode-btn',
+    'More ways to look', 'Switch the same links between board, list, canvas, explorer, and timeline. Each category remembers its own layout.'), 1800);
 }
 
 // ════════════════════════════════════════════════════════════════

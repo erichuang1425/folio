@@ -4030,6 +4030,78 @@ body.item-sel-mode .lv-stack-hd {
   .tour-bubble.tour-bubble-in { animation: none; }
 }
 
+/* ── Just-in-time coach-mark ─────────────────────────────────────
+   A small, non-modal hint pinned near a surface the user just reached.
+   Positioned by JS via transform (composite-only); only opacity + a short
+   translate animate, so it stays off the layout path. */
+#coach {
+  position: fixed; top: 0; left: 0;
+  z-index: 9000;
+  width: 260px; max-width: calc(100vw - 24px);
+  padding: 13px 15px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12);
+  opacity: 0;
+  transform: translate(0, 0);
+  transition: opacity 0.2s var(--trans);
+  will-change: transform, opacity;
+  pointer-events: auto;
+  --coach-ax: 32px;
+}
+#coach.hidden { display: none; }
+#coach.coach-in { opacity: 1; }
+/* A single accent hairline at the top ties it to the brand through-line. */
+#coach::before {
+  content: '';
+  position: absolute; left: 14px; right: 14px; top: 0; height: 2px;
+  border-radius: 2px;
+  background: var(--brand-grad, var(--accent));
+  opacity: 0.9;
+}
+/* Little pointer toward the target. */
+#coach::after {
+  content: '';
+  position: absolute;
+  left: var(--coach-ax); width: 12px; height: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  transform: rotate(45deg);
+}
+#coach[data-arrow="up"]::after   { top: -7px; border-right: 0; border-bottom: 0; }
+#coach[data-arrow="down"]::after { bottom: -7px; border-left: 0; border-top: 0; }
+.coach-title {
+  font: 700 13px var(--font);
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.coach-body {
+  font: 400 12px/1.5 var(--font);
+  color: var(--text2);
+  margin-bottom: 10px;
+}
+.coach-got {
+  font: 600 11.5px var(--font);
+  color: var(--accent);
+  background: none; border: 0; padding: 3px 2px; margin: 0;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.coach-got:hover { text-decoration: underline; }
+.coach-got:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  #coach { transition: opacity 0.12s linear; }
+}
+
+/* Onboarding controls in Settings → Behavior. */
+.onboarding-actions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 10px;
+}
+.onboarding-actions .btn-secondary { margin-top: 0; }
+
 #toast {
   position: fixed; bottom: 22px; left: 50%;
   transform: translateX(-50%);
