@@ -266,14 +266,55 @@ const getItemNodes = () => { if (!_itemNodeCache) _itemNodeCache = document.quer
 const INTENT_STATUS = ['active', 'paused', 'someday', 'done', 'reference'];
 const INTENT_TYPE = ['project', 'study', 'research', 'admin', 'life', 'reference', 'other'];
 
+// Allowlist HTML sanitizer for note content. Notes render through innerHTML,
+// and their html can arrive from an imported file or a clipboard paste, so a
+// regex pass isn't safe — `<img src=x onerror=…>` (unquoted handler, no closing
+// tag) walks straight through one. Parse into an inert document instead, drop
+// disallowed elements, and strip every event handler and unsafe URL.
+const SANITIZE_KEEP = new Set(['A','ABBR','B','BLOCKQUOTE','BR','CODE','DEL','DIV','EM','FONT','H1','H2','H3','H4','H5','H6','HR','I','INS','LI','MARK','OL','P','PRE','S','SMALL','SPAN','STRONG','SUB','SUP','U','UL','IMG']);
+const SANITIZE_DROP = new Set(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','LINK','META','BASE','FORM','INPUT','BUTTON','TEXTAREA','SELECT','OPTION','SVG','MATH','NOSCRIPT','TEMPLATE','FRAME','FRAMESET','APPLET','AUDIO','VIDEO','SOURCE']);
+const SANITIZE_URL_ATTRS = new Set(['href','src','xlink:href','action','formaction','background','poster','cite','data']);
+
+function safeUrlValue(value) {
+  // DOMParser has already decoded HTML entities, so a scheme is either literal
+  // or gone. Strip control chars first to defeat `java\tscript:`-style splits.
+  const v = String(value).replace(/[\x00-\x1F\x7F]/g, '').trim();
+  if (!v) return '';
+  if (/^(?:https?:|mailto:|tel:|ftp:)/i.test(v)) return v;
+  if (/^data:image\/(?:png|jpe?g|gif|webp|bmp|x-icon)[;,]/i.test(v)) return v;
+  if (/^[a-z][a-z0-9+.\-]*:/i.test(v)) return '';   // some other scheme → block
+  return v;                                          // relative / anchor / query
+}
+
 function sanitizeHtml(html) {
-  return String(html)
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
-    .replace(/\son\w+="[^"]*"/gi, '')
-    .replace(/\son\w+='[^']*'/gi, '')
-    .replace(/javascript:/gi, '');
+  const doc = new DOMParser().parseFromString(String(html == null ? '' : html), 'text/html');
+  if (!doc.body) return '';
+  for (const el of [...doc.body.querySelectorAll('*')]) {
+    if (!el.isConnected) continue;                   // inside an already-dropped subtree
+    const tag = el.tagName;
+    if (SANITIZE_DROP.has(tag)) { el.remove(); continue; }
+    if (!SANITIZE_KEEP.has(tag)) {
+      // Unknown but not dangerous: keep the text, drop the wrapper.
+      while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
+      el.remove();
+      continue;
+    }
+    for (const attr of [...el.attributes]) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on') || name === 'srcset') { el.removeAttribute(attr.name); continue; }
+      if (name === 'style') {
+        // CSS can't run script in modern Chrome, but url()/expression()/@import
+        // can leak requests. Keep plain declarations, drop anything fetching.
+        if (/url\s*\(|expression\s*\(|javascript:|@import/i.test(attr.value)) el.removeAttribute(attr.name);
+        continue;
+      }
+      if (SANITIZE_URL_ATTRS.has(name)) {
+        const safe = safeUrlValue(attr.value);
+        if (safe) el.setAttribute(attr.name, safe); else el.removeAttribute(attr.name);
+      }
+    }
+  }
+  return doc.body.innerHTML;
 }
 
 function fmtTimeRelative(ts) {
@@ -324,6 +365,13 @@ function findGroup(gId) {
       const g = cat.groups.find(x => x.id === gId);
       if (g) return { ws, cat, group: g };
     }
+  return null;
+}
+function findCategory(cId) {
+  for (const ws of State.get().workspaces) {
+    const cat = ws.categories.find(c => c.id === cId);
+    if (cat) return { ws, cat };
+  }
   return null;
 }
 function findItemInList(list, itemId, ctx) {
@@ -1248,29 +1296,73 @@ async function openAllHibernated(urls, items) {
 // ════════════════════════════════════════════════════════════════
 // REMINDERS
 // ════════════════════════════════════════════════════════════════
+// The reminder picker is shared by items and by group/category reminders (§6).
+// reminderCtx captures which one is being edited:
+//   { kind:'item',     id:itemId }
+//   { kind:'group',    id:groupId, index }   index absent → adding a new one
+//   { kind:'category', id:catId,   index }
 let reminderCtx = null;
 function openReminderPicker(itemId) {
-  reminderCtx = { itemId };
   const info = findItem(itemId);
-  const dt = document.getElementById('rm-datetime');
-  const d = new Date();
-  d.setHours(d.getHours() + 1); d.setMinutes(0);
-  dt.value = d.toISOString().slice(0, 16);
-  if (info?.item?.reminder) {
-    const existing = new Date(info.item.reminder.at);
-    dt.value = new Date(existing.getTime() - existing.getTimezoneOffset()*60000).toISOString().slice(0, 16);
+  openReminderOverlay({ kind: 'item', id: itemId }, info?.item?.reminder || null, { title: 'Set reminder' });
+}
+function openEntityReminderPicker(kind, entId, index) {
+  const ent = findEntity(kind, entId);
+  const existing = (index != null && Array.isArray(ent?.reminders)) ? ent.reminders[index] : null;
+  const name = ent?.name || '';
+  openReminderOverlay({ kind, id: entId, index }, existing, {
+    title: existing ? 'Edit reminder' : 'Set reminder',
+    showLabel: true,
+    label: existing?.label || '',
+    labelPlaceholder: kind === 'group' ? `e.g. Review ${name}` : `e.g. ${name} routine`,
+  });
+}
+// A datetime-local wants a wall-clock string; convert from an epoch through the
+// local offset so the field shows the same instant the reminder fires.
+function toLocalDatetimeValue(ts) {
+  const d = new Date(ts);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+function openReminderOverlay(ctx, existing, opts = {}) {
+  reminderCtx = ctx;
+  const dflt = new Date(); dflt.setHours(dflt.getHours() + 1, 0, 0, 0);
+  document.getElementById('rm-datetime').value =
+    toLocalDatetimeValue(existing?.at != null ? existing.at : dflt.getTime());
+
+  const h = document.querySelector('#reminder-overlay .modal-hd h2');
+  if (h) h.textContent = opts.title || 'Set reminder';
+
+  const labelField = document.getElementById('rm-label-field');
+  const labelInput = document.getElementById('rm-label');
+  if (labelField) labelField.classList.toggle('hidden', !opts.showLabel);
+  if (labelInput) { labelInput.value = opts.label || ''; labelInput.placeholder = opts.labelPlaceholder || 'Label (optional)'; }
+
+  const recurSel = document.getElementById('rm-recur');
+  if (recurSel) recurSel.value = existing?.recur?.every || '';
+
+  // "Clear/Remove" only makes sense when a reminder already exists.
+  const clearBtn = document.getElementById('rm-clear');
+  if (clearBtn) {
+    clearBtn.classList.toggle('hidden', !existing);
+    clearBtn.textContent = ctx.kind === 'item' ? 'Clear' : 'Remove';
   }
+  document.getElementById('rm-save').textContent = existing ? 'Update' : 'Set';
   document.getElementById('reminder-overlay').classList.remove('hidden');
 }
 function closeReminderPicker() {
   document.getElementById('reminder-overlay').classList.add('hidden');
   reminderCtx = null;
 }
-async function setReminder(itemId, ts) {
+function readRecurControl() {
+  const every = document.getElementById('rm-recur')?.value || '';
+  return every ? { every, interval: 1 } : null;
+}
+async function setReminder(itemId, ts, opts = {}) {
   const info = findItem(itemId);
   if (!info) return;
   State.snapshot('Set reminder');
   info.item.reminder = { at: ts, notified: false };
+  if (opts.recur) info.item.reminder.recur = opts.recur;
   try { await chrome.alarms.create('te-reminder-' + itemId, { when: ts }); } catch {}
   State.persist();
   renderBoard();
@@ -1287,6 +1379,72 @@ async function clearReminder(itemId) {
   renderBoard();
   refreshDetailPane();
   toast('Reminder cleared');
+}
+
+// ── Group / category reminders (§6) ──────────────────────────────
+// Groups and categories carry `reminders[]` (each { at, notified, label?,
+// recur? }); collectReminders already reads them. Alarms are keyed by the
+// entry's array index — `te-greminder-<groupId>-<n>` / `te-creminder-<catId>-<n>`
+// — so every write reconciles the whole set for that entity, keeping indices
+// and scheduled alarms in lock-step even after a middle entry is removed.
+function findEntity(kind, entId) {
+  return kind === 'group' ? (findGroup(entId)?.group || null) : (findCategory(entId)?.cat || null);
+}
+async function reconcileEntityAlarms(kind, entId, reminders) {
+  const prefix = (kind === 'group' ? 'te-greminder-' : 'te-creminder-') + entId + '-';
+  try {
+    const all = await chrome.alarms.getAll();
+    await Promise.all(all.filter(a => a.name.startsWith(prefix)).map(a => chrome.alarms.clear(a.name)));
+  } catch {}
+  const list = reminders || [];
+  for (let n = 0; n < list.length; n++) {
+    const r = list[n];
+    if (r && r.at != null && r.at > Date.now()) {
+      try { await chrome.alarms.create(prefix + n, { when: r.at }); } catch {}
+    }
+  }
+}
+async function setEntityReminder(kind, entId, data, index) {
+  const ent = findEntity(kind, entId);
+  if (!ent) return;
+  State.snapshot(index != null ? 'Edit reminder' : 'Add reminder');
+  if (!Array.isArray(ent.reminders)) ent.reminders = [];
+  const entry = { at: data.at, notified: false, label: (data.label || '').trim() };
+  if (data.recur) entry.recur = data.recur;
+  if (index != null && ent.reminders[index]) ent.reminders[index] = entry;
+  else ent.reminders.push(entry);
+  await reconcileEntityAlarms(kind, entId, ent.reminders);
+  State.persist();
+  renderBoard();
+  toast('Reminder set');
+}
+async function setEntityReminderTime(kind, entId, index, ts) {
+  const ent = findEntity(kind, entId);
+  const r = ent && Array.isArray(ent.reminders) ? ent.reminders[index] : null;
+  if (!r) return;
+  State.snapshot('Reschedule reminder');
+  r.at = ts; r.notified = false;
+  await reconcileEntityAlarms(kind, entId, ent.reminders);
+  State.persist();
+  renderBoard();
+  toast('Reminder rescheduled');
+}
+async function removeEntityReminder(kind, entId, index) {
+  const ent = findEntity(kind, entId);
+  if (!ent || !Array.isArray(ent.reminders) || !ent.reminders[index]) return;
+  State.snapshot('Remove reminder');
+  ent.reminders.splice(index, 1);
+  if (!ent.reminders.length) delete ent.reminders;
+  await reconcileEntityAlarms(kind, entId, ent.reminders);
+  State.persist();
+  renderBoard();
+  toast('Reminder removed');
+}
+function recurLabel(recur) {
+  if (!recur || !recur.every) return '';
+  const n = Math.max(1, recur.interval || 1);
+  if (n === 1) return recur.every === 'day' ? 'daily' : recur.every === 'week' ? 'weekly' : 'monthly';
+  return `every ${n} ${recur.every}s`;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1342,7 +1500,7 @@ function collectReminders({ scope = 'all', filter } = {}) {
       (cat.reminders || []).forEach((r, n) => {
         if (r && r.at != null) out.push({
           at: r.at, notified: !!r.notified, source: 'category',
-          refId: cat.id, alarmId: `te-creminder-${cat.id}-${n}`,
+          refId: cat.id, index: n, alarmId: `te-creminder-${cat.id}-${n}`,
           wsId: ws.id, catId: cat.id,
           title: r.label || cat.name, color: r.color || null,
           recur: r.recur || null,
@@ -1353,7 +1511,7 @@ function collectReminders({ scope = 'all', filter } = {}) {
         (g.reminders || []).forEach((r, n) => {
           if (r && r.at != null) out.push({
             at: r.at, notified: !!r.notified, source: 'group',
-            refId: g.id, alarmId: `te-greminder-${g.id}-${n}`,
+            refId: g.id, index: n, alarmId: `te-greminder-${g.id}-${n}`,
             wsId: ws.id, catId: cat.id, groupId: g.id,
             title: r.label || g.name, color: r.color || g.color || null,
             recur: r.recur || null,
@@ -2316,6 +2474,7 @@ function renderCategoryTabs() {
       e.preventDefault();
       showContextMenu(e.pageX, e.pageY, [
         { text:'Rename', icon: cmIcons.edit, action: () => { const nn = prompt('Rename category:', cat.name); if (nn && nn.trim()) { State.snapshot('Rename cat'); cat.name = nn.trim(); State.persist(); renderCategoryTabs(); } } },
+        { text:'Set reminder…', icon: cmIcons.clock, action: () => openEntityReminderPicker('category', cat.id) },
         ws.categories.length > 1 ? { text:'Delete', icon: cmIcons.delete, danger: true, action: () => { if (confirm(`Delete "${cat.name}"?`)) { State.snapshot('Delete cat'); ws.categories = ws.categories.filter(c => c.id !== cat.id); if (ws.activeCatId === cat.id) ws.activeCatId = ws.categories[0].id; State.persist(); renderAll(); } } } : null
       ].filter(Boolean));
     };
@@ -2597,6 +2756,7 @@ function buildGroupCol(g) {
       { text:'Edit group…', icon: cmIcons.edit, action: () => openModal('edit-group', g) },
       { text:'Change symbol…', icon: cmIcons.symbol, action: () => openEmojiPicker({ kind:'group', id: g.id }, hd.querySelector('.gcol-sym-wrap')) },
       { text:'Edit intention…', icon: cmIcons.edit, action: () => openIntentEditor('group', g.id) },
+      { text:'Set reminder…', icon: cmIcons.clock, action: () => openEntityReminderPicker('group', g.id) },
       { text: g.collapsed ? 'Expand' : 'Collapse', icon: cmIcons.edit, action: () => { State.snapshot('Toggle'); g.collapsed = !g.collapsed; State.persist(); renderBoard(); } },
       { sep: true },
       { text:'Open all', icon: cmIcons.open, action: () => openGroupAll(g.id) },
@@ -4492,23 +4652,38 @@ function bindPasteImportUI() {
 // ════════════════════════════════════════════════════════════════
 // REMINDER UI bind
 // ════════════════════════════════════════════════════════════════
+// Route a picker commit to the item or entity write path, carrying the label
+// (entities only) and the chosen recurrence.
+function commitReminderSet(ts, recur) {
+  const c = reminderCtx; if (!c) return;
+  if (c.kind === 'item') setReminder(c.id, ts, { recur });
+  else {
+    const label = (document.getElementById('rm-label')?.value || '').trim();
+    setEntityReminder(c.kind, c.id, { at: ts, label, recur }, c.index);
+  }
+}
+function commitReminderClear() {
+  const c = reminderCtx; if (!c) return;
+  if (c.kind === 'item') clearReminder(c.id);
+  else if (c.index != null) removeEntityReminder(c.kind, c.id, c.index);
+}
 function bindReminderUI() {
   document.getElementById('rm-x').onclick = closeReminderPicker;
-  document.getElementById('rm-clear').onclick = () => { if (reminderCtx) clearReminder(reminderCtx.itemId); closeReminderPicker(); };
+  document.getElementById('rm-clear').onclick = () => { commitReminderClear(); closeReminderPicker(); };
   document.getElementById('rm-save').onclick = () => {
     if (!reminderCtx) return;
     const dt = document.getElementById('rm-datetime').value;
     if (!dt) return;
     const ts = new Date(dt).getTime();
+    if (isNaN(ts)) return;
     if (ts < Date.now()) { toast('Time is in the past', { danger: true }); return; }
-    setReminder(reminderCtx.itemId, ts);
+    commitReminderSet(ts, readRecurControl());
     closeReminderPicker();
   };
   document.querySelectorAll('.rm-quick button').forEach(b => {
     b.onclick = () => {
-      const offset = +b.dataset.offset;
       if (!reminderCtx) return;
-      setReminder(reminderCtx.itemId, Date.now() + offset);
+      commitReminderSet(Date.now() + (+b.dataset.offset), readRecurControl());
       closeReminderPicker();
     };
   });
@@ -4964,6 +5139,13 @@ function renderGroupPage() {
   });
   page.appendChild(readme);
 
+  // The group's own reminders (§6) — e.g. "review this reading list every
+  // Friday" — listed with edit/remove and an add affordance.
+  const rem = document.createElement('div');
+  rem.className = 'gp-reminders';
+  renderGroupReminders(rem, g);
+  page.appendChild(rem);
+
   // The group's items, reusing the fully-wired bento column (drag/drop, add
   // buttons, context menu, reminders all keep working), sized to the page.
   const body = document.createElement('div');
@@ -4976,6 +5158,54 @@ function renderGroupPage() {
   $b.appendChild(page);
   applySearchFilter();
   return true;
+}
+
+// The reminders strip on a group page: a header with an add button, then one
+// row per reminder with its next fire time, recurrence, and edit/remove.
+function renderGroupReminders(container, g) {
+  container.innerHTML = '';
+  const list = Array.isArray(g.reminders) ? g.reminders : [];
+
+  const head = document.createElement('div');
+  head.className = 'gp-rem-head';
+  head.innerHTML = '<span class="gp-rem-title">Reminders</span>';
+  const add = document.createElement('button');
+  add.type = 'button'; add.className = 'gp-rem-add';
+  add.textContent = list.length ? '+ Add' : '+ Add a reminder';
+  add.onclick = () => openEntityReminderPicker('group', g.id);
+  head.appendChild(add);
+  container.appendChild(head);
+
+  if (!list.length) return;
+  const ul = document.createElement('div');
+  ul.className = 'gp-rem-list';
+  list.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'gp-rem-item' + (r.at < Date.now() && !r.recur ? ' past' : '');
+    const when = new Date(r.at).toLocaleString(appLocale(), { dateStyle: 'medium', timeStyle: 'short' });
+    const rec = r.recur ? ` · repeats ${recurLabel(r.recur)}` : '';
+    const dot = document.createElement('span');
+    dot.className = 'gp-rem-dot';
+    dot.style.setProperty('--dot', reminderDotColor(r.color || g.color));
+    const label = document.createElement('span');
+    label.className = 'gp-rem-label';
+    label.textContent = r.label || g.name;
+    const time = document.createElement('span');
+    time.className = 'gp-rem-when';
+    time.textContent = when + rec;
+    row.appendChild(dot);
+    row.appendChild(label);
+    row.appendChild(time);
+    const edit = document.createElement('button');
+    edit.type = 'button'; edit.className = 'gp-rem-btn'; edit.textContent = 'Edit';
+    edit.onclick = () => openEntityReminderPicker('group', g.id, i);
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'gp-rem-btn danger'; del.textContent = 'Remove';
+    del.onclick = () => removeEntityReminder('group', g.id, i);
+    row.appendChild(edit); row.appendChild(del);
+    ul.appendChild(row);
+  });
+  container.appendChild(ul);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5118,7 +5348,8 @@ function renderItemDetail() {
     const past = it.reminder.at < Date.now();
     const when = document.createElement('span');
     when.className = 'idp-rem-when' + (past ? ' past' : '');
-    when.textContent = `${new Date(it.reminder.at).toLocaleString(appLocale())} · ${fmtTimeRelative(it.reminder.at)}`;
+    const recur = it.reminder.recur ? ` · repeats ${recurLabel(it.reminder.recur)}` : '';
+    when.textContent = `${new Date(it.reminder.at).toLocaleString(appLocale())} · ${fmtTimeRelative(it.reminder.at)}${recur}`;
     remWrap.appendChild(when);
     const change = document.createElement('button'); change.type = 'button'; change.className = 'idp-btn'; change.textContent = 'Change'; change.onclick = () => openReminderPicker(it.id);
     const clr2 = document.createElement('button'); clr2.type = 'button'; clr2.className = 'idp-btn danger'; clr2.textContent = 'Clear'; clr2.onclick = () => clearReminder(it.id);
@@ -6632,26 +6863,32 @@ function openReminderTarget(entry) {
     Router.navigate({ type: 'board', wsId: entry.wsId, catId: entry.catId, query: {} });
   }
 }
-// Right-click a dot → open/reschedule/clear (item reminders route through the
-// shared setReminder/clearReminder path).
+// Right-click a dot → open/reschedule/clear. Item reminders route through the
+// shared setReminder/clearReminder path; group/category reminders through the
+// entity path (§6).
 function calendarDotMenu(entry, x, y) {
   const items = [{ text: 'Open', action: () => openReminderTarget(entry) }];
   if (entry.source === 'item') {
     items.push({ text: 'Reschedule…', action: () => openReminderPicker(entry.refId) });
     items.push({ sep: true });
     items.push({ text: 'Clear reminder', danger: true, action: () => clearReminder(entry.refId) });
+  } else {
+    items.push({ text: 'Edit…', action: () => openEntityReminderPicker(entry.source, entry.refId, entry.index) });
+    items.push({ sep: true });
+    items.push({ text: 'Remove reminder', danger: true, action: () => removeEntityReminder(entry.source, entry.refId, entry.index) });
   }
   showContextMenu(x, y, items);
 }
-// Move an item reminder to a different day, preserving its time-of-day.
+// Move a reminder to a different day, preserving its time-of-day.
 function calRescheduleTo(entry, dayStart) {
-  if (!entry || entry.source !== 'item') return;
+  if (!entry) return;
   const orig = new Date(entry.at);
   const d = new Date(dayStart);
   d.setHours(orig.getHours(), orig.getMinutes(), 0, 0);
   const ts = d.getTime();
   if (ts === entry.at) return;
-  setReminder(entry.refId, ts); // re-renders (renderBoard) + toasts
+  if (entry.source === 'item') setReminder(entry.refId, ts, { recur: entry.recur });
+  else setEntityReminderTime(entry.source, entry.refId, entry.index, ts);
 }
 // Wire a container (day cell / week column) as a drop target for reschedule.
 function calMakeDropTarget(el, dayStart) {
@@ -6685,14 +6922,13 @@ function buildCalDot(entry, showTime) {
     (entry.source !== 'item' ? ` (${entry.source})` : '');
   dot.onclick = e => { e.stopPropagation(); openReminderTarget(entry); };
   dot.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); calendarDotMenu(entry, e.clientX, e.clientY); };
-  if (entry.source === 'item') {
-    dot.draggable = true;
-    dot.addEventListener('dragstart', ev => {
-      calDrag = entry; dot.classList.add('cal-dragging');
-      try { ev.dataTransfer.setData('text/plain', entry.refId); ev.dataTransfer.effectAllowed = 'move'; } catch {}
-    });
-    dot.addEventListener('dragend', () => { calDrag = null; dot.classList.remove('cal-dragging'); });
-  }
+  // Every reminder — item, group, or category — can be dragged to reschedule.
+  dot.draggable = true;
+  dot.addEventListener('dragstart', ev => {
+    calDrag = entry; dot.classList.add('cal-dragging');
+    try { ev.dataTransfer.setData('text/plain', entry.refId); ev.dataTransfer.effectAllowed = 'move'; } catch {}
+  });
+  dot.addEventListener('dragend', () => { calDrag = null; dot.classList.remove('cal-dragging'); });
   return dot;
 }
 

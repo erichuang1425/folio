@@ -171,6 +171,45 @@ function findItemById(state, id) {
   return null;
 }
 
+function findGroupById(state, id) {
+  if (!state || !state.workspaces) return null;
+  for (const ws of state.workspaces)
+    for (const cat of (ws.categories || []))
+      for (const g of (cat.groups || []))
+        if (g.id === id) return g;
+  return null;
+}
+
+function findCategoryById(state, id) {
+  if (!state || !state.workspaces) return null;
+  for (const ws of state.workspaces)
+    for (const cat of (ws.categories || []))
+      if (cat.id === id) return cat;
+  return null;
+}
+
+// Advance a recurring reminder to its next fire time strictly after now.
+// Returns null when the reminder doesn't recur or has passed its `until` bound.
+// If the service worker slept through several cycles we skip straight to the
+// next future occurrence rather than firing a burst of catch-up notifications.
+function nextRecurTime(at, recur) {
+  if (!recur || !recur.every) return null;
+  const interval = Math.max(1, recur.interval || 1);
+  const step = (ts) => {
+    const d = new Date(ts);
+    if (recur.every === 'day') d.setDate(d.getDate() + interval);
+    else if (recur.every === 'week') d.setDate(d.getDate() + 7 * interval);
+    else if (recur.every === 'month') d.setMonth(d.getMonth() + interval);
+    else return null;
+    return d.getTime();
+  };
+  let ts = step(at);
+  const now = Date.now();
+  while (ts != null && ts <= now) ts = step(ts);
+  if (ts != null && recur.until && ts > recur.until) return null;
+  return ts;
+}
+
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   try {
     if (alarm.name.startsWith('te-reminder-')) {
@@ -189,8 +228,45 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
         message: msg,
         priority: 2
       });
-      if (it.reminder) it.reminder.notified = true;
+      // Recurring reminders re-arm for their next occurrence; one-shots are
+      // marked notified so they stop surfacing as pending.
+      let itNext = null;
+      if (it.reminder) {
+        itNext = nextRecurTime(it.reminder.at, it.reminder.recur);
+        if (itNext != null) { it.reminder.at = itNext; it.reminder.notified = false; }
+        else it.reminder.notified = true;
+      }
       await setState(s);
+      if (itNext != null) { try { await chrome.alarms.create(alarm.name, { when: itNext }); } catch {} }
+    } else if (alarm.name.startsWith('te-greminder-') || alarm.name.startsWith('te-creminder-')) {
+      // Group / category reminders (§6). The alarm name is
+      // `te-greminder-<groupId>-<index>` (or `te-creminder-<catId>-<index>`);
+      // the index is the last dash-segment, so parsing from the right stays
+      // correct even when the entity id itself contains dashes.
+      const isGroup = alarm.name.startsWith('te-greminder-');
+      const rest = alarm.name.slice((isGroup ? 'te-greminder-' : 'te-creminder-').length);
+      const cut = rest.lastIndexOf('-');
+      if (cut < 0) return;
+      const entId = rest.slice(0, cut);
+      const idx = parseInt(rest.slice(cut + 1), 10);
+      if (!Number.isInteger(idx)) return;
+      const s = await getState();
+      if (!s) return;
+      const ent = isGroup ? findGroupById(s, entId) : findCategoryById(s, entId);
+      if (!ent || !Array.isArray(ent.reminders)) return;
+      const r = ent.reminders[idx];
+      if (!r) return;
+      chrome.notifications.create((isGroup ? 'te-gnotif-' : 'te-cnotif-') + entId + '-' + idx, {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+        title: '⏰ ' + (r.label || ent.name || (isGroup ? 'Group reminder' : 'Category reminder')),
+        message: (isGroup ? 'Group: ' : 'Category: ') + (ent.name || ''),
+        priority: 2
+      });
+      const next = nextRecurTime(r.at, r.recur);
+      if (next != null) { r.at = next; r.notified = false; } else { r.notified = true; }
+      await setState(s);
+      if (next != null) { try { await chrome.alarms.create(alarm.name, { when: next }); } catch {} }
     } else if (alarm.name.startsWith('te-sub-')) {
       const subId = alarm.name.slice('te-sub-'.length);
       const s = await getState();
@@ -217,7 +293,7 @@ function stripHtml(html) {
 
 // Click notification → open Tabento. Subscription and storage-quota
 // notifications previously did nothing on click — now they all open newtab.
-const NOTIF_OPEN_PREFIXES = ['te-notif-', 'te-sub-notif-', 'te-storage-quota-'];
+const NOTIF_OPEN_PREFIXES = ['te-notif-', 'te-gnotif-', 'te-cnotif-', 'te-sub-notif-', 'te-storage-quota-'];
 chrome.notifications.onClicked.addListener((notifId) => {
   if (!NOTIF_OPEN_PREFIXES.some(p => notifId.startsWith(p))) return;
   chrome.tabs.create({ url: chrome.runtime.getURL('newtab.html') });

@@ -270,6 +270,10 @@
         </button>
       </div>
       <div class="modal-bd">
+        <div id="rm-label-field" class="hidden">
+          <label class="field-lbl">Label</label>
+          <input type="text" id="rm-label" placeholder="Label (optional)" spellcheck="false">
+        </div>
         <div class="rm-quick">
           <button data-offset="3600000">In 1 hour</button>
           <button data-offset="10800000">In 3 hours</button>
@@ -278,6 +282,13 @@
         </div>
         <label class="field-lbl">Or pick a date</label>
         <input type="datetime-local" id="rm-datetime">
+        <label class="field-lbl">Repeat</label>
+        <select id="rm-recur">
+          <option value="">Does not repeat</option>
+          <option value="day">Daily</option>
+          <option value="week">Weekly</option>
+          <option value="month">Monthly</option>
+        </select>
       </div>
       <div class="modal-ft">
         <button id="rm-clear" class="btn-secondary">Clear</button>

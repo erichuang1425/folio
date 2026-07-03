@@ -1479,13 +1479,15 @@ body[data-show-urls="off"] .item-url { display: none; }
 }
 .field-lbl:first-child { margin-top: 0; }
 
-#modal-input, #rm-datetime {
+#modal-input, #rm-datetime, #rm-label, #rm-recur {
   background: var(--bg3); border: 1px solid var(--border);
   border-radius: var(--r); padding: 9px 12px;
   color: var(--text); font: 13.5px var(--font);
   outline: none; width: 100%;
   transition: border-color var(--trans), background var(--trans);
 }
+#rm-recur { cursor: pointer; }
+#rm-label:focus, #rm-recur:focus { border-color: var(--accent); background: var(--bg); }
 #intent-purpose, #intent-next-action, #intent-status, #intent-type {
   width: 100%;
   border: 1px solid var(--border);
@@ -3857,6 +3859,43 @@ body.item-sel-mode .lv-stack-hd {
   font-style: normal;
   color: var(--text3);
 }
+/* Group-page reminders strip (§6). */
+.gp-reminders { display: flex; flex-direction: column; gap: 8px; }
+.gp-rem-head { display: flex; align-items: center; gap: 10px; }
+.gp-rem-title {
+  font: 700 11px/1 var(--font); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text3);
+}
+.gp-rem-add {
+  margin-left: auto;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 5px 10px; color: var(--text2); font: 600 12px var(--font); cursor: pointer;
+  transition: border-color var(--trans), color var(--trans), background var(--trans);
+}
+.gp-rem-add:hover { border-color: var(--accent); color: var(--text); background: var(--bg4); }
+.gp-rem-list { display: flex; flex-direction: column; gap: 6px; }
+.gp-rem-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 11px; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.gp-rem-item.past { opacity: .62; }
+.gp-rem-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: color-mix(in srgb, var(--dot, var(--accent)) 88%, var(--panel));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dot, var(--accent)) 18%, transparent);
+  flex: none;
+}
+.gp-rem-label { font: 600 13px var(--font); color: var(--text); }
+.gp-rem-when { font: 400 12px var(--font); color: var(--text3); margin-right: auto; }
+.gp-rem-btn {
+  background: none; border: none; padding: 3px 6px; border-radius: 6px;
+  color: var(--text3); font: 600 12px var(--font); cursor: pointer;
+  transition: color var(--trans), background var(--trans);
+}
+.gp-rem-btn:hover { color: var(--text); background: var(--bg4); }
+.gp-rem-btn.danger:hover { color: var(--red); }
+
 /* On the group page the reused bento column fills the width and the whole page
    scrolls, rather than the column capping its own height. */
 .group-page .gcol.gcol-focused {

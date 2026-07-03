@@ -47,11 +47,21 @@
     }
   }
 
+  // suspended.html isn't web-accessible, so `url` normally comes from a real
+  // hibernated tab (always http/https). Still, only ever navigate to a genuine
+  // web location — never let a crafted fragment turn this into a javascript:,
+  // data:, or blob: navigation on the extension page.
+  var navigable = /^(?:https?|ftp|file):/i.test(url);
+
   var loading = false;
   function load() {
     if (loading || !url) return;
-    loading = true;
     var st = document.getElementById('status-text');
+    if (!navigable) {
+      if (st) st.textContent = 'This page can’t be restored.';
+      return;
+    }
+    loading = true;
     if (st) st.textContent = 'Loading page…';
     try {
       location.replace(url);
