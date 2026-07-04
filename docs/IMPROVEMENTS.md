@@ -45,6 +45,21 @@ notifications. The aggregator (§2.3) already read all three sources, so the cal
 (§5) lists and reschedules group/category reminders through the same drag and
 right-click paths as items. Every field is optional: absent `reminders`/`recur`
 reproduces today's behavior, so no migration.
+Phase 6 (Stretch layouts + palette, §3.3/§3.4/§7) has landed: a **Gallery**
+masonry (`renderGalleryView`) and a **Graph** relationship map (`renderGraphView`)
+join the layout registry, and a **command palette** (`openCommandPalette`) opens
+on Cmd/Ctrl-K. Gallery lays each group out as a labeled CSS-columns section of
+cover-first cards that reuse `buildItem`, so search, covers, tags, drag, and the
+detail pane keep working; empty sections collapse under an active query
+(`applySearchFilter`'s `.gl-section` pass). Graph draws the category at a hub, its
+groups on a ring, each group's items fanned around them, and faint cross-links
+between items that share a domain — deterministic geometry, no physics sim, click
+or keyboard to open a group page or an item. The palette rebuilds its list each
+open (switch layout, open the calendar, jump to a workspace/category/group, save
+tabs, new workspace/category, open tools/settings/shortcuts, next theme) and
+filters with a subsequence match; a query that matches no command offers a
+board-search fallback, and plain board search moves to `/`. All additive — no
+schema change.
 
 This document plans a set of **major** features for Tabento: spatial, animated, design-forward
 interfaces and the systems work needed to make them cohere. Every proposal here is grounded in
@@ -422,7 +437,7 @@ Each phase is independently shippable and leaves the app fully working.
 | **3 — Explorer + Timeline** ✅ | §3.1, §3.2, layout switcher (§7), per-category layout persistence | The headline new layouts |
 | **4 — Calendar** ✅ | §5 month/week/agenda, filter integration, drag-to-reschedule | Unified reminders surface |
 | **5 — Reminders everywhere** ✅ | §6 group/category reminders + recurrence, background.js alarm branches | Calendar covers every reminder source |
-| **6 — Stretch layouts + palette** | §3.3 Gallery, §3.4 Graph, command palette (§7) | Breadth & polish |
+| **6 — Stretch layouts + palette** ✅ | §3.3 Gallery, §3.4 Graph, command palette (§7) | Breadth & polish |
 
 **Onboarding (§8)** is deliberately **not a single phase** — it ships in two low-risk slices:
 the tour-shrink + JIT framework + checklist can land early (right after Phase 0, since it stands
@@ -453,8 +468,8 @@ just-in-time hint as it ships, instead of ever re-inflating the upfront tour.
 - A group opens as a **shareable, back/forward-navigable page**, not a modal.
 - Any link can carry **notes, tags, custom fields, a checklist, and a reminder**, with today's
   bare links still valid.
-- Users can view the same content as **bento, list, canvas, explorer, timeline, and gallery**, and
-  the choice persists per category.
+- Users can view the same content as **bento, list, canvas, explorer, timeline, gallery, and
+  graph**, and the choice persists per category.
 - A **calendar** shows every reminder from links, groups, and categories, filterable with the
   existing search operators, with drag-to-reschedule.
 - Navigation (layout switcher, breadcrumbs, command palette, motion) feels like **one coherent
