@@ -5212,6 +5212,141 @@ body.blur-privacy .otab-title:hover { filter: blur(0); }
   .ex-row { transition: none; }
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   PHASE 6 — GALLERY (§3.3) + GRAPH (§3.4) LAYOUTS
+   Gallery is a content-first CSS-columns masonry split into labeled
+   group sections; Graph is a static radial relationship map. Both keep
+   the bento signature (brand-grad accents, theme tokens) and honor
+   prefers-reduced-motion.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Gallery / masonry ── */
+#board.gallery-mode {
+  display: block;
+  padding: 16px 22px 60px;
+  overflow-y: auto; overflow-x: hidden;
+}
+.gl-wrap { max-width: 1120px; margin: 0 auto; }
+.gl-section { margin-bottom: 26px; }
+.gl-section-hd {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 6px 2px 9px; margin-bottom: 12px;
+  background: none; border: none; border-bottom: 1px solid var(--border);
+  cursor: pointer; text-align: left; color: var(--text); position: relative;
+}
+.gl-section-hd::after {
+  content: ''; position: absolute; left: 0; bottom: -1px;
+  width: 46px; height: 2px; background: var(--brand-grad); border-radius: 2px;
+}
+.gl-section-hd:hover .gl-sec-name { color: var(--accent); }
+.gl-sec-sym { font-size: 15px; flex-shrink: 0; }
+.gl-section[style*="--gl-tint"] .gl-sec-sym { color: var(--gl-tint); }
+.gl-sec-name { flex: 1; font: 600 13.5px var(--font); transition: color var(--dur-fast); }
+.gl-sec-count {
+  flex-shrink: 0; font: 600 10.5px var(--font); color: var(--text3);
+  padding: 1px 7px; border-radius: 999px; background: var(--bg3); border: 1px solid var(--border);
+}
+.gl-grid { column-width: 210px; column-gap: 14px; }
+.gl-grid .item {
+  width: auto; margin: 0 0 14px;
+  break-inside: avoid; -webkit-column-break-inside: avoid;
+}
+.gl-empty { color: var(--text3); font-size: 12px; font-style: italic; padding: 6px 2px; }
+/* Read cover-first: covers get real height, emoji covers a large centered tile. */
+.gallery-mode .item.has-cover .item-cover:not(.emoji) { height: 40px; border-radius: 8px 8px 0 0; }
+.gallery-mode .item.has-cover .item-cover.emoji { font-size: 30px; text-align: center; padding: 6px 0 2px; }
+
+/* ── Graph / relationship map ── */
+#board.graph-mode { display: block; padding: 0; overflow: hidden; }
+.gr-wrap { width: 100%; height: 100%; }
+.gr-svg {
+  width: 100%; height: 100%; display: block;
+  opacity: 0; transition: opacity 0.5s var(--trans);
+}
+.gr-svg.in { opacity: 1; }
+.gr-link { stroke-width: 1.3; opacity: 0.42; }
+.gr-spoke { stroke: var(--border2); stroke-width: 1.4; opacity: 0.85; }
+.gr-cross { stroke: var(--accent); stroke-width: 1; opacity: 0.16; stroke-dasharray: 3 3; }
+.gr-node { cursor: pointer; }
+.gr-node text {
+  font: 500 11px var(--font); fill: var(--text2); pointer-events: none;
+  paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round;
+}
+.gr-center circle { fill: var(--accent); }
+.gr-center text { fill: var(--text); font-weight: 700; font-size: 12px; text-anchor: middle; }
+.gr-hub circle { stroke: var(--bg); stroke-width: 2.5; }
+.gr-hub text { text-anchor: middle; fill: var(--text); font-weight: 600; }
+.gr-item circle { stroke: var(--bg); stroke-width: 1.6; }
+.gr-node:hover circle { filter: brightness(1.12); }
+.gr-node:focus-visible { outline: none; }
+.gr-node:focus-visible circle { stroke: var(--accent); stroke-width: 2.6; }
+@media (prefers-reduced-motion: reduce) {
+  .gr-svg { transition: none; opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COMMAND PALETTE (§7) — a Cmd/Ctrl-K surface unifying navigation,
+   layout switching, and quick actions. Reuses the overlay scrim,
+   panel tokens and motion; keyboard-driven and theme-aware.
+   ══════════════════════════════════════════════════════════════ */
+#cmd-palette {
+  position: fixed; inset: 0; z-index: 10050;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 12vh;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  backdrop-filter: blur(2px);
+  animation: fadeDown 0.16s var(--trans);
+}
+#cmd-palette.hidden { display: none; }
+.cmdp-box {
+  width: min(560px, 92vw);
+  background: var(--panel); border: 1px solid var(--border2);
+  border-radius: var(--rl);
+  box-shadow: var(--card-shadow-h), 0 20px 60px -20px rgba(0,0,0,0.5);
+  overflow: hidden; display: flex; flex-direction: column;
+  animation: popIn 0.18s var(--spring);
+}
+.cmdp-inputrow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+}
+.cmdp-ico { color: var(--text3); flex-shrink: 0; }
+#cmdp-input {
+  flex: 1; border: none; background: none; outline: none;
+  color: var(--text); font: 500 14px var(--font);
+}
+#cmdp-input::placeholder { color: var(--text3); }
+.cmdp-esc {
+  font: 600 10px var(--font); color: var(--text3);
+  padding: 2px 6px; border-radius: 5px; background: var(--bg3); border: 1px solid var(--border);
+}
+.cmdp-list { max-height: 46vh; overflow-y: auto; padding: 6px; }
+.cmdp-list::-webkit-scrollbar { width: 8px; }
+.cmdp-list::-webkit-scrollbar-thumb { background: var(--bg5); border-radius: 4px; }
+.cmdp-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: var(--r-sm); cursor: pointer; color: var(--text2);
+}
+.cmdp-row.sel { background: color-mix(in srgb, var(--accent-bg) 16%, transparent); color: var(--text); }
+.cmdp-row-ico {
+  flex-shrink: 0; width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text3); font-size: 14px;
+}
+.cmdp-row.sel .cmdp-row-ico { color: var(--accent); }
+.cmdp-row-label {
+  flex: 1; min-width: 0; font: 500 13px var(--font);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cmdp-row-cat {
+  flex-shrink: 0; font: 600 9.5px var(--font); text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text3); padding: 1px 6px; border-radius: 999px; background: var(--bg3);
+}
+.cmdp-empty { padding: 20px; text-align: center; color: var(--text3); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) {
+  #cmd-palette, .cmdp-box { animation: none; }
+}
+
 /* ══════════════════════════════════════════════════════════════
    CALENDAR (§5) — a routed reminders surface. Month grid, week
    columns, and an agenda inbox, all sharing the bento visual

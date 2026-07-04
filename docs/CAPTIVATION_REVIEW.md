@@ -1,11 +1,13 @@
 # Tabento Selling Points & Captivation Review
 
-Status: product positioning notes. Created: 2026-07-03.
+Status: product positioning notes. Created: 2026-07-03. Updated: 2026-07-04 —
+message hierarchy and store/landing narrative realigned to the moat analysis in
+[COMPETITIVE_MOAT.md](COMPETITIVE_MOAT.md).
 
 ## Core selling points
 
 1. **Keep browser context without keeping every tab alive.** Tabento's strongest promise is that users can save sessions and reopen tabs through hibernated placeholders, preserving context while keeping RAM use low.
-2. **A private, local-first workspace.** The app stores workspace data in `chrome.storage.local`, has no account system, no server, no host permissions, and does not read page content. This is unusually clear and defensible for a browser productivity tool.
+2. **A private, local-first workspace.** The app stores workspace data in `chrome.storage.local`, has no account system, no server, no host permissions, and does not read page content on its own (the only page text it stores is a selection the user explicitly right-clicks to save). This is unusually clear and defensible for a browser productivity tool.
 3. **Tabs plus thinking space.** Saved tabs live beside notes, todos, reminders, stacks, tags, custom fields, checklists, and lightweight trackers, so Tabento is not only a tab list; it is a small operating system for browser work.
 4. **Multiple ways to view the same work.** Board, list, focused group pages, canvas, Explorer, Timeline, and Calendar surfaces let different workflows feel native instead of forcing everything into one layout.
 5. **Power search without cloud indexing.** Search operators such as `type:`, `color:`, `domain:`, `url:`, `in:`, `tag:`, `is:`, `has:reminder`, `reminder:`, quoted phrases, and negation make local data feel immediately retrievable.
@@ -15,19 +17,116 @@ Status: product positioning notes. Created: 2026-07-03.
 
 ## Message hierarchy
 
-### One-line positioning
+The moat analysis found that Tabento is the only product in the field holding all three
+legs of one promise at once — full workspace (tabs+notes+todos+reminders), zero RAM cost
+(hibernation), zero privacy cost (no account, no server, no host permissions). Every
+competitor class is missing at least one leg, and the ones missing the privacy leg
+*cannot* add it without breaking their business model. The message hierarchy should sell
+that intersection, not any single leg — "local-first" alone is a word OneTab and Session
+Buddy already own with 1–2M installs each.
 
-**Tabento is a private new-tab workspace that lets you save, organize, and hibernate browser context without losing momentum or memory.**
+### Hero line
 
-### Three homepage/store bullets
+**One click saves every tab in the window. Close it. Lose nothing. Leak nothing.**
 
-- **Save the mess. Reopen only what matters.** Capture tabs, links, notes, todos, and reminders into calm workspaces, then hibernate saved pages until you need them.
-- **Private by default.** Your data stays local, with no account, no server, no host permissions, and no page-content reading.
-- **Find anything later.** Use visual boards, focused group pages, calendars, layouts, tags, and precise search operators to turn browser chaos into usable memory.
+The leading clause is load-bearing twice over: Tabento does not auto-capture sessions —
+persistence happens through explicit saves (save tab, save all tabs, save window as
+workspace) — and the save-all paths are scoped to the *current window*
+(`chrome.tabs.query({ currentWindow: true })` in `newtab.js` and `background.js`), so
+"every tab" without "in the window" would overpromise for multi-window users. The hero
+visual should show the one-click save *before* the close payoff. Two product changes
+would each earn stronger copy: an all-windows save action (the popup already has an
+`allWindows` query path to build on) would earn "every tab, every window," and an
+automatic session snapshot would earn the unqualified "Close your browser. Lose
+nothing. Leak nothing."
+
+### One-line positioning (subline under the hero)
+
+**Tabento is a private new-tab workspace that keeps every browsing context — tabs, notes,
+todos, reminders — alive at zero RAM cost and zero privacy cost.**
+
+### Three homepage/store bullets — one per moat leg
+
+- **Your whole context, not just tabs.** Saved pages live beside notes, todos, reminders,
+  tags, and trackers in calm workspaces — the browser work *around* the tabs comes too.
+- **Zero RAM cost.** Hibernation holds a 50-tab workspace at almost no memory until you
+  click; keep your context without carrying the weight.
+- **Zero privacy cost.** No account, no server, no host permissions — Tabento never reads
+  your pages on its own; the only page text it ever stores is a selection you explicitly
+  right-click to save. Verify the permissions on the store listing before you install.
 
 ### Emotional hook
 
-Most tab managers say, "close your tabs." Tabento should say, **"keep your context without carrying the weight."** That phrase connects the memory-saving feature to the emotional job: users want relief without losing their train of thought.
+Most tab managers say, "close your tabs." Tabento says, **"keep your context without
+carrying the weight."** The trust corollary, for a category defined by extensions that
+got sold, went rogue, or shut down: **"nothing to sync, nothing to sell, nothing to shut
+down — your workspace can't be taken away."**
+
+### Claim discipline (from PR #58 review)
+
+The precise, defensible claim is **"no host permissions / no automatic page reading."**
+Two overclaims to avoid:
+
+- Never write "no permissions" or "no install warnings": the `tabs` and `bookmarks`
+  permissions do surface Chrome install prompts ("read your browsing history", "read and
+  change your bookmarks").
+- Never write an absolute "never reads page content": the **Save selection as note**
+  context-menu feature stores `selectionText` — page text the user explicitly chose to
+  save. The honest framing is "never reads your pages on its own; only text you
+  right-click to save."
+- Never promise "lose nothing" without the save step: Tabento has no automatic session
+  capture — closing a window with unsaved tabs stores nothing. Copy must anchor the
+  promise to the one-click save (see the hero line), or an auto-snapshot feature must
+  ship first.
+
+An overclaim would cost exactly the trust the positioning depends on. Where space
+allows, disarm it proactively: "Tabento never scans your pages — it stores only what
+you explicitly save." (Not "only tab titles and URLs": the supported capture paths also
+store bookmarks you import, selections you right-click to save, and image/link URLs.)
+
+**Prerequisite for the hero line.** "Leak nothing" is not literally true yet: the app
+currently sends saved-tab hostnames to Google's favicon service and loads Google Fonts
+(see [COMPETITIVE_MOAT.md](COMPETITIVE_MOAT.md) §3.2 gaps). Ship local fonts and a local
+favicon source *before* the landing page goes live with this copy; until then the proof
+strip must say "no Tabento server" rather than "no external calls."
+
+## Landing page strategy (moat-aligned)
+
+Structure the landing page (and long-form store description) in this order:
+
+1. **Hero:** the three-leg promise above, over one calm workspace screenshot. Primary CTA
+   "Add to Chrome — free", secondary "See how hibernation works".
+2. **Proof strip (trust signals above the fold):** no host permissions · no account · no
+   Tabento server · source-available under the Tabento Research and Contribution License · your data exports anytime. Each verifiable, none
+   aspirational.
+3. **The hero demo — hibernation with a visible number.** Show the RAM trade concretely:
+   "38 tabs held, ~0 MB" on a hibernated workspace, then one click loading a single page.
+   This is the shareable moment; build the page's one animation/GIF around it.
+4. **The workspace story.** Tabs beside notes, todos, reminders, and search
+   (`type:tab in:work domain:github.com -is:done`) — positioning against single-purpose
+   tab lists without naming them.
+5. **The trust section.** Speak to the category's history in general terms — extensions
+   that changed owners, read-later services that shut down — and state the structural
+   answer: there is no server to breach, no account to leak, no company data pipeline to
+   sell. Link the privacy policy and the source code.
+6. **Switching funnel — roadmap-gated.** "Bring your saves with you": import from OneTab
+   exports, session JSON, and read-later export files. **Do not ship this section until
+   the importers exist** — today the import flow accepts only bookmarks and the
+   `tabento`/`tabnest`/`tabextend` JSON envelopes (`newtab.js` import path), and a
+   refugee whose OneTab or Pocket export gets rejected is a one-star review. Build the
+   parsers first (OneTab's URL-list format and Pocket's export are simple; Session Buddy
+   exports JSON), then turn this section on. Competitor names in an import-compatibility
+   context are nominative use, but keep them out of taglines and ad copy per the legal
+   posture in [DESIGN.md](../DESIGN.md) §2, and re-check with counsel before a paid
+   launch.
+7. **Footer honesty:** free for noncommercial research, contribution, and informal personal
+   use, source-available, and no commercial use in any form under the repository license.
+   Any separate commercial offering must use separate written terms.
+
+Channel note: the audience that converts on leg three is documented and findable —
+privacy-focused communities where "no host permissions" and "no external calls" are
+stated purchase criteria. Launch/announce posts should lead with the verifiable
+permission claim there, and with the RAM demo everywhere else.
 
 ## How to make the app more captivating
 

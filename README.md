@@ -10,6 +10,8 @@
 
 **A local-first new tab workspace for saved tabs, notes, todos, reminders, and small trackers, with one-click tab hibernation that keeps memory low.**
 
+Landing page: [docs/index.html](./docs/index.html), ready for GitHub Pages (Settings → Pages → deploy from `main`, `/docs` folder → publishes at <https://erichuang1425.github.io/tabento/>). Positioning notes live in [docs/landing-page-strategy.md](./docs/landing-page-strategy.md).
+
 Tabento replaces the Chromium new tab page. It helps you save tabs, group them with notes and todos, search them later, and reopen pages without keeping every tab loaded. Data stays in `chrome.storage.local`; the extension has no account system, no server, no host permissions, and no page-content reading.
 
 ### Hibernate tabs to save memory
@@ -58,7 +60,7 @@ Tabento keeps that context in the new tab page:
 | Popup | Save the current tab, save every open tab, and inspect open tabs from the extension action. |
 | Tools | Use built-in Pomodoro, finance diary, subscriptions, habits, hydration, reading, goals, and workout trackers. |
 | Portability | Export and import data with a versioned envelope and preview step before restore. |
-| Privacy | Keep data in `chrome.storage.local`; Tabento requests no host permissions and does not read page content. |
+| Privacy | Keep data in `chrome.storage.local`; Tabento requests no host permissions and never reads page content on its own (only selections you explicitly save). |
 
 Example search:
 
@@ -174,7 +176,7 @@ Tabento keeps data local:
 
 - Stored URLs, titles, notes, todos, reminders, workspace state, and tool data live in `chrome.storage.local`.
 - The extension does not request host permissions.
-- The extension does not read page content.
+- The extension does not read page content on its own; the only page text it stores is a selection you explicitly right-click to save.
 - Browser permissions are limited to tab workflows, storage, context menus, bookmarks import, alarms, and notifications.
 
 | Permission | Why it is used |
@@ -196,4 +198,6 @@ Tabento keeps data local:
 
 ## License
 
-Tabento Research and Contribution License
+Tabento is source-available under the [Tabento Research and Contribution License 1.0](./LICENSE).
+
+Commercial use is not permitted in any kind or form. The source may be used only for noncommercial research, private study, informal personal experimentation, hobby use, and contributions back to the Tabento project, unless a separate written license from the copyright holder says otherwise.

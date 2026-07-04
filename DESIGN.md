@@ -4,7 +4,7 @@ Status: living document. Last updated: 2026-06-23.
 
 This brief captures the design direction for Tabento's layout refresh and — importantly —
 how we take *inspiration* from **Refern** and **TabExtend** while staying clearly distinct,
-so the product is defensible and free to grow into a profitable business.
+so the product is defensible and independently owned.
 
 > TL;DR — Borrow the **functional patterns** that are common to the whole category (they're not
 > protectable), but ship a **visual signature of our own** that reads differently from both
@@ -20,7 +20,7 @@ A desktop **reference / moodboard manager** for creatives. Distinctive traits:
 - Image-first **masonry gallery** of saved references.
 - Spatial **Canvas** + **Graph** views for arranging references.
 - AI **auto-tagging** (reads/describes images), **color-based search**, 14 search operators.
-- Local-first, **one-time $30** license (no subscription). Import from Eagle / PureRef / Allusion.
+- Local-first, paid one-time consumer app (no subscription). Import from Eagle / PureRef / Allusion.
 - Dark, gallery-like, content-over-chrome aesthetic.
 
 ### TabExtend — the photo
@@ -98,8 +98,10 @@ organizing, used as the UI's signature motif.
   not only colors.
 
 ### Borrowed *ideas* (functional, safe) worth pursuing next
-- From Refern: the **Canvas** view (we already have one) and a future **relationship/graph**
-  view; ~~tag-based~~ **tag search shipped** (`tag:` operator, backed by per-item `item.tags` from
+- From Refern: the **Canvas** view (we already have one) and ~~a future~~ **relationship/graph
+  view shipped** (`renderGraphView`, a static radial map — category at the hub, groups on a ring,
+  items fanned around them, faint cross-links between same-domain items); ~~tag-based~~
+  **tag search shipped** (`tag:` operator, backed by per-item `item.tags` from
   the detail pane) alongside ~~**color search**~~ → **color search shipped** (`color:red` operator
   in the search bar). Refern's "14 search operators" trait → **search operators expanded**:
   `type:tab|note|todo|stack` (by kind), `is:done` / `is:open` (todo state),
@@ -117,17 +119,17 @@ None of those *ideas* are protectable; our distinct execution is what matters.
 
 ---
 
-## 4. Monetization — free now, profitable later
+## 4. License posture — no third-party commercial use
 
-Per direction, the extension is **free for now**. A defensible path to revenue when we're ready:
+The repository license is intentionally narrow: source is available for noncommercial
+research, private study, informal personal experimentation, hobby use, and contributions
+back to Tabento. Commercial use is not permitted in any kind or form unless the copyright
+holder grants a separate written license.
 
-1. **Free core** — workspaces, board/list/canvas, save & organize tabs, notes/todos, themes,
-   local hibernation. Generous on purpose; drives installs and word-of-mouth.
-2. **Pro (subscription)** — encrypted **cross-device sync & backup**, unlimited workspaces,
-   the productivity tools suite (Pomodoro/Finance/Habits/…), AI auto-tagging & smart search,
-   shared/team workspaces. Sync is the natural recurring-value anchor.
-3. **One-time "Local Pro" option** — for the subscription-averse (Refern's $30 model proves
-   demand): unlock all *local* Pro features with a single payment; sync stays subscription.
+If a separate commercial offering ever exists, it must use separate written terms and must
+not imply commercial permission for this repository. Public copy should say:
+"Free for noncommercial research, contribution, and informal personal use. No commercial
+use in any form."
 
 Positioning that is ours: **"Your browser, organized — private by default, yours forever."**
 Local-first + privacy (no host permissions; we never read page content) is a genuine
@@ -147,7 +149,7 @@ differentiator we can market honestly.
 ## 6. Changelog
 - **2026-06-21** — Initial brief. Introduced **Aurora** signature theme (new default),
   **underline** category-tab treatment (diverges from TabExtend pills), and a cohesive
-  `--brand-grad` through-line. Documented legal posture and a free-now → profitable-later plan.
+  `--brand-grad` through-line. Documented legal posture and the licensing plan.
 - **2026-06-21** — Completed the `--brand-grad` through-line onto the **active workspace chip**
   (gradient left accent bar). Shipped **color search** (`color:red`, `color:red,blue`) in the
   board search bar — the first of the §3 "borrowed ideas" roadmap items.

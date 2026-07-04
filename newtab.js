@@ -39,7 +39,7 @@ const I18N = {
     'action.calendar': 'Calendar (reminders)',
     'action.selectionMode': 'Selection mode',
     'action.reorderMode': 'Reorder mode',
-    'action.search': 'Search (Ctrl/Cmd + K)',
+    'action.search': 'Search ( / )',
     'action.cycleTheme': 'Cycle theme',
     'action.saveAllTabs': 'Save all open tabs',
     'action.more': 'More',
@@ -97,7 +97,7 @@ const I18N = {
     'action.calendar': '行事曆（提醒）',
     'action.selectionMode': '選取模式',
     'action.reorderMode': '重新排序模式',
-    'action.search': '搜尋 (Ctrl/Cmd + K)',
+    'action.search': '搜尋 ( / )',
     'action.cycleTheme': '切換主題',
     'action.saveAllTabs': '儲存所有開啟分頁',
     'action.more': '更多',
@@ -2576,6 +2576,8 @@ const LAYOUT_ICONS = {
   canvas:   '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="6" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="3" width="5" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="5" height="3" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>',
   explorer: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="3.6" height="10" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="6.2" y="3" width="3.6" height="10" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="10.4" y="3" width="3.6" height="10" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>',
   timeline: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="4.5" r="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="9.5" r="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M9.5 4.5H13M9.5 9.5H12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  gallery:  '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="6.5" rx="1.2" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="2" width="5" height="4" rx="1.2" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="10" width="5" height="4" rx="1.2" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="7.5" width="5" height="6.5" rx="1.2" stroke="currentColor" stroke-width="1.4"/></svg>',
+  graph:    '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="4" r="2" stroke="currentColor" stroke-width="1.4"/><circle cx="3.5" cy="11.5" r="1.7" stroke="currentColor" stroke-width="1.4"/><circle cx="12.5" cy="11.5" r="1.7" stroke="currentColor" stroke-width="1.4"/><path d="M6.8 5.7 4.7 10M9.2 5.7 11.3 10M5.2 11.5h5.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
 };
 
 // Layout registry (§2.2) — every registered layout is a pure renderer over the
@@ -2589,9 +2591,11 @@ const LAYOUTS = {
   canvas:   { label: 'Canvas',      icon: LAYOUT_ICONS.canvas,   render: renderCanvasView },
   explorer: { label: 'Explorer',    icon: LAYOUT_ICONS.explorer, render: renderExplorerView },
   timeline: { label: 'Timeline',    icon: LAYOUT_ICONS.timeline, render: renderTimelineView },
+  gallery:  { label: 'Gallery',     icon: LAYOUT_ICONS.gallery,  render: renderGalleryView },
+  graph:    { label: 'Graph',       icon: LAYOUT_ICONS.graph,    render: renderGraphView },
 };
 // Order the layout switcher walks through.
-const LAYOUT_ORDER = ['board', 'list', 'canvas', 'explorer', 'timeline'];
+const LAYOUT_ORDER = ['board', 'list', 'canvas', 'explorer', 'timeline', 'gallery', 'graph'];
 
 // Single dispatch point: pick the active layout and render it. Everything that
 // mutates state calls renderBoard() to re-render whatever layout is showing.
@@ -2610,7 +2614,7 @@ function renderBoard() {
   if (activeGroupPage && renderGroupPage()) return;
   hideBreadcrumb();
   const $b = document.getElementById('board');
-  $b.classList.remove('group-page-mode', 'list-mode', 'canvas-mode', 'explorer-mode', 'timeline-mode', 'calendar-mode');
+  $b.classList.remove('group-page-mode', 'list-mode', 'canvas-mode', 'explorer-mode', 'timeline-mode', 'gallery-mode', 'graph-mode', 'calendar-mode');
   const mode = getViewMode();
   document.body.dataset.viewMode = mode;
   updateViewModeButton(mode);
@@ -4088,6 +4092,12 @@ function applySearchFilter() {
   document.querySelectorAll('.gcol').forEach(col => {
     const any = col.querySelectorAll('.item:not(.hidden)').length > 0;
     col.style.display = (!raw || any) ? '' : 'none';
+  });
+  // Gallery (§3.3) groups its masonry into .gl-section blocks (not .gcol); collapse
+  // any whose cards are all filtered out so a query doesn't leave empty headers.
+  document.querySelectorAll('.gl-section').forEach(sec => {
+    const any = sec.querySelectorAll('.item:not(.hidden)').length > 0;
+    sec.style.display = (!raw || any) ? '' : 'none';
   });
   // Archive matches on text only. Structured operators (color/type/is) can't be applied
   // faithfully to heterogeneous archive entries — especially whole-group entries — so when
@@ -6713,6 +6723,194 @@ function renderTimelineView() {
 }
 
 // ════════════════════════════════════════════════════════════════
+// GALLERY LAYOUT (§3.3 — content-first masonry)
+// ════════════════════════════════════════════════════════════════
+// A masonry grid of the active category, split into labeled group sections that
+// keep the bento compartment feel (gradient top-accent, group tint). Cards reuse
+// buildItem(), so search / detail / drag and the item covers all keep working;
+// covers and favicons read as "covers" for a quick visual scan. The masonry is
+// pure CSS `columns` (no dependency); empty sections collapse under an active
+// search via applySearchFilter's .gl-section pass. Clicking a section header
+// opens that group's page (§4.1).
+function renderGalleryView() {
+  const $b = document.getElementById('board');
+  $b.innerHTML = '';
+  $b.classList.add('gallery-mode');
+  const cat = activeCat(); if (!cat) return;
+
+  if (!cat.groups.length) {
+    $b.innerHTML = `<div class="board-empty"><p>No groups yet in <strong>${esc(cat.name)}</strong>.<br>Save a tab or add a group to fill the gallery.</p></div>`;
+    return;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'gl-wrap';
+
+  cat.groups.forEach(g => {
+    const section = document.createElement('section');
+    section.className = 'gl-section';
+    if (g.color) section.style.setProperty('--gl-tint', g.color);
+
+    const hd = document.createElement('button');
+    hd.type = 'button';
+    hd.className = 'gl-section-hd';
+    hd.title = 'Open group page';
+    hd.innerHTML =
+      `<span class="gl-sec-sym">${g.symbol ? esc(g.symbol) : ''}</span>` +
+      `<span class="gl-sec-name">${esc(g.name)}</span>` +
+      `<span class="gl-sec-count">${g.items.length}</span>`;
+    hd.addEventListener('click', () => openGroupPage(g.id));
+    section.appendChild(hd);
+
+    const grid = document.createElement('div');
+    grid.className = 'gl-grid';
+    if (!g.items.length) {
+      const em = document.createElement('div');
+      em.className = 'gl-empty';
+      em.textContent = 'Empty group';
+      grid.appendChild(em);
+    } else {
+      // Items are placed directly as column children (not wrapped) so the shared
+      // .hidden search class removes them from the masonry flow cleanly.
+      g.items.forEach(it => grid.appendChild(buildItem(it, g.items, g)));
+    }
+    section.appendChild(grid);
+    wrap.appendChild(section);
+  });
+
+  $b.appendChild(wrap);
+  applySearchFilter();
+}
+
+// ════════════════════════════════════════════════════════════════
+// GRAPH LAYOUT (§3.4 — relationship map, stretch)
+// ════════════════════════════════════════════════════════════════
+// A static radial relationship view of the active category: the category at the
+// hub, its groups on a ring, each group's items fanned around it, plus faint
+// cross-links between items that share a domain. Deterministic geometry (no
+// physics sim) keeps it jank-free and reproducible; nodes are click/keyboard
+// targets — a hub opens its group page (§4.1), a leaf opens the item. The whole
+// figure fades in unless prefers-reduced-motion. Marked stretch in the plan;
+// this is the readable "rings by group" variant rather than a force sim.
+const _grReduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+function graphItemLabel(it) {
+  if (it.type === 'todo') return it.text || 'Untitled';
+  if (it.type === 'note') return (it.html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() || 'Note';
+  if (it.type === 'stack') return it.name || 'Stack';
+  return it.title || dispUrl(it.url) || 'Untitled';
+}
+function _grClip(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+function renderGraphView() {
+  const $b = document.getElementById('board');
+  $b.innerHTML = '';
+  $b.classList.add('graph-mode');
+  const cat = activeCat(); if (!cat) return;
+
+  // Flatten each group's items (a stack contributes its leaves, not itself).
+  const groups = cat.groups.map(g => {
+    const items = [];
+    const walk = list => list.forEach(it => it.type === 'stack' ? walk(it.items || []) : items.push(it));
+    walk(g.items);
+    return { g, items };
+  });
+  if (!groups.length) {
+    $b.innerHTML = `<div class="board-empty"><p>No groups to map in <strong>${esc(cat.name)}</strong> yet.<br>Add a group to see how its links relate.</p></div>`;
+    return;
+  }
+  const totalItems = groups.reduce((n, x) => n + x.items.length, 0);
+
+  const W = 960, H = 640, cx = W / 2, cy = H / 2;
+  const n = groups.length;
+  const Rg = n <= 1 ? 0 : Math.min(232, 118 + n * 8);
+
+  const hubs = [], leaves = [], spokes = [], links = [], cross = [];
+  const domainMap = new Map();
+
+  groups.forEach((grp, i) => {
+    const ga = -Math.PI / 2 + i * (2 * Math.PI / n);
+    const hx = n <= 1 ? cx : cx + Rg * Math.cos(ga);
+    const hy = n <= 1 ? cy : cy + Rg * Math.sin(ga);
+    const color = grp.g.color || 'var(--accent)';
+    hubs.push({ x: hx, y: hy, g: grp.g, color });
+    if (n > 1) spokes.push([cx, cy, hx, hy]);
+
+    const c = grp.items.length;
+    const ri = Math.max(52, Math.min(120, 42 + c * 6));
+    grp.items.forEach((it, j) => {
+      // Fan the leaves around the hub, biased outward from the centre so they
+      // don't pile onto the spoke.
+      const ia = n <= 1
+        ? (j * 2 * Math.PI / Math.max(c, 1))
+        : ga + (c <= 1 ? 0 : (j - (c - 1) / 2) * Math.min(2 * Math.PI / c, 0.62));
+      const ix = hx + ri * Math.cos(ia);
+      const iy = hy + ri * Math.sin(ia);
+      const node = { x: ix, y: iy, it, color: reminderDotColor(it.color || grp.g.color) };
+      leaves.push(node);
+      links.push([hx, hy, ix, iy, color]);
+      let host = '';
+      if (it.type === 'tab' && it.url) { try { host = new URL(it.url).hostname.replace(/^www\./, ''); } catch {} }
+      if (host) { if (!domainMap.has(host)) domainMap.set(host, []); domainMap.get(host).push(node); }
+    });
+  });
+
+  // Shared-domain relationship edges (§3.4). Chain consecutive same-domain leaves
+  // rather than every pair, so a big domain doesn't turn into a hairball.
+  domainMap.forEach(list => { for (let k = 1; k < list.length; k++) cross.push([list[k-1].x, list[k-1].y, list[k].x, list[k].y]); });
+
+  const showLabels = totalItems <= 44;
+  const f = v => v.toFixed(1);
+  let s = `<svg class="gr-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<g class="gr-edges">`;
+  cross.forEach(([x1,y1,x2,y2]) => { s += `<line class="gr-cross" x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}"/>`; });
+  spokes.forEach(([x1,y1,x2,y2]) => { s += `<line class="gr-spoke" x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}"/>`; });
+  links.forEach(([x1,y1,x2,y2,col]) => { s += `<line class="gr-link" x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" style="stroke:${col}"/>`; });
+  s += `</g>`;
+  s += `<g class="gr-node gr-center"><circle r="7" cx="${f(cx)}" cy="${f(cy)}"/><text x="${f(cx)}" y="${f(cy - 15)}">${esc(cat.name)}</text></g>`;
+  hubs.forEach((h, i) => {
+    const ly = h.y < cy ? h.y - 16 : h.y + 23;
+    s += `<g class="gr-node gr-hub" data-group-id="${esc(h.g.id)}" style="--i:${Math.min(i,14)}" tabindex="0" role="button" aria-label="${esc(h.g.name)}">`
+      + `<circle r="10" cx="${f(h.x)}" cy="${f(h.y)}" style="fill:${h.color}"/>`
+      + `<text x="${f(h.x)}" y="${f(ly)}">${esc(_grClip(h.g.name, 22))}</text>`
+      + `<title>${esc(h.g.name)} — open group page</title></g>`;
+  });
+  leaves.forEach((node, i) => {
+    const label = graphItemLabel(node.it);
+    s += `<g class="gr-node gr-item" data-item-id="${esc(node.it.id)}" style="--i:${Math.min(i,20)}" tabindex="0" role="button" aria-label="${esc(label)}">`
+      + `<circle r="5" cx="${f(node.x)}" cy="${f(node.y)}" style="fill:${node.color}"/>`
+      + (showLabels ? `<text x="${f(node.x + 8)}" y="${f(node.y + 3.5)}">${esc(_grClip(label, 20))}</text>` : '')
+      + `<title>${esc(label)}</title></g>`;
+  });
+  s += `</svg>`;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'gr-wrap';
+  wrap.innerHTML = s;
+  $b.appendChild(wrap);
+
+  wrap.querySelectorAll('.gr-hub').forEach(el => {
+    const id = el.dataset.groupId;
+    const go = () => openGroupPage(id);
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+  wrap.querySelectorAll('.gr-item').forEach(el => {
+    const id = el.dataset.itemId;
+    const act = () => {
+      const info = findItem(id); if (!info) return;
+      // A tab opens its page; every other kind opens its detail pane — the same
+      // "click a node to act on it" model the other layouts use.
+      if (info.item.type === 'tab' && info.item.url) openTabMaybeHibernated(info.item.url, { focus: true });
+      else openItemDetail(id);
+    };
+    el.addEventListener('click', act);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(); } });
+  });
+
+  const svg = wrap.querySelector('.gr-svg');
+  if (svg) { if (_grReduceMotion()) svg.classList.add('in'); else requestAnimationFrame(() => svg.classList.add('in')); }
+}
+
+// ════════════════════════════════════════════════════════════════
 // CALENDAR (§5 — unified reminders surface)
 // ════════════════════════════════════════════════════════════════
 // A workspace-scoped calendar that projects the reminder aggregator (§2.3) onto
@@ -7312,6 +7510,202 @@ function openLayoutMenu(btn) {
   });
   const r = btn.getBoundingClientRect();
   showContextMenu(r.left, r.bottom + 6, items, { focusFirst: true });
+}
+
+// ── Command palette (§7) ──────────────────────────────────────────
+// A Cmd/Ctrl-K surface that unifies navigation and quick actions: jump to a
+// workspace / category / group, switch layout, open the calendar, save tabs,
+// change theme, or drop into board search. It filters its list the same
+// subsequence way search matches, is fully keyboard-driven (↑/↓/Enter/Esc), and
+// reuses the app's overlay scrim, panel tokens and motion so it reads native
+// across the 13 themes. Board text-search still opens directly on `/`.
+let _palState = null;
+
+// Open (never toggle) the board search bar, optionally pre-filled and filtered.
+function openSearchBar(prefill) {
+  const bar = document.getElementById('search-bar');
+  if (bar.classList.contains('hidden')) bar.classList.remove('hidden');
+  const inp = document.getElementById('search-input');
+  if (prefill != null) inp.value = prefill;
+  if (prefill) applySearchFilter();
+  setTimeout(() => inp.focus(), 40);
+}
+
+// Open the Settings drawer from anywhere (mirrors the settings button handler).
+function openSettingsDrawer() {
+  const d = document.getElementById('settings-drawer');
+  if (!d) return;
+  rememberOpener(d);
+  d.classList.remove('hidden');
+  try { renderArchiveList(); } catch {}
+  setTimeout(() => focusFirstIn(d), 50);
+}
+
+// Advance to the next theme in THEMES and announce it (shared by the palette and
+// the Settings → Appearance cycle button).
+function cycleTheme() {
+  const cycle = THEMES.map(t => t.id);
+  const i = cycle.indexOf(State.get().settings.theme);
+  State.get().settings.theme = cycle[(i + 1) % cycle.length];
+  applySettings();
+  State.persist();
+  const t = THEMES.find(x => x.id === State.get().settings.theme);
+  toast(tr('toast.theme', { theme: t?.label || State.get().settings.theme }));
+}
+
+// The command set, rebuilt each open so workspaces/categories/groups are current.
+function buildPaletteCommands() {
+  const cmds = [];
+  const s = State.get();
+  const ws = activeWs();
+  const cat = activeCat();
+  const cur = getViewMode();
+
+  LAYOUT_ORDER.filter(m => LAYOUTS[m] && m !== cur).forEach(m => {
+    cmds.push({ cat: 'Layout', icon: LAYOUTS[m].icon, label: `Switch to ${LAYOUTS[m].label}`, run: () => setViewMode(m) });
+  });
+
+  cmds.push(activeCalendar
+    ? { cat: 'Go', label: 'Close calendar', run: closeCalendar }
+    : { cat: 'Go', label: 'Open calendar', run: openCalendar });
+
+  s.workspaces.forEach(w => {
+    if (w.id === s.activeWsId) return;
+    cmds.push({ cat: 'Workspace', sym: w.symbol, label: `Workspace: ${w.name}`, run: () => { State.get().activeWsId = w.id; State.persist(); renderAll(); } });
+  });
+  if (ws) ws.categories.forEach(c => {
+    if (c.id === ws.activeCatId) return;
+    cmds.push({ cat: 'Category', label: `Category: ${c.name}`, run: () => { ws.activeCatId = c.id; State.persist(); renderAll(); } });
+  });
+  if (cat) cat.groups.forEach(g => {
+    cmds.push({ cat: 'Group', sym: g.symbol, label: `Open group: ${g.name}`, run: () => openGroupPage(g.id) });
+  });
+
+  cmds.push({ cat: 'Action', label: 'Save all open tabs', run: saveAllTabs });
+  cmds.push({ cat: 'Action', label: 'New workspace', run: () => openModal('new-ws') });
+  cmds.push({ cat: 'Action', label: 'New category', run: () => openModal('new-cat') });
+  cmds.push({ cat: 'Action', label: 'Open tools', run: openToolsHub });
+  cmds.push({ cat: 'Action', label: 'Open settings', run: openSettingsDrawer });
+  cmds.push({ cat: 'Action', label: 'Keyboard shortcuts', run: openCheatsheet });
+  cmds.push({ cat: 'Action', label: 'Next theme', run: cycleTheme });
+  return cmds;
+}
+
+// Score a label against a lowercased query: a contiguous substring ranks above a
+// scattered subsequence, adjacency scores higher; -1 means no match.
+function _palScore(label, q) {
+  if (!q) return 0;
+  const s = label.toLowerCase();
+  const idx = s.indexOf(q);
+  if (idx >= 0) return 1000 - idx;
+  let qi = 0, score = 0, last = -2;
+  for (let i = 0; i < s.length && qi < q.length; i++) {
+    if (s[i] === q[qi]) { score += (last === i - 1) ? 3 : 1; last = i; qi++; }
+  }
+  return qi === q.length ? score : -1;
+}
+
+function _palEnsureDom() {
+  let ov = document.getElementById('cmd-palette');
+  if (ov) return ov;
+  ov = document.createElement('div');
+  ov.id = 'cmd-palette';
+  ov.className = 'hidden';
+  ov.setAttribute('role', 'dialog');
+  ov.setAttribute('aria-modal', 'true');
+  ov.setAttribute('aria-label', 'Command palette');
+  ov.innerHTML =
+    `<div class="cmdp-box">` +
+      `<div class="cmdp-inputrow">` +
+        `<svg class="cmdp-ico" width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>` +
+        `<input id="cmdp-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type a command or search…">` +
+        `<kbd class="cmdp-esc">Esc</kbd>` +
+      `</div>` +
+      `<div class="cmdp-list" id="cmdp-list" role="listbox"></div>` +
+    `</div>`;
+  document.body.appendChild(ov);
+  const inp = ov.querySelector('#cmdp-input');
+  ov.addEventListener('mousedown', e => { if (e.target === ov) closeCommandPalette(); });
+  inp.addEventListener('input', () => _palRender(inp.value));
+  inp.addEventListener('keydown', _palKeydown);
+  return ov;
+}
+
+function openCommandPalette() {
+  const ov = _palEnsureDom();
+  rememberOpener(ov);
+  _palState = { cmds: buildPaletteCommands(), filtered: [], sel: 0, query: '' };
+  ov.classList.remove('hidden');
+  const inp = ov.querySelector('#cmdp-input');
+  inp.value = '';
+  _palRender('');
+  setTimeout(() => inp.focus(), 30);
+}
+
+function closeCommandPalette() {
+  const ov = document.getElementById('cmd-palette');
+  if (!ov || ov.classList.contains('hidden')) return;
+  ov.classList.add('hidden');
+  _palState = null;
+  restoreOpener(ov);
+}
+
+function _palRender(query) {
+  if (!_palState) return;
+  _palState.query = query;
+  const q = query.trim().toLowerCase();
+  let ranked;
+  if (!q) ranked = _palState.cmds.slice();
+  else ranked = _palState.cmds
+    .map(c => ({ c, score: _palScore(c.label, q) }))
+    .filter(x => x.score >= 0)
+    .sort((a, b) => b.score - a.score)
+    .map(x => x.c);
+  const items = ranked.slice();
+  // Always offer a board-search fallback when there's a query.
+  if (q) items.push({ cat: 'Search', label: `Search board for “${query.trim()}”`, run: () => openSearchBar(query.trim()) });
+  _palState.filtered = items;
+  _palState.sel = Math.max(0, Math.min(_palState.sel, items.length - 1));
+
+  const listEl = document.getElementById('cmdp-list');
+  listEl.innerHTML = '';
+  if (!items.length) { listEl.innerHTML = `<div class="cmdp-empty">No matching commands</div>`; return; }
+  items.forEach((c, i) => {
+    const row = document.createElement('div');
+    row.className = 'cmdp-row' + (i === _palState.sel ? ' sel' : '');
+    row.setAttribute('role', 'option');
+    row.innerHTML =
+      `<span class="cmdp-row-ico">${c.icon || (c.sym ? esc(c.sym) : '')}</span>` +
+      `<span class="cmdp-row-label">${esc(c.label)}</span>` +
+      `<span class="cmdp-row-cat">${esc(c.cat || '')}</span>`;
+    row.addEventListener('mousemove', () => { if (_palState.sel !== i) { _palState.sel = i; _palSyncSel(); } });
+    row.addEventListener('click', () => _palRun(i));
+    listEl.appendChild(row);
+  });
+}
+
+function _palSyncSel() {
+  const rows = document.querySelectorAll('#cmdp-list .cmdp-row');
+  rows.forEach((r, i) => r.classList.toggle('sel', i === _palState.sel));
+  const sel = rows[_palState.sel];
+  if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
+}
+
+function _palKeydown(e) {
+  if (!_palState) return;
+  const n = _palState.filtered.length;
+  if (e.key === 'ArrowDown') { e.preventDefault(); _palState.sel = n ? (_palState.sel + 1) % n : 0; _palSyncSel(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); _palState.sel = n ? (_palState.sel - 1 + n) % n : 0; _palSyncSel(); }
+  else if (e.key === 'Enter') { e.preventDefault(); _palRun(_palState.sel); }
+  else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeCommandPalette(); }
+}
+
+function _palRun(i) {
+  if (!_palState) return;
+  const c = _palState.filtered[i];
+  if (!c) return;
+  closeCommandPalette();
+  try { c.run(); } catch (err) { console.error(err); }
 }
 
 function toggleSelectMode() {
@@ -9127,17 +9521,11 @@ function bindStatic() {
   // reads as part of theme customization rather than a primary dashboard action.
   const themeCycleBtn = document.getElementById('theme-cycle-btn');
   if (themeCycleBtn) themeCycleBtn.onclick = () => {
-    const cycle = THEMES.map(t => t.id);
-    const i = cycle.indexOf(State.get().settings.theme);
-    State.get().settings.theme = cycle[(i + 1) % cycle.length];
-    applySettings();
-    State.persist();
+    cycleTheme();
     // Nudge the animation so the control feels responsive to the cycle.
     themeCycleBtn.classList.remove('spin');
     void themeCycleBtn.offsetWidth;
     themeCycleBtn.classList.add('spin');
-    const t = THEMES.find(x => x.id === State.get().settings.theme);
-    toast(tr('toast.theme', { theme: t?.label || State.get().settings.theme }));
   };
   const _drawer = document.getElementById('settings-drawer');
   const _openDrawer = () => { rememberOpener(_drawer); _drawer.classList.remove('hidden'); renderArchiveList(); setTimeout(() => focusFirstIn(_drawer), 50); };
@@ -9216,7 +9604,8 @@ function bindStatic() {
     const editable = document.activeElement?.isContentEditable;
     const inField = tag === 'INPUT' || tag === 'TEXTAREA' || editable;
 
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !e.shiftKey && !inField) { e.preventDefault(); toggleSearchBar(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !e.shiftKey && !inField) { e.preventDefault(); openCommandPalette(); }
+    else if (e.key === '/' && !inField && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); openSearchBar(); }
     else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !inField) { e.preventDefault(); performUndo(); }
     else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z' && !inField) { e.preventDefault(); performRedo(); }
     else if (e.key === 's' && !inField) { e.preventDefault(); document.getElementById('tab-filter').focus(); }
@@ -9228,8 +9617,9 @@ function bindStatic() {
       // Snapshot which layered overlays were open *before* we start closing
       // them, so a single Escape only pops the topmost one — not the group page
       // sitting beneath a modal/menu/tool overlay.
-      const _escBlockers = ['modal-overlay','settings-drawer','ws-grid-overlay','ws-list','emoji-picker','import-overlay','cheatsheet-overlay','quota-overlay','tour-overlay','pomo-overlay','fin-overlay','habit-overlay','water-overlay','books-overlay','goals-overlay','workout-overlay','subs-overlay','tools-hub'];
+      const _escBlockers = ['cmd-palette','modal-overlay','settings-drawer','ws-grid-overlay','ws-list','emoji-picker','import-overlay','cheatsheet-overlay','quota-overlay','tour-overlay','pomo-overlay','fin-overlay','habit-overlay','water-overlay','books-overlay','goals-overlay','workout-overlay','subs-overlay','tools-hub'];
       const _overlayWasOpen = _escBlockers.some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
+      closeCommandPalette();
       toggleSearchBar(false);
       closeModal();
       const _d = document.getElementById('settings-drawer');
