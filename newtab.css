@@ -63,10 +63,10 @@
   /* Sidebar scales gently with the viewport so the board keeps its breathing
      room on smaller new-tab and split-window sizes; unchanged (240px) at the
      common ≥1264px widths, easing down to a 184px floor below that. */
-  --sidebar: clamp(184px, 19vw, 240px); --sidebar-min: 64px; --topbar: 56px;
+  --sidebar: clamp(196px, 18vw, 252px); --sidebar-min: 64px; --topbar: 70px;
   /* Right-hand Opened-Tabs rail (Waypoint-style shell). Collapses to a slim
      handle strip; hidden entirely on narrow new-tab / split widths. */
-  --tabrail: clamp(248px, 20vw, 304px); --tabrail-min: 40px;
+  --tabrail: clamp(256px, 19vw, 312px); --tabrail-min: 44px;
 
   /* Spacing scale (4px base) */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
@@ -119,11 +119,31 @@
   /* Glass / bento tokens (consumed by the signature theme's polish layer). */
   --glass-blur: 14px;
   --r-card: 16px;
+
+  /* Theme-neutral chrome elevation. Keep the Waypoint-style shell lift, but
+     derive it from neutral black so warm, cool, light, and dark themes do not
+     inherit a Folio-blue shadow cast. */
+  --chrome-edge-shadow: 0 10px 28px -24px rgba(0,0,0,0.56);
+  --chrome-side-shadow-r: 1px 0 16px -12px rgba(0,0,0,0.36);
+  --chrome-side-shadow-l: -1px 0 16px -12px rgba(0,0,0,0.36);
 }
 [data-theme="light"], [data-theme="solarized-light"], [data-theme="sepia"] {
   --shadow-1: 0 2px 8px rgba(15,15,30,0.05);
   --shadow-2: 0 6px 16px rgba(15,15,30,0.09), 0 0 0 1px rgba(15,15,30,0.05);
   --shadow-3: 0 12px 32px rgba(15,15,30,0.12), 0 2px 6px rgba(15,15,30,0.06);
+  --chrome-edge-shadow: 0 10px 28px -24px rgba(15,15,30,0.32);
+  --chrome-side-shadow-r: 1px 0 16px -12px rgba(15,15,30,0.22);
+  --chrome-side-shadow-l: -1px 0 16px -12px rgba(15,15,30,0.22);
+}
+[data-theme="folio"] {
+  --chrome-edge-shadow: 0 10px 28px -24px rgba(43,54,116,0.32);
+  --chrome-side-shadow-r: 1px 0 16px -12px rgba(43,54,116,0.22);
+  --chrome-side-shadow-l: -1px 0 16px -12px rgba(43,54,116,0.22);
+}
+[data-theme="tabento"] {
+  --chrome-edge-shadow: 0 10px 28px -24px rgba(74,52,20,0.32);
+  --chrome-side-shadow-r: 1px 0 16px -12px rgba(74,52,20,0.22);
+  --chrome-side-shadow-l: -1px 0 16px -12px rgba(74,52,20,0.22);
 }
 
 html, body {
@@ -195,7 +215,7 @@ textarea:focus-visible {
   display: flex; flex-direction: column;
   overflow: hidden;
   transition: width var(--trans);
-  box-shadow: 1px 0 12px -8px rgba(0,0,0,0.5);
+  box-shadow: var(--chrome-side-shadow-r);
   position: relative; z-index: 6;
 }
 #sidebar.collapsed { width: var(--sidebar-min); }
@@ -538,7 +558,7 @@ textarea:focus-visible {
 .nav-item:hover { background: var(--bg3); color: var(--text); }
 .nav-item:hover svg { color: var(--text); }
 .nav-item.active {
-  background: color-mix(in srgb, var(--accent-bg) 12%, transparent);
+  background: color-mix(in srgb, var(--accent-bg) 10%, transparent);
   color: var(--accent);
 }
 .nav-item.active svg { color: var(--accent); }
@@ -563,7 +583,7 @@ textarea:focus-visible {
 }
 .space-item {
   display: flex; align-items: center; gap: 9px;
-  padding: 7px 10px; border-radius: 9px;
+  padding: 8px 10px; border-radius: 10px;
   background: transparent; border: 1px solid transparent;
   color: var(--text2); cursor: pointer; text-align: left;
   font: 500 13px var(--font); transition: all var(--trans);
@@ -571,12 +591,12 @@ textarea:focus-visible {
 }
 .space-item .space-sym { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
 .space-item .space-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.space-item .nav-count {
-  font: 600 11px var(--font); color: var(--text3);
-  background: var(--bg3); border-radius: 20px; padding: 1px 8px; min-width: 20px; text-align: center;
-}
+.space-item .nav-count { font: 600 11px var(--font); color: var(--text3); min-width: 20px; text-align: right; }
 .space-item:hover { background: var(--bg3); color: var(--text); }
-.space-item.active { background: var(--bg3); color: var(--text); font-weight: 600; }
+.space-item.active {
+  background: color-mix(in srgb, var(--accent-bg) 10%, var(--panel));
+  color: var(--accent); font-weight: 600;
+}
 .space-item.active::before {
   content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
   width: 3px; border-radius: 0 3px 3px 0; background: var(--brand-grad);
@@ -615,7 +635,7 @@ textarea:focus-visible {
   display: flex; flex-direction: column; overflow: hidden;
   transition: width var(--trans);
   position: relative; z-index: 5;
-  box-shadow: -1px 0 12px -8px rgba(0,0,0,0.5);
+  box-shadow: var(--chrome-side-shadow-l);
 }
 #tabrail.collapsed { width: var(--tabrail-min); }
 #tabrail.collapsed .rail-hd,
@@ -623,7 +643,7 @@ textarea:focus-visible {
 #tabrail.collapsed .rail-footer { display: none; }
 .rail-toggle { align-self: flex-end; margin: 10px 10px 2px; }
 #tabrail.collapsed .rail-toggle { align-self: center; margin: 10px auto; transform: rotate(180deg); }
-.rail-hd { padding: 4px 14px 8px; flex-shrink: 0; }
+.rail-hd { padding: 10px 18px 12px; flex-shrink: 0; }
 .rail-title-row { display: flex; align-items: baseline; gap: 8px; }
 .rail-title { font: 600 14px var(--font); color: var(--text); }
 .rail-count {
@@ -631,7 +651,7 @@ textarea:focus-visible {
   background: var(--bg3); border-radius: 20px; padding: 1px 8px;
 }
 .rail-sub { font: 500 11px var(--font); color: var(--text3); margin-top: 3px; }
-.rail-footer { border-top: 1px solid var(--border); padding: 10px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
+.rail-footer { border-top: 1px solid var(--border); padding: 14px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
 .rail-saveall {
   display: flex; align-items: center; justify-content: center; gap: 7px;
   width: 100%; padding: 9px; border-radius: 9px;
@@ -661,18 +681,19 @@ textarea:focus-visible {
 /* ═══ HOME SURFACE ═══ */
 #board.home-mode {
   display: block; overflow-x: hidden; overflow-y: auto;
-  padding: 22px 26px 40px;
+  padding: 24px 28px 40px;
 }
 .home-hero {
   position: relative; overflow: hidden;
-  border-radius: var(--r-lg); margin-bottom: 20px;
+  border-radius: 18px; margin-bottom: 22px;
   min-height: 118px; display: flex; align-items: center;
   padding: 24px 28px;
   background: linear-gradient(120deg,
     color-mix(in srgb, var(--accent-bg) 20%, var(--panel)),
     color-mix(in srgb, var(--accent-bg) 8%, var(--panel)) 60%,
     var(--panel));
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  box-shadow: var(--card-shadow);
 }
 .home-hero-copy { position: relative; z-index: 2; max-width: 60%; }
 .home-greeting {
@@ -690,12 +711,12 @@ textarea:focus-visible {
 
 .home-grid {
   display: grid; gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr));
 }
 .home-card {
   display: flex; flex-direction: column;
-  border: 1px solid var(--border); border-radius: var(--r-lg);
-  background: var(--panel); padding: 18px 18px 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent); border-radius: 18px;
+  background: color-mix(in srgb, var(--panel) 96%, var(--bg)); padding: 18px 18px 14px;
   cursor: pointer; transition: transform 0.16s var(--trans), box-shadow var(--trans), border-color var(--trans);
   min-height: 168px;
 }
@@ -821,7 +842,7 @@ textarea:focus-visible {
   box-shadow: inset 0 0 0 1px var(--border), 0 1px 2px rgba(0,0,0,0.08);
 }
 .brand-img { width: 160%; height: 160%; object-fit: contain; object-position: 52% 44%; display: block; }
-.brand-lockup { padding: 14px 14px 6px; gap: 10px; }
+.brand-lockup { padding: 18px 18px 10px; gap: 10px; }
 .brand-name { font-size: 18px; }
 
 /* Sidebar bottom collapse button (Waypoint places it at the foot) */
@@ -836,12 +857,12 @@ textarea:focus-visible {
 #sidebar.collapsed .side-collapse svg { transform: rotate(180deg); }
 
 /* Prominent top-bar search pill */
-.tb-left { flex: 0 1 auto; } /* yield the middle to the search pill */
+.tb-left { flex: 0 0 0; } /* yield the leading edge to the search pill */
 .topbar-search {
-  flex: 1; max-width: 640px; margin: 0 auto;
+  flex: 1 1 680px; max-width: 680px; margin: 0;
   display: flex; align-items: center; gap: 10px;
-  height: 40px; padding: 0 14px;
-  border-radius: 12px; cursor: text;
+  height: 42px; padding: 0 16px;
+  border-radius: 14px; cursor: text;
   background: var(--bg2); border: 1px solid var(--border);
   color: var(--text3); font: 500 13.5px var(--font);
   transition: all var(--trans);
@@ -912,16 +933,16 @@ textarea:focus-visible {
 #topbar {
   height: var(--topbar); flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 0 18px;
+  padding: 0 24px;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  background: color-mix(in srgb, var(--panel) 74%, transparent);
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  box-shadow: 0 1px 0 var(--border), 0 6px 18px -14px rgba(0,0,0,0.5);
+  box-shadow: 0 1px 0 var(--border), var(--chrome-edge-shadow);
   position: relative; z-index: 5;
 }
 
-.tb-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.tb-left { display: flex; align-items: center; gap: 12px; flex: 0 0 0; min-width: 0; }
 /* Topbar title dropped — the workspace name now lives in the sidebar chip, and a
    full-width centred search leads the topbar (Waypoint-style). Kept in the DOM
    (renderHeader still sets its text, harmlessly) so this stays easy to revert. */
@@ -1028,11 +1049,11 @@ body[data-anim="off"] .cat-tabs-wrap::after {
 }
 
 .tb-right {
-  display: flex; gap: 2px; align-items: center; flex-shrink: 0;
-  padding: 3px 4px;
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--bg2) 55%, transparent);
-  border: 1px solid var(--border);
+  display: flex; gap: 6px; align-items: center; flex-shrink: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
 }
 
 [data-theme="dark"] .ic-light, [data-theme="dracula"] .ic-light, [data-theme="nord"] .ic-light,
@@ -5994,9 +6015,8 @@ body.blur-privacy .otab-title:hover { filter: blur(0); }
 .brand-name {
   font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
   color: var(--text);
-  background: var(--brand-grad);
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background: none;
+  -webkit-text-fill-color: currentColor;
 }
 
 /* Hibernation / status badges — small, calm pills for "hibernated",

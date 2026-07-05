@@ -1125,7 +1125,7 @@ function ensureDefault() {
 // SETTINGS
 // ════════════════════════════════════════════════════════════════
 const THEMES = [
-  { id:'folio',             label:'Folio',             colors:['#eef1fb','#5566f2','#8b5cf6'] },
+  { id:'folio',             label:'Folio',             colors:['#f7f8fc','#5566f2','#8b5cf6'] },
   { id:'folio-dark',        label:'Folio Dark',        colors:['#0c0e1a','#8b9bff','#b78cff'] },
   { id:'tabento',          label:'Rice Paper',       colors:['#f3ead7','#c2761a','#d2542f'] },
   { id:'tabento-dark',     label:'Lacquer',          colors:['#17120d','#f5b841','#ec6f4c'] },

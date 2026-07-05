@@ -12,22 +12,22 @@
    blue→violet through-line travels across every surface automatically. */
 [data-theme="folio"] {
   /* Board is a faint cool lavender; panels/cards sit pure white so they lift. */
-  --bg: #eef1fb; --bg2: #ffffff; --bg3: #e8ecf8; --bg4: #dde3f4; --bg5: #cbd4ec;
+  --bg: #f7f8fc; --bg2: #ffffff; --bg3: #f1f3fb; --bg4: #e8ecf8; --bg5: #d7def1;
   --panel: #ffffff;
-  --border: rgba(40,52,95,0.09); --border2: rgba(40,52,95,0.16);
-  --text: #141828; --text2: #565d75; --text3: #9298ae;
+  --border: rgba(35,45,86,0.075); --border2: rgba(35,45,86,0.14);
+  --text: #12172d; --text2: #5b647c; --text3: #98a0b5;
   --accent: #4f66f0; --accent2: #8b5cf6; --accent-bg: #5566f2; --accent-hover: #4453e6; --accent-text: #ffffff;
   --green: #16a34a; --red: #e5484d; --yellow: #c98a04; --orange: #ea6a1f; --blue: #2f6bff;
   --note-bg: #eef1ff; --note-bd: rgba(91,110,245,0.24);
   /* Cool, soft elevation so white cards float off the light-lavender board
      instead of inheriting the base dark shadows. */
-  --shadow: 0 18px 48px rgba(43,54,116,0.14), 0 4px 14px rgba(43,54,116,0.08);
-  --shadow-sm: 0 2px 10px rgba(43,54,116,0.08);
-  --card-shadow: 0 1px 2px rgba(43,54,116,0.05), 0 2px 6px rgba(43,54,116,0.05);
-  --card-shadow-h: 0 12px 26px rgba(43,54,116,0.14), 0 2px 6px rgba(43,54,116,0.08);
-  --shadow-1: 0 2px 10px rgba(43,54,116,0.10);
-  --shadow-2: 0 8px 22px rgba(43,54,116,0.14), 0 0 0 1px rgba(43,54,116,0.04);
-  --shadow-3: 0 18px 46px rgba(43,54,116,0.18), 0 3px 10px rgba(43,54,116,0.10);
+  --shadow: 0 18px 48px rgba(43,54,116,0.10), 0 4px 14px rgba(43,54,116,0.06);
+  --shadow-sm: 0 2px 10px rgba(43,54,116,0.06);
+  --card-shadow: 0 1px 2px rgba(43,54,116,0.035), 0 2px 8px rgba(43,54,116,0.035);
+  --card-shadow-h: 0 14px 30px rgba(43,54,116,0.12), 0 2px 8px rgba(43,54,116,0.06);
+  --shadow-1: 0 2px 10px rgba(43,54,116,0.07);
+  --shadow-2: 0 10px 24px rgba(43,54,116,0.10), 0 0 0 1px rgba(43,54,116,0.035);
+  --shadow-3: 0 20px 48px rgba(43,54,116,0.14), 0 3px 10px rgba(43,54,116,0.07);
 }
 
 /* Folio Dark — deep indigo-ink variant of the signature theme. Same
