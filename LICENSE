@@ -1,89 +1,21 @@
-Folio Research and Contribution License 1.0
+MIT License
 
-Copyright (c) 2026 I-Kai Huang and contributors.
+Copyright (c) 2026 I-Kai Huang and contributors
 
-This license is a limited, noncommercial source-available license. It does
-not permit commercial use in any form.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. Permitted uses
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-You may use, copy, run, inspect, and modify the software only for these
-noncommercial purposes:
-
-- research, study, experiment, and testing;
-- personal learning, private evaluation, and hobby projects;
-- informal use that is not connected to a business, employer, client, product,
-  service, revenue stream, or other commercial advantage;
-- preparing, testing, and submitting contributions back to the Folio project.
-
-You may share changes only when the sharing is noncommercial and this license
-and copyright notice stay with every copy, or when the sharing is part of a
-contribution to the Folio project.
-
-2. No commercial use
-
-Commercial use is not permitted in any kind or form, whether direct or indirect.
-Without limiting that rule, you may not use the software, source code, designs,
-documentation, assets, or modified versions:
-
-- for a business, employer, client, customer, contractor, or commercial project;
-- to provide, support, market, or improve a product, service, SaaS offering,
-  subscription, paid feature, consulting engagement, or internal business tool;
-- to generate revenue, reduce commercial costs, attract customers, support
-  fundraising, or gain any commercial advantage;
-- in production or operational use for any organization that is not using it
-  solely for a permitted noncommercial research or contribution purpose;
-- to train, evaluate, benchmark, or improve a commercial product, model, system,
-  dataset, or service;
-- to sell, resell, sublicense, rent, lease, host, bundle, distribute for profit,
-  or include in any paid or advertising-supported offering;
-- to create or improve a competing commercial product.
-
-If a use has both a permitted purpose and a commercial purpose, it is not
-permitted unless the copyright holder gives prior written permission.
-
-3. Contributions
-
-You may create and submit patches, pull requests, issues, documentation, tests,
-and other contributions to the Folio project. By submitting a contribution,
-you grant the project maintainers a perpetual, worldwide, royalty-free license
-to use, copy, modify, distribute, and relicense that contribution as part of the
-Folio project.
-
-4. No sublicensing or transfer
-
-You may not sublicense, transfer, or assign this license or any rights under it.
-You may not remove or alter copyright, license, or attribution notices.
-
-5. Enforcement and termination
-
-Any use outside this license is unauthorized and automatically terminates all
-rights granted to you, immediately and without notice. After termination, you
-must stop using the software, delete or destroy all copies under your control,
-and stop distributing any copy or modified version.
-
-Unauthorized commercial use is unlicensed use. The copyright holder may enforce
-this license to the fullest extent allowed by law, including by seeking
-injunctive or equitable relief, damages, recovery of profits, costs, and
-attorneys' fees where available. Delay or failure to enforce any term is not a
-waiver. Reinstatement requires express written permission from the copyright
-holder.
-
-6. Separate commercial licenses
-
-Commercial use requires a separate written license from the copyright holder.
-No permission for commercial use is implied by source availability, public
-repository access, issue participation, contribution acceptance, or release
-distribution.
-
-7. No warranty
-
-The software is provided "as is", without warranty of any kind, express or
-implied, including warranties of merchantability, fitness for a particular
-purpose, and noninfringement. You use it at your own risk.
-
-8. Limitation of liability
-
-To the maximum extent allowed by law, the copyright holder and contributors are
-not liable for any claim, damages, losses, or other liability arising from this
-license, the software, or any use of the software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

@@ -1,0 +1,7 @@
+{
+  "appName": { "message": "Tabento" },
+  "appDescription": { "message": "Un espacio local para pestañas, notas, pilas y recordatorios." },
+  "actionTitle": { "message": "Abrir Tabento" },
+  "commandOpenPopup": { "message": "Abrir la ventana de Tabento" },
+  "commandSaveTab": { "message": "Guardar la pestaña actual en Entrada" }
+}

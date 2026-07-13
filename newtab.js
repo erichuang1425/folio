@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   Folio — newtab.js (v3)
+   Tabento — newtab.js (v3)
    ═══════════════════════════════════════════════════════════════ */
 
 // Schema version of the in-storage state. Bump when state shape changes,
@@ -7,7 +7,7 @@
 // data stamped with a higher value get a blocking "newer data" guard.
 const CURRENT_SCHEMA = 6;
 
-const SUPPORTED_LOCALES = ['en', 'zh-TW'];
+const SUPPORTED_LOCALES = ['en', 'zh-TW', 'zh-CN', 'es', 'ja', 'fr'];
 
 function browserLanguage() {
   const nav = typeof navigator !== 'undefined' ? navigator : {};
@@ -17,8 +17,9 @@ function browserLanguage() {
 
 function normalizeLanguage(value) {
   const lang = String(value || 'en').trim();
-  if (/^zh(?:[-_]|$)/i.test(lang)) return 'zh-TW';
-  return SUPPORTED_LOCALES.includes(lang) ? lang : 'en';
+  if (/^zh(?:[-_](?:tw|hk|mo|hant))$/i.test(lang)) return 'zh-TW';
+  if (/^zh(?:[-_]|$)/i.test(lang)) return 'zh-CN';
+  return SUPPORTED_LOCALES.find(locale => locale.toLowerCase() === lang.toLowerCase()) || 'en';
 }
 
 function appLocale() {
@@ -82,32 +83,7 @@ const I18N = {
     'settings.storage': 'Storage',
     'settings.exportJson': 'Export all data as JSON',
     'toast.theme': 'Theme: {theme}',
-    'toast.language': 'Language: {language}',
-    'nav.home': 'Home',
-    'nav.allLinks': 'All Links',
-    'nav.inbox': 'Inbox',
-    'nav.archive': 'Archive',
-    'nav.spaces': 'Spaces',
-    'nav.storage': 'Local storage',
-    'priv.title': 'Private by design',
-    'priv.noAccount': 'No account',
-    'priv.localOnly': 'Local-only',
-    'priv.noHost': 'No host permissions',
-    'priv.export': 'Export anytime',
-    'rail.openedTabs': 'Opened Tabs',
-    'rail.dragHint': 'Drag into a space to save',
-    'rail.saveAll': 'Save all tabs',
-    'rail.tip': 'Drag a tab into any space to save it for later.',
-    'home.greeting.morning': 'Good morning',
-    'home.greeting.afternoon': 'Good afternoon',
-    'home.greeting.evening': 'Good evening',
-    'home.subtitle': 'Focus on what matters.',
-    'home.viewAll': 'View all',
-    'home.items': '{n} items',
-    'home.empty': 'Empty — drag a tab here to start',
-    'home.emptyTitle': 'No spaces yet',
-    'home.emptyBody': 'Create a category to start organizing your tabs.',
-    'search.placeholder': 'Search your links…'
+    'toast.language': 'Language: {language}'
   },
   'zh-TW': {
     'shell.openTabs': '開啟分頁',
@@ -165,34 +141,22 @@ const I18N = {
     'settings.storage': '儲存空間',
     'settings.exportJson': '匯出所有資料為 JSON',
     'toast.theme': '主題：{theme}',
-    'toast.language': '語言：{language}',
-    'nav.home': '首頁',
-    'nav.allLinks': '所有連結',
-    'nav.inbox': '收件匣',
-    'nav.archive': '封存',
-    'nav.spaces': '空間',
-    'nav.storage': '本機儲存',
-    'priv.title': '隱私優先設計',
-    'priv.noAccount': '免帳號',
-    'priv.localOnly': '僅存本機',
-    'priv.noHost': '免主機權限',
-    'priv.export': '隨時匯出',
-    'rail.openedTabs': '開啟的分頁',
-    'rail.dragHint': '拖入空間即可儲存',
-    'rail.saveAll': '儲存所有分頁',
-    'rail.tip': '將分頁拖入任一空間，即可留待稍後查看。',
-    'home.greeting.morning': '早安',
-    'home.greeting.afternoon': '午安',
-    'home.greeting.evening': '晚安',
-    'home.subtitle': '專注在真正重要的事。',
-    'home.viewAll': '查看全部',
-    'home.items': '{n} 個項目',
-    'home.empty': '空的 — 拖一個分頁進來開始',
-    'home.emptyTitle': '尚無空間',
-    'home.emptyBody': '建立分類即可開始整理你的分頁。',
-    'search.placeholder': '搜尋你的連結…'
+    'toast.language': '語言：{language}'
   }
 };
+
+Object.assign(I18N, {
+  'zh-TW': { ...I18N.en,
+    'shell.openTabs':'個開啟的分頁','shell.filterTabs':'篩選分頁','action.collapseSidebar':'收合側邊欄','action.newWorkspace':'新增工作空間','action.allWorkspaces':'所有工作空間','action.newCategory':'新增分類','action.undo':'復原 (Ctrl+Z)','action.tools':'工具（番茄鐘、財務、訂閱…）','action.switchLayout':'切換版面','action.calendar':'行事曆（提醒）','action.selectionMode':'選取模式','action.reorderMode':'重新排序模式','action.search':'搜尋 ( / )','action.cycleTheme':'切換主題','action.saveAllTabs':'儲存所有開啟的分頁','action.more':'更多','action.settings':'設定','settings.title':'設定','settings.appearance':'外觀','settings.behavior':'行為','settings.archive':'封存','settings.data':'資料','settings.theme':'主題','settings.language':'語言','settings.language.en':'English','settings.language.zhTW':'繁體中文','settings.language.hint':'新使用者會依瀏覽器語言選用最接近的支援語言。','settings.itemSize':'項目大小','settings.size.compact':'緊湊','settings.size.normal':'一般','settings.size.large':'大型','settings.columnWidth':'欄寬','settings.width.narrow':'窄','settings.width.normal':'一般','settings.width.wide':'寬','settings.fontFamily':'字型','settings.closeTabs':'儲存後關閉分頁','settings.hibernate':'以休眠狀態開啟已儲存分頁','settings.hibernateHint':'點擊前不占用記憶體','settings.showUrls':'在卡片上顯示網址','settings.animations':'動畫','settings.confirmDelete':'刪除群組前確認','settings.privacyBlur':'隱私模糊模式','settings.privacyBlurHint':'模糊所有內容（適合螢幕分享）','settings.autoSwitch':'視窗取得焦點時自動切換工作空間','settings.autoSwitchHint':'每個工作空間可連結一個瀏覽器視窗','settings.showTour':'重新播放歡迎導覽','settings.tips':'探索時顯示提示','settings.tipsHint':'第一次開啟功能時顯示一次提示','settings.resetHints':'重設提示','settings.shortcuts':'快速鍵','settings.archivedItems':'已封存項目','settings.storage':'儲存空間','settings.exportJson':'將所有資料匯出為 JSON','toast.theme':'主題：{theme}','toast.language':'語言：{language}' },
+  'zh-CN': { ...I18N.en,
+    'shell.openTabs':'个已打开的标签页','shell.filterTabs':'筛选标签页','action.collapseSidebar':'收起侧边栏','action.newWorkspace':'新建工作区','action.allWorkspaces':'所有工作区','action.newCategory':'新建分类','action.undo':'撤销 (Ctrl+Z)','action.tools':'工具（番茄钟、财务、订阅…）','action.switchLayout':'切换布局','action.calendar':'日历（提醒）','action.selectionMode':'选择模式','action.reorderMode':'重新排序模式','action.search':'搜索 ( / )','action.cycleTheme':'切换主题','action.saveAllTabs':'保存所有已打开的标签页','action.more':'更多','action.settings':'设置','settings.title':'设置','settings.appearance':'外观','settings.behavior':'行为','settings.archive':'归档','settings.data':'数据','settings.theme':'主题','settings.language':'语言','settings.language.en':'English','settings.language.zhTW':'繁體中文','settings.language.hint':'新用户会根据浏览器语言选择最接近的支持语言。','settings.itemSize':'项目大小','settings.size.compact':'紧凑','settings.size.normal':'标准','settings.size.large':'大','settings.columnWidth':'列宽','settings.width.narrow':'窄','settings.width.normal':'标准','settings.width.wide':'宽','settings.fontFamily':'字体','settings.closeTabs':'保存后关闭标签页','settings.hibernate':'以休眠状态打开已保存的标签页','settings.hibernateHint':'点击前不占用内存','settings.showUrls':'在卡片上显示网址','settings.animations':'动画','settings.confirmDelete':'删除分组前确认','settings.privacyBlur':'隐私模糊模式','settings.privacyBlurHint':'模糊所有内容（适合屏幕共享）','settings.autoSwitch':'窗口获得焦点时自动切换工作区','settings.autoSwitchHint':'每个工作区可关联一个浏览器窗口','settings.showTour':'重新播放欢迎引导','settings.tips':'探索时显示提示','settings.tipsHint':'首次打开功能时显示一次提示','settings.resetHints':'重置提示','settings.shortcuts':'快捷键','settings.archivedItems':'已归档项目','settings.storage':'存储空间','settings.exportJson':'将所有数据导出为 JSON','toast.theme':'主题：{theme}','toast.language':'语言：{language}' },
+  es: { ...I18N.en,
+    'shell.openTabs':'pestañas abiertas','shell.filterTabs':'Filtrar pestañas','action.collapseSidebar':'Contraer barra lateral','action.newWorkspace':'Nuevo espacio','action.allWorkspaces':'Todos los espacios','action.newCategory':'Nueva categoría','action.undo':'Deshacer (Ctrl+Z)','action.tools':'Herramientas (Pomodoro, Finanzas, Suscripciones…)','action.switchLayout':'Cambiar diseño','action.calendar':'Calendario (recordatorios)','action.selectionMode':'Modo de selección','action.reorderMode':'Modo de reordenación','action.search':'Buscar ( / )','action.cycleTheme':'Cambiar tema','action.saveAllTabs':'Guardar todas las pestañas abiertas','action.more':'Más','action.settings':'Ajustes','settings.title':'Ajustes','settings.appearance':'Apariencia','settings.behavior':'Comportamiento','settings.archive':'Archivo','settings.data':'Datos','settings.theme':'Tema','settings.language':'Idioma','settings.language.en':'English','settings.language.zhTW':'繁體中文','settings.language.hint':'Los usuarios nuevos comienzan con el idioma compatible más cercano al del navegador.','settings.itemSize':'Tamaño de los elementos','settings.size.compact':'Compacto','settings.size.normal':'Normal','settings.size.large':'Grande','settings.columnWidth':'Ancho de columna','settings.width.narrow':'Estrecho','settings.width.normal':'Normal','settings.width.wide':'Ancho','settings.fontFamily':'Tipografía','settings.closeTabs':'Cerrar pestañas al guardarlas','settings.hibernate':'Abrir pestañas guardadas en reposo','settings.hibernateHint':'no usan memoria hasta abrirlas','settings.showUrls':'Mostrar URL en las tarjetas','settings.animations':'Animaciones','settings.confirmDelete':'Confirmar antes de eliminar grupos','settings.privacyBlur':'Modo de privacidad con desenfoque','settings.privacyBlurHint':'desenfoca el contenido al compartir pantalla','settings.autoSwitch':'Cambiar de espacio al enfocar una ventana','settings.autoSwitchHint':'cada espacio se vincula a una ventana','settings.showTour':'Repetir bienvenida','settings.tips':'Mostrar consejos al explorar','settings.tipsHint':'un consejo la primera vez que abres una función','settings.resetHints':'Restablecer consejos','settings.shortcuts':'Atajos','settings.archivedItems':'Elementos archivados','settings.storage':'Almacenamiento','settings.exportJson':'Exportar todos los datos como JSON','toast.theme':'Tema: {theme}','toast.language':'Idioma: {language}' },
+  ja: { ...I18N.en,
+    'shell.openTabs':'個の開いているタブ','shell.filterTabs':'タブを絞り込む','action.collapseSidebar':'サイドバーを折りたたむ','action.newWorkspace':'新しいワークスペース','action.allWorkspaces':'すべてのワークスペース','action.newCategory':'新しいカテゴリ','action.undo':'元に戻す (Ctrl+Z)','action.tools':'ツール（ポモドーロ、家計、購読…）','action.switchLayout':'レイアウトを切り替え','action.calendar':'カレンダー（リマインダー）','action.selectionMode':'選択モード','action.reorderMode':'並べ替えモード','action.search':'検索 ( / )','action.cycleTheme':'テーマを切り替え','action.saveAllTabs':'開いているタブをすべて保存','action.more':'その他','action.settings':'設定','settings.title':'設定','settings.appearance':'外観','settings.behavior':'動作','settings.archive':'アーカイブ','settings.data':'データ','settings.theme':'テーマ','settings.language':'言語','settings.language.en':'English','settings.language.zhTW':'繁體中文','settings.language.hint':'初回はブラウザに最も近い対応言語を使用します。','settings.itemSize':'項目サイズ','settings.size.compact':'コンパクト','settings.size.normal':'標準','settings.size.large':'大','settings.columnWidth':'列の幅','settings.width.narrow':'狭い','settings.width.normal':'標準','settings.width.wide':'広い','settings.fontFamily':'フォント','settings.closeTabs':'保存後にタブを閉じる','settings.hibernate':'保存したタブを休止状態で開く','settings.hibernateHint':'クリックするまでメモリを使用しません','settings.showUrls':'カードに URL を表示','settings.animations':'アニメーション','settings.confirmDelete':'グループ削除前に確認','settings.privacyBlur':'プライバシーぼかしモード','settings.privacyBlurHint':'画面共有時にすべての内容をぼかします','settings.autoSwitch':'ウィンドウのフォーカスで自動切替','settings.autoSwitchHint':'各ワークスペースをウィンドウに関連付けます','settings.showTour':'ようこそ画面を再表示','settings.tips':'操作中にヒントを表示','settings.tipsHint':'機能を初めて開いたときに一度表示','settings.resetHints':'ヒントをリセット','settings.shortcuts':'ショートカット','settings.archivedItems':'アーカイブ済み項目','settings.storage':'ストレージ','settings.exportJson':'すべてのデータを JSON で書き出す','toast.theme':'テーマ：{theme}','toast.language':'言語：{language}' },
+  fr: { ...I18N.en,
+    'shell.openTabs':'onglets ouverts','shell.filterTabs':'Filtrer les onglets','action.collapseSidebar':'Réduire la barre latérale','action.newWorkspace':'Nouvel espace','action.allWorkspaces':'Tous les espaces','action.newCategory':'Nouvelle catégorie','action.undo':'Annuler (Ctrl+Z)','action.tools':'Outils (Pomodoro, Finances, Abonnements…)','action.switchLayout':'Changer de disposition','action.calendar':'Calendrier (rappels)','action.selectionMode':'Mode de sélection','action.reorderMode':'Mode de réorganisation','action.search':'Rechercher ( / )','action.cycleTheme':'Changer de thème','action.saveAllTabs':'Enregistrer tous les onglets ouverts','action.more':'Plus','action.settings':'Paramètres','settings.title':'Paramètres','settings.appearance':'Apparence','settings.behavior':'Comportement','settings.archive':'Archives','settings.data':'Données','settings.theme':'Thème','settings.language':'Langue','settings.language.en':'English','settings.language.zhTW':'繁體中文','settings.language.hint':'Les nouveaux utilisateurs commencent avec la langue prise en charge la plus proche de celle du navigateur.','settings.itemSize':'Taille des éléments','settings.size.compact':'Compacte','settings.size.normal':'Normale','settings.size.large':'Grande','settings.columnWidth':'Largeur des colonnes','settings.width.narrow':'Étroite','settings.width.normal':'Normale','settings.width.wide':'Large','settings.fontFamily':'Police','settings.closeTabs':'Fermer les onglets après enregistrement','settings.hibernate':'Ouvrir les onglets enregistrés en veille','settings.hibernateHint':'aucune mémoire utilisée avant le clic','settings.showUrls':'Afficher les URL sur les cartes','settings.animations':'Animations','settings.confirmDelete':'Confirmer avant de supprimer un groupe','settings.privacyBlur':'Mode de confidentialité flouté','settings.privacyBlurHint':'floute le contenu pendant un partage d’écran','settings.autoSwitch':'Changer d’espace selon la fenêtre active','settings.autoSwitchHint':'chaque espace est lié à une fenêtre','settings.showTour':'Revoir l’accueil','settings.tips':'Afficher des conseils pendant l’exploration','settings.tipsHint':'un conseil lors de la première ouverture d’une fonction','settings.resetHints':'Réinitialiser les conseils','settings.shortcuts':'Raccourcis','settings.archivedItems':'Éléments archivés','settings.storage':'Stockage','settings.exportJson':'Exporter toutes les données en JSON','toast.theme':'Thème : {theme}','toast.language':'Langue : {language}' }
+});
 
 function tr(key, vars = {}) {
   const table = I18N[appLocale()] || I18N.en;
@@ -232,7 +196,7 @@ const State = (() => {
     workspaces: [], activeWsId: null, archive: [], recentEmoji: [],
     columnWidths: {},
     settings: {
-      theme:'folio', size:'normal', font:'dm', width:'normal',
+      theme:'light', size:'normal', font:'dm', width:'normal',
       language: browserLanguage(),
       closeTabOnSave:true, hibernate:true, showUrls:true,
       animate:true, confirmDelete:true, sidebarCollapsed:false,
@@ -470,13 +434,6 @@ function findItem(itemId) {
 // registry), so any mutation that re-renders keeps the group page showing.
 let activeGroupPage = null;
 
-// Home surface (Waypoint-style dashboard): true → the workspace overview (greeting
-// hero + one card per category) is showing instead of a category board. It sits
-// above the layout registry in renderBoard() like activeCalendar / activeGroupPage,
-// is the default landing surface on a fresh new-tab, and rides the URL as
-// `…/home` so reload / back-forward restore it. Opening a category clears it.
-let activeHome = false;
-
 // The item whose detail pane (§4.2) is open on the *board* surface, mirrored
 // into the board route as `?item=<id>` so it survives reload / back-forward.
 // On a group page the open detail item lives in activeGroupPage.itemId instead
@@ -529,7 +486,6 @@ const Router = (() => {
     if (seg[2] === 'cat' && seg[3]) return { type: 'board', wsId, catId: decodeURIComponent(seg[3]), query };
     if (seg[2] === 'group' && seg[3]) return { type: 'group', wsId, groupId: decodeURIComponent(seg[3]), itemId: seg[4] === 'item' ? decodeURIComponent(seg[5] || '') : null, query };
     if (seg[2] === 'calendar') return { type: 'calendar', wsId, query };
-    if (seg[2] === 'home') return { type: 'home', wsId, query };
     return { type: 'board', wsId, catId: null, query };
   }
 
@@ -543,8 +499,6 @@ const Router = (() => {
       if (route.itemId) path += `/item/${encodeURIComponent(route.itemId)}`;
     } else if (route.type === 'calendar') {
       path = `/ws/${ws}/calendar`;
-    } else if (route.type === 'home') {
-      path = `/ws/${ws}/home`;
     } else {
       path = `/ws/${ws}/cat/${encodeURIComponent(route.catId || '')}`;
     }
@@ -567,9 +521,6 @@ const Router = (() => {
     if (activeGroupPage) {
       return { type: 'group', wsId: ws.id, groupId: activeGroupPage.groupId, itemId: activeGroupPage.itemId || null, query: {} };
     }
-    if (activeHome) {
-      return { type: 'home', wsId: ws.id, query: {} };
-    }
     const cat = activeCat();
     const query = {};
     const mode = getViewMode();
@@ -587,17 +538,6 @@ const Router = (() => {
     let changed = false;
     const ws = s.workspaces.find(w => w.id === route.wsId);
     if (ws && s.activeWsId !== ws.id) { s.activeWsId = ws.id; changed = true; }
-
-    if (route.type === 'home') {
-      // Home is the workspace overview; it leaves every other surface behind.
-      if (activeGroupPage) { activeGroupPage = null; changed = true; }
-      if (activeCalendar) { activeCalendar = null; changed = true; }
-      if (boardDetailItemId) { boardDetailItemId = null; changed = true; }
-      if (!activeHome) { activeHome = true; changed = true; }
-      return changed;
-    }
-    // Any other surface leaves Home behind.
-    if (activeHome) { activeHome = false; changed = true; }
 
     if (route.type === 'calendar') {
       // The calendar is its own full surface: leave any group page / board detail
@@ -698,9 +638,6 @@ const Router = (() => {
     init() {
       const parsed = parse(location.hash);
       if (parsed) apply(parsed);
-      // A fresh new-tab (no hash) lands on the Home overview; a deep link to a
-      // category / group / calendar restores that surface instead.
-      else activeHome = true;
       // Normalize the address bar to the canonical hash without a history entry.
       history.replaceState(null, '', '#' + build(currentRoute()));
       window.addEventListener('popstate', handleLocationChange);
@@ -878,29 +815,14 @@ async function storageUsage() {
 
 async function refreshStorageUsage() {
   const u = await storageUsage();
-  if (!u) return;
+  const bar = document.getElementById('storage-bar-fill');
+  const txt = document.getElementById('storage-bar-text');
+  if (!bar || !txt || !u) return;
   const pctNum = Math.round(u.pct * 100);
-  const warn = u.pct >= STORAGE_WARN_PCT && u.pct < STORAGE_FULL_PCT;
-  const full = u.pct >= STORAGE_FULL_PCT;
-
-  // Both the Settings→Data pane bar and the compact sidebar widget share this
-  // updater; each is optional so the loop skips whichever isn't in the DOM.
-  const targets = [
-    { fill: 'storage-bar-fill', text: 'storage-bar-text',
-      label: `Storage · ${_formatBytes(u.used)} of ${_formatBytes(u.quota)} (${pctNum}%)` },
-    { fill: 'side-storage-fill', text: 'side-storage-text',
-      label: `${_formatBytes(u.used)} of ${_formatBytes(u.quota)}` },
-  ];
-  for (const tg of targets) {
-    const bar = document.getElementById(tg.fill);
-    const txt = document.getElementById(tg.text);
-    if (bar) {
-      bar.style.width = Math.min(100, pctNum) + '%';
-      bar.classList.toggle('warn', warn);
-      bar.classList.toggle('full', full);
-    }
-    if (txt) txt.textContent = tg.label;
-  }
+  bar.style.width = Math.min(100, pctNum) + '%';
+  bar.classList.toggle('warn', u.pct >= STORAGE_WARN_PCT && u.pct < STORAGE_FULL_PCT);
+  bar.classList.toggle('full', u.pct >= STORAGE_FULL_PCT);
+  txt.textContent = `Storage · ${_formatBytes(u.used)} of ${_formatBytes(u.quota)} (${pctNum}%)`;
 
   if (u.pct < STORAGE_WARN_PCT) {
     _storageWarned = false;
@@ -1109,7 +1031,7 @@ function ensureDefault() {
     cat.groups.push({
       id: uid(), name:'Getting started', symbol:'✨', color:'#6366f1', collapsed:false,
       items: [
-        stampNew({ id: uid(), type:'note', html:'👋 <b>Welcome to Folio!</b><br><br>Drag tabs from the left sidebar into any group.<br>Select text for the rich-text toolbar.<br>Right-click anywhere for more options.' }),
+        stampNew({ id: uid(), type:'note', html:'👋 <b>Welcome to Tabento!</b><br><br>Drag tabs from the left sidebar into any group.<br>Select text for the rich-text toolbar.<br>Right-click anywhere for more options.' }),
         stampNew({ id: uid(), type:'todo', text:'Try dragging a tab here', done:false }),
         stampNew({ id: uid(), type:'todo', text:'Right-click a group for context menu', done:false }),
         stampNew({ id: uid(), type:'todo', text:'Press Cmd/Ctrl + K to search', done:false })
@@ -1125,10 +1047,8 @@ function ensureDefault() {
 // SETTINGS
 // ════════════════════════════════════════════════════════════════
 const THEMES = [
-  { id:'folio',             label:'Folio',             colors:['#f7f8fc','#5566f2','#8b5cf6'] },
-  { id:'folio-dark',        label:'Folio Dark',        colors:['#0c0e1a','#8b9bff','#b78cff'] },
-  { id:'tabento',          label:'Rice Paper',       colors:['#f3ead7','#c2761a','#d2542f'] },
-  { id:'tabento-dark',     label:'Lacquer',          colors:['#17120d','#f5b841','#ec6f4c'] },
+  { id:'tabento',          label:'Tabento',          colors:['#f3ead7','#c2761a','#d2542f'] },
+  { id:'tabento-dark',     label:'Tabento Dark',     colors:['#17120d','#f5b841','#ec6f4c'] },
   { id:'aurora',           label:'Aurora',           colors:['#0a0c14','#5eead4','#a78bfa'] },
   { id:'dark',             label:'Dark',             colors:['#0b0b10','#6366f1','#9b9bb4'] },
   { id:'light',            label:'Light',            colors:['#f4f4f7','#4f46e5','#52525e'] },
@@ -1143,12 +1063,6 @@ const THEMES = [
   { id:'sepia',            label:'Sepia',            colors:['#f4ecd8','#8b4513','#5c7a2a'] },
   { id:'mono',             label:'Mono',             colors:['#0a0a0a','#ffffff','#a0a0a0'] },
 ];
-
-const THEME_ALIASES = {
-  stow: 'folio',
-  'stow-dark': 'folio-dark'
-};
-const normalizeThemeId = theme => THEME_ALIASES[theme] || theme;
 
 function buildThemeGrid() {
   const grid = document.getElementById('theme-grid');
@@ -1181,13 +1095,12 @@ function buildThemeGrid() {
 
 function applySettings() {
   const s = State.get().settings;
-  let theme = normalizeThemeId(s.theme || 'folio');
-  if (theme !== s.theme && s.theme !== 'auto') s.theme = theme;
+  let theme = s.theme;
   if (theme !== 'auto' && !THEMES.some(t => t.id === theme)) {
-    theme = 'folio';
+    theme = 'light';
     s.theme = theme;
   }
-  if (theme === 'auto') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'folio-dark' : 'folio';
+  if (theme === 'auto') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   const language = normalizeLanguage(s.language || browserLanguage());
   s.language = language;
   document.documentElement.lang = language;
@@ -1211,8 +1124,6 @@ function applySettings() {
 
   const sb = document.getElementById('sidebar');
   if (sb) sb.classList.toggle('collapsed', !!s.sidebarCollapsed);
-  const rail = document.getElementById('tabrail');
-  if (rail) rail.classList.toggle('collapsed', !!s.railCollapsed);
 
   document.querySelectorAll('.theme-card').forEach(c => c.classList.toggle('active', c.dataset.theme === s.theme));
   ['seg-size','seg-width','seg-font'].forEach(id => {
@@ -2198,33 +2109,15 @@ function renderOpenTabs() {
     el.draggable = true;
     el.title = t.title || t.url;
     const fav = t.favIconUrl || favUrl(t.url);
-    // Chrome-discarded tabs keep their URL but are unloaded — flag them so the
-    // sidebar reads like a workspace of live + resting tabs, not a flat list.
-    const sleeping = t.discarded === true;
-    const badge = sleeping
-      ? `<span class="folio-badge is-hibernated" title="Asleep — reloads when you open it"><svg viewBox="0 0 14 14" fill="none"><path d="M11.5 8.2A4.6 4.6 0 015.8 2.5a4.6 4.6 0 105.7 5.7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>asleep</span>`
-      : '';
-    const domain = (() => { try { return new URL(t.url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
     el.innerHTML = `
-      <span class="otab-handle" aria-hidden="true"><svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor"><circle cx="2" cy="2" r="1"/><circle cx="6" cy="2" r="1"/><circle cx="2" cy="6" r="1"/><circle cx="6" cy="6" r="1"/><circle cx="2" cy="10" r="1"/><circle cx="6" cy="10" r="1"/></svg></span>
       <span class="otab-check" role="checkbox" aria-checked="${selectedTabIds.has(t.id)}" aria-label="Select tab"></span>
-      <img class="otab-fav" src="${esc(fav)}" alt="" loading="lazy" decoding="async" onerror="this.src='${BLANK_FAV}'">
-      <span class="otab-text">
-        <span class="otab-title">${esc(t.title || t.url)}</span>
-        <span class="otab-domain">${esc(domain)}</span>
-      </span>${badge}
-      <button class="otab-close" title="Close tab" aria-label="Close tab"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>`;
+      <img src="${esc(fav)}" alt="" loading="lazy" decoding="async" onerror="this.src='${BLANK_FAV}'">
+      <span class="otab-title">${esc(t.title || t.url)}</span>`;
 
     // Checkbox area click — toggles selection without switching tab
     el.querySelector('.otab-check').addEventListener('click', (e) => {
       e.stopPropagation();
       toggleOpenTabSelection(t.id, { range: e.shiftKey });
-    });
-
-    // Close button — closes the browser tab without switching to it
-    el.querySelector('.otab-close').addEventListener('click', (e) => {
-      e.stopPropagation();
-      chrome.tabs.remove(t.id).catch(() => {});
     });
 
     el.addEventListener('click', (e) => {
@@ -2539,7 +2432,6 @@ function buildWsChip(ws, { live }) {
   chip.title = ws.name + (live ? ' · live window' : '');
   chip.innerHTML = `
     <span class="ws-chip-sym">${esc(ws.symbol || '🏠')}</span>
-    <span class="ws-chip-name">${esc(ws.name)}</span>
     ${live ? '<span class="ws-chip-live-dot"></span>' : ''}`;
   chip.onclick = async () => {
     State.get().activeWsId = ws.id;
@@ -2644,9 +2536,6 @@ function renderCategoryTabs() {
   }
   _catTabsInitialized = true;
   updateCatScrollState();
-  // The sidebar SPACES list is the primary category nav in the refreshed shell;
-  // keep it in sync with the (now hidden) top strip on every category re-render.
-  renderSpaceNav();
 }
 
 function updateCatScrollState() {
@@ -2727,14 +2616,6 @@ const LAYOUT_ORDER = ['board', 'list', 'canvas', 'explorer', 'timeline', 'galler
 function renderBoard() {
   invalidateItemCache();
   updateCalendarButton();
-  updateNavChrome();
-  // Home is a block-scrolling surface; clear its class up front so the calendar
-  // and group-page gates (which early-return below) never inherit it. renderHome()
-  // re-adds it when Home is the active surface.
-  document.getElementById('board').classList.remove('home-mode');
-  // Reflect the active surface on <body> (diagnostic / styling hook), computed
-  // from the flags so it stays correct through every early-returning gate.
-  document.body.dataset.surface = activeCalendar ? 'calendar' : activeGroupPage ? 'group' : activeHome ? 'home' : 'board';
   // The calendar (§5) and group pages (§4.1) are surfaces that sit above the
   // layout registry: when one is open every re-render keeps showing it. Each
   // renderer returns false if the user has navigated away, so we fall through to
@@ -2745,362 +2626,14 @@ function renderBoard() {
   // false if its group vanished or the user navigated away, so we fall through
   // to the normal board in that case.
   if (activeGroupPage && renderGroupPage()) return;
-  // Home (workspace overview) is the third surface above the layout registry, and
-  // the default landing on a fresh new-tab. renderHome() returns false and clears
-  // the flag if the workspace vanished, falling through to the category board.
-  if (activeHome && renderHome()) return;
   hideBreadcrumb();
   const $b = document.getElementById('board');
-  $b.classList.remove('group-page-mode', 'list-mode', 'canvas-mode', 'explorer-mode', 'timeline-mode', 'gallery-mode', 'graph-mode', 'calendar-mode', 'home-mode');
+  $b.classList.remove('group-page-mode', 'list-mode', 'canvas-mode', 'explorer-mode', 'timeline-mode', 'gallery-mode', 'graph-mode', 'calendar-mode');
   const mode = getViewMode();
   document.body.dataset.viewMode = mode;
   updateViewModeButton(mode);
   const layout = LAYOUTS[mode] || LAYOUTS.board;
   layout.render();
-}
-
-// ════════════════════════════════════════════════════════════════
-// HOME SURFACE — Waypoint-style workspace overview
-// ════════════════════════════════════════════════════════════════
-// The dashboard landing: a greeting hero + one card per category, sitting above
-// the layout registry like the calendar and group page. The left nav and the
-// right Opened-Tabs rail frame it unchanged; only the middle column swaps.
-
-// Enter Home. Clears the other above-registry surfaces so Home wins the next
-// renderBoard() dispatch, then mirrors `…/home` into the URL.
-function goHome() {
-  activeHome = true;
-  activeGroupPage = null;
-  activeCalendar = null;
-  boardDetailItemId = null;
-  renderBoard();
-  renderSpaceNav();
-  Router.sync();
-}
-
-// Open a category's board (the legacy layout in the middle column). Usable from
-// any surface — clears Home / group page / calendar first.
-function openCategory(catId) {
-  const ws = activeWs(); if (!ws) return;
-  if (!ws.categories.some(c => c.id === catId)) return;
-  activeHome = false;
-  activeGroupPage = null;
-  activeCalendar = null;
-  ws.activeCatId = catId;
-  State.persist();
-  renderCategoryTabs();
-  renderBoard();
-  Router.sync();
-}
-
-// Smart view: open the active category's Inbox group page, creating it lazily
-// (same shape saveTabToInbox uses).
-function openInboxView() {
-  const cat = activeCat(); if (!cat) return;
-  let inbox = cat.groups.find(g => g.name === 'Inbox');
-  if (!inbox) {
-    State.snapshot('Create Inbox');
-    inbox = { id: uid(), name: 'Inbox', symbol: '📥', color: '#6366f1', collapsed: false, items: [] };
-    cat.groups.unshift(inbox);
-    State.persist();
-  }
-  activeHome = false;
-  openGroupPage(inbox.id);
-}
-
-// Save the currently dragged tab / multi-selection into a category's Inbox group.
-// Backs the "drag a tab into a space to save it" affordance on the SPACES list.
-async function dropTabsIntoCategory(cat) {
-  let inbox = cat.groups.find(g => g.name === 'Inbox');
-  if (!inbox) {
-    inbox = { id: uid(), name: 'Inbox', symbol: '📥', color: '#6366f1', collapsed: false, items: [] };
-    cat.groups.unshift(inbox);
-  }
-  if (drag?.kind === 'tab') {
-    await handleTabDropIntoList(drag.data, inbox.items);
-  } else if (drag?.kind === 'tabs-multi') {
-    State.snapshot('Save tabs');
-    const dropped = [...drag.data];
-    for (const t of dropped) await handleTabDropIntoList(t, inbox.items, null, { snapshot: false });
-    State.persist(); renderBoard();
-    toast(`Saved ${dropped.length} tabs to ${cat.name}`, { undo: true });
-  }
-  renderSpaceNav();
-}
-
-// Time-of-day greeting word (localized).
-function greetingWord() {
-  const h = new Date().getHours();
-  if (h < 12) return tr('home.greeting.morning');
-  if (h < 18) return tr('home.greeting.afternoon');
-  return tr('home.greeting.evening');
-}
-
-// A single preview row inside a category card (favicon+title for tabs, a glyph
-// for notes / to-dos / stacks). Read-only — the whole card routes to the board.
-// Tabs render a two-line row (title + domain) to echo the Waypoint bento; other
-// item types are single-line with a glyph.
-function buildHomePreviewRow(it) {
-  const row = document.createElement('div');
-  row.className = 'home-prow';
-  let icon, label, sub = '';
-  if (it.type === 'tab') {
-    icon = `<img class="home-prow-fav" src="${esc(it.fav || favUrl(it.url))}" alt="" loading="lazy" decoding="async" onerror="this.src='${BLANK_FAV}'">`;
-    label = it.title || it.url || 'Untitled';
-    try { sub = new URL(it.url).hostname.replace(/^www\./, ''); } catch {}
-  } else if (it.type === 'note') {
-    icon = `<span class="home-prow-glyph">📝</span>`;
-    label = (it.html ? String(it.html).replace(/<[^>]*>/g, ' ') : '').trim() || 'Note';
-  } else if (it.type === 'todo') {
-    icon = `<span class="home-prow-glyph">${it.done ? '☑' : '☐'}</span>`;
-    label = it.text || it.title || 'To-do';
-  } else if (it.type === 'stack') {
-    icon = `<span class="home-prow-glyph">📚</span>`;
-    label = it.name || 'Stack';
-  } else {
-    icon = `<span class="home-prow-glyph">•</span>`;
-    label = it.title || it.name || '';
-  }
-  const text = sub
-    ? `<span class="home-prow-text"><span class="home-prow-title">${esc(label)}</span><span class="home-prow-domain">${esc(sub)}</span></span>`
-    : `<span class="home-prow-text"><span class="home-prow-title">${esc(label)}</span></span>`;
-  row.innerHTML = `${icon}${text}`;
-  return row;
-}
-
-// Home surface renderer. Returns false (and drops the flag) if the workspace
-// vanished, so renderBoard() falls through to the category board.
-function renderHome() {
-  const ws = activeWs();
-  if (!ws) { activeHome = false; return false; }
-  hideBreadcrumb();
-  const $b = document.getElementById('board');
-  $b.classList.remove('group-page-mode', 'list-mode', 'canvas-mode', 'explorer-mode', 'timeline-mode', 'gallery-mode', 'graph-mode', 'calendar-mode');
-  $b.classList.add('home-mode');
-  $b.innerHTML = '';
-
-  // Greeting hero with a time-of-day banner (morning / noon / night art).
-  const hr = new Date().getHours();
-  const tod = hr < 12 ? 'morning' : hr < 18 ? 'noon' : 'night';
-  const heroSrc = {
-    morning: 'media/png/morning_transparent_corners.png',
-    noon: 'media/png/noon_transparent_corners.png',
-    night: 'media/png/night_transparent_corners.png',
-  }[tod];
-  const hero = document.createElement('div');
-  hero.className = 'home-hero';
-  hero.dataset.tod = tod;
-  hero.innerHTML = `
-    <img class="home-hero-bg" src="${heroSrc}" alt="" aria-hidden="true" decoding="async">
-    <div class="home-hero-copy">
-      <h1 class="home-greeting">${esc(greetingWord())}, ${esc(ws.name)}.</h1>
-      <p class="home-subtitle">${esc(tr('home.subtitle'))}</p>
-    </div>`;
-  $b.appendChild(hero);
-
-  // Category cards.
-  const grid = document.createElement('div');
-  grid.className = 'home-grid';
-
-  if (!ws.categories.length) {
-    const em = document.createElement('div');
-    em.className = 'home-empty';
-    em.innerHTML = `<h3>${esc(tr('home.emptyTitle'))}</h3><p>${esc(tr('home.emptyBody'))}</p>`;
-    grid.appendChild(em);
-  }
-
-  // Auto-pick the "collections" category (most groups, ≥3) → promoted to a
-  // full-width strip at the bottom instead of a regular card.
-  let projCat = null;
-  ws.categories.forEach(c => { if (c.groups.length >= 3 && (!projCat || c.groups.length > projCat.groups.length)) projCat = c; });
-
-  ws.categories.forEach(cat => {
-    if (cat === projCat) return;
-    const items = cat.groups.reduce((acc, g) => acc.concat(g.items), []);
-    const card = document.createElement('div');
-    card.className = 'home-card';
-    card.tabIndex = 0;
-    card.setAttribute('role', 'button');
-    card.title = cat.name;
-    card.style.setProperty('--home-accent', homeAccentColor(cat));
-
-    const hd = document.createElement('div');
-    hd.className = 'home-card-hd';
-    hd.innerHTML = `
-      <span class="home-card-sym">${esc(cat.symbol || '🗂')}</span>
-      <div class="home-card-titles">
-        <div class="home-card-name">${esc(cat.name)}</div>
-        <div class="home-card-count">${esc(tr('home.items', { n: items.length }))}</div>
-      </div>
-      <button class="home-card-more" title="More" aria-label="More actions">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="12" cy="8" r="1.3" fill="currentColor"/></svg>
-      </button>`;
-    hd.querySelector('.home-card-more').addEventListener('click', e => {
-      e.stopPropagation();
-      showContextMenu(e.pageX, e.pageY, [
-        { text: 'Open', icon: cmIcons.open, action: () => openCategory(cat.id) },
-        { text: 'Rename', icon: cmIcons.edit, action: () => { const nn = prompt('Rename category:', cat.name); if (nn && nn.trim()) { State.snapshot('Rename cat'); cat.name = nn.trim(); State.persist(); renderCategoryTabs(); renderBoard(); } } },
-        ws.categories.length > 1 ? { text: 'Delete', icon: cmIcons.delete, danger: true, action: () => { if (confirm(`Delete "${cat.name}"?`)) { State.snapshot('Delete cat'); ws.categories = ws.categories.filter(c => c.id !== cat.id); if (ws.activeCatId === cat.id) ws.activeCatId = ws.categories[0].id; State.persist(); renderAll(); } } } : null,
-      ].filter(Boolean));
-    });
-    card.appendChild(hd);
-
-    const main = document.createElement('div');
-    main.className = 'home-card-main';
-    const body = document.createElement('div');
-    body.className = 'home-card-body';
-    if (!items.length) {
-      const em = document.createElement('div');
-      em.className = 'home-card-empty';
-      em.textContent = tr('home.empty');
-      body.appendChild(em);
-    } else {
-      items.slice(0, 5).forEach(it => body.appendChild(buildHomePreviewRow(it)));
-    }
-    main.appendChild(body);
-    // Derived accent panel: a category-tinted gradient with the category glyph —
-    // a calm decorative echo of Waypoint's card art (no fabricated screenshots),
-    // shown only when the card has enough content to balance it.
-    if (items.length >= 3) {
-      const accent = document.createElement('div');
-      accent.className = 'home-card-accent';
-      accent.setAttribute('aria-hidden', 'true');
-      accent.innerHTML = `<span class="home-card-accent-glyph">${esc(cat.symbol || '🗂')}</span>`;
-      main.appendChild(accent);
-      card.classList.add('has-accent');
-    }
-    card.appendChild(main);
-
-    const ft = document.createElement('button');
-    ft.className = 'home-card-viewall';
-    ft.type = 'button';
-    ft.innerHTML = `<span>${esc(tr('home.viewAll'))}</span><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h7M6 3l3 3-3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    card.appendChild(ft);
-
-    const go = () => openCategory(cat.id);
-    card.addEventListener('click', go);
-    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
-
-    // Drop a dragged tab onto a card to save it into that category's Inbox.
-    card.addEventListener('dragover', e => {
-      if (drag?.kind === 'tab' || drag?.kind === 'tabs-multi') { e.preventDefault(); card.classList.add('drop-target'); }
-    });
-    card.addEventListener('dragleave', () => card.classList.remove('drop-target'));
-    card.addEventListener('drop', async e => {
-      if (drag?.kind === 'tab' || drag?.kind === 'tabs-multi') { e.preventDefault(); card.classList.remove('drop-target'); await dropTabsIntoCategory(cat); }
-    });
-
-    grid.appendChild(card);
-  });
-
-  if (projCat) grid.appendChild(buildProjectsRow(projCat, ws));
-
-  $b.appendChild(grid);
-  return true;
-}
-
-// A stable accent color for a category card: prefers a real group color from the
-// category, else a hue hashed from its id/name so each card reads distinct.
-function homeAccentColor(cat) {
-  const g = (cat.groups || []).find(x => x.color && x.name !== 'Inbox');
-  if (g && g.color) return g.color;
-  const palette = ['#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#f97316', '#ef4444', '#ec4899', '#a855f7'];
-  const s = String(cat.id || cat.name || '');
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return palette[h % palette.length];
-}
-
-// The full-width "collections" strip (Waypoint's Projects row). Renders the
-// promoted category's groups as horizontal tiles — each a group-tinted thumbnail
-// with the group glyph, its name, and a link count. Real data, no fake imagery.
-function buildProjectsRow(cat, ws) {
-  const linkCount = cat.groups.reduce((n, g) => n + g.items.length, 0);
-  const card = document.createElement('div');
-  card.className = 'home-card home-card-wide';
-  card.style.setProperty('--home-accent', homeAccentColor(cat));
-
-  const hd = document.createElement('div');
-  hd.className = 'home-card-hd';
-  hd.innerHTML = `
-    <span class="home-card-sym">${esc(cat.symbol || '🗂')}</span>
-    <div class="home-card-titles">
-      <div class="home-card-name">${esc(cat.name)}</div>
-      <div class="home-card-count">${linkCount} ${linkCount === 1 ? 'link' : 'links'} · ${cat.groups.length} ${cat.groups.length === 1 ? 'collection' : 'collections'}</div>
-    </div>`;
-  card.appendChild(hd);
-
-  const strip = document.createElement('div');
-  strip.className = 'home-proj-strip';
-  cat.groups.forEach(g => {
-    const tile = document.createElement('button');
-    tile.className = 'home-proj-tile';
-    tile.type = 'button';
-    tile.title = g.name;
-    tile.style.setProperty('--proj-tint', g.color || homeAccentColor(cat));
-    tile.innerHTML = `
-      <div class="home-proj-thumb"><span>${esc(g.symbol || '📁')}</span></div>
-      <div class="home-proj-meta">
-        <div class="home-proj-name">${esc(g.name)}</div>
-        <div class="home-proj-count">${g.items.length} ${g.items.length === 1 ? 'link' : 'links'}</div>
-      </div>`;
-    tile.addEventListener('click', () => openGroupPage(g.id));
-    strip.appendChild(tile);
-  });
-  card.appendChild(strip);
-
-  return card;
-}
-
-// SPACES list in the left nav — one entry per category, plus the smart-view
-// counts. Called from renderCategoryTabs() and renderBoard() so counts and the
-// active highlight stay fresh across every mutation.
-function renderSpaceNav() {
-  const ws = activeWs();
-  const $nav = document.getElementById('space-nav');
-  if ($nav && ws) {
-    $nav.innerHTML = '';
-    ws.categories.forEach(cat => {
-      const count = cat.groups.reduce((n, g) => n + g.items.length, 0);
-      const el = document.createElement('button');
-      el.className = 'space-item' + (!activeHome && cat.id === ws.activeCatId ? ' active' : '');
-      el.dataset.catId = cat.id;
-      el.innerHTML =
-        `<span class="space-sym">${esc(cat.symbol || '🗂')}</span>` +
-        `<span class="space-name">${esc(cat.name)}</span>` +
-        `<span class="nav-count">${count}</span>`;
-      el.onclick = () => openCategory(cat.id);
-      el.ondblclick = () => { const nn = prompt('Rename category:', cat.name); if (nn && nn.trim()) { State.snapshot('Rename cat'); cat.name = nn.trim(); State.persist(); renderCategoryTabs(); } };
-      el.oncontextmenu = e => {
-        e.preventDefault();
-        showContextMenu(e.pageX, e.pageY, [
-          { text: 'Open', icon: cmIcons.open, action: () => openCategory(cat.id) },
-          { text: 'Rename', icon: cmIcons.edit, action: () => { const nn = prompt('Rename category:', cat.name); if (nn && nn.trim()) { State.snapshot('Rename cat'); cat.name = nn.trim(); State.persist(); renderCategoryTabs(); } } },
-          ws.categories.length > 1 ? { text: 'Delete', icon: cmIcons.delete, danger: true, action: () => { if (confirm(`Delete "${cat.name}"?`)) { State.snapshot('Delete cat'); ws.categories = ws.categories.filter(c => c.id !== cat.id); if (ws.activeCatId === cat.id) ws.activeCatId = ws.categories[0].id; State.persist(); renderAll(); } } } : null
-        ].filter(Boolean));
-      };
-      // Drop a dragged tab onto a space to save it into that category's Inbox.
-      el.ondragover = e => { if (drag?.kind === 'tab' || drag?.kind === 'tabs-multi') { e.preventDefault(); el.classList.add('drop-target'); } };
-      el.ondragleave = () => el.classList.remove('drop-target');
-      el.ondrop = async e => { if (drag?.kind === 'tab' || drag?.kind === 'tabs-multi') { e.preventDefault(); el.classList.remove('drop-target'); await dropTabsIntoCategory(cat); } };
-      $nav.appendChild(el);
-    });
-  }
-  updateNavChrome();
-}
-
-// Refresh the smart-view counts and active states in the left nav.
-function updateNavChrome() {
-  const ws = activeWs();
-  const s = State.get();
-  const linkCount = ws ? ws.categories.reduce((n, c) => n + c.groups.reduce((m, g) => m + g.items.filter(it => it.type === 'tab').length, 0), 0) : 0;
-  const inbox = (() => { const cat = activeCat(); return cat ? cat.groups.find(g => g.name === 'Inbox') : null; })();
-  const setCount = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val > 0 ? String(val) : ''; };
-  setCount('nav-all-count', linkCount);
-  setCount('nav-inbox-count', inbox ? inbox.items.length : 0);
-  setCount('nav-archive-count', (s.archive || []).length);
-  const home = document.getElementById('nav-home');
-  if (home) home.classList.toggle('active', !!activeHome);
 }
 
 // The bento-board layout itself (formerly the body of renderBoard).
@@ -4852,7 +4385,7 @@ function exportJSON() {
   const data = State.get();
   const counts = countState(data);
   const payload = {
-    app: 'folio',
+    app: 'tabento',
     schema: CURRENT_SCHEMA,
     exportedAt: new Date().toISOString(),
     counts,
@@ -4863,7 +4396,7 @@ function exportJSON() {
   const a = document.createElement('a');
   const wsTag = counts.workspaces ? `-${counts.workspaces}ws` : '';
   a.href = url;
-  a.download = `folio${wsTag}-${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `tabento${wsTag}-${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
   toast(`Exported · ${pluralize(counts.workspaces, 'workspace')} · ${pluralize(counts.items, 'item')}`);
@@ -4883,7 +4416,7 @@ function importJSON(file) {
       return;
     }
     let data, schema, exportedAt;
-    if (parsed && (parsed.app === 'folio' || parsed.app === 'stow' || parsed.app === 'tabento' || parsed.app === 'tabnest' || parsed.app === 'tabextend') && parsed.data && typeof parsed.data === 'object') {
+    if (parsed && (parsed.app === 'tabento' || parsed.app === 'tabnest' || parsed.app === 'tabextend') && parsed.data && typeof parsed.data === 'object') {
       data = parsed.data;
       schema = parsed.schema;
       exportedAt = parsed.exportedAt;
@@ -6862,7 +6395,7 @@ function buildLvStack(it, parentItems, group, depth) {
 // A macOS-Finder / column-browser over the hierarchy: categories → groups →
 // items → (a stack's children as a further column). Selecting an item opens the
 // §4.2 detail pane. Keyboard-first (arrows move/descend/ascend, Enter opens).
-// Each column reuses the bento `.gcol` framing so it reads as Folio, not Finder.
+// Each column reuses the bento `.gcol` framing so it reads as Tabento, not Finder.
 const EX_CHEVRON = '<svg class="ex-row-chev" width="8" height="8" viewBox="0 0 8 8"><path d="M2.5 1.5L5.5 4l-3 2.5" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 function renderExplorerView() {
@@ -8419,9 +7952,9 @@ function renderPomo() {
 
   // Title indicator
   if (pomoState.running) {
-    document.title = `${m}:${String(s).padStart(2,'0')} · Folio`;
+    document.title = `${m}:${String(s).padStart(2,'0')} · Tabento`;
   } else {
-    document.title = 'Folio';
+    document.title = 'Tabento';
   }
 
   renderPomoTasks();
@@ -8462,7 +7995,7 @@ function tickPomo() {
   if (!_pomoTimeEl) _pomoTimeEl = document.getElementById('pomo-time');
   if (_pomoTimeEl) _pomoTimeEl.textContent = timeText;
   // document.title writes are surprisingly expensive — only change when needed.
-  const nextTitle = pomoState.running ? `${timeText} · Folio` : 'Folio';
+  const nextTitle = pomoState.running ? `${timeText} · Tabento` : 'Tabento';
   if (nextTitle !== _pomoLastTitle) { document.title = nextTitle; _pomoLastTitle = nextTitle; }
 }
 function startPomoTimer() {
@@ -8873,7 +8406,7 @@ function exportFinCSV() {
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `folio-finance-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  a.href = url; a.download = `tabento-finance-${new Date().toISOString().slice(0,10)}.csv`; a.click();
   URL.revokeObjectURL(url);
   toast('Exported CSV');
 }
@@ -9738,20 +9271,20 @@ function bindWorkout() {
 const TOUR_STEPS = [
   {
     center: true,
-    title: '👋 Welcome to Folio',
+    title: '👋 Welcome to Tabento',
     body: 'A calmer home for your tabs. Save what matters, group it your way, and find it again in seconds.'
   },
   {
-    target: '#tabrail',
+    target: '#open-tabs',
     title: 'Save a tab',
-    body: 'Your open tabs live in this rail. Drag one into a space on the left to keep it for later, or grab a few at once with the select checkbox.',
-    pos: 'left'
+    body: 'Your open tabs sit here. Drag one onto the board to keep it for later, or grab a few at once with the select button.',
+    pos: 'right'
   },
   {
-    target: '#space-nav',
+    target: '#cat-tabs-wrap',
     title: 'Find your way around',
-    body: 'Spaces are your categories — each opens the full board of groups, notes, and to-dos. Home gives you the overview. Press ⌘/Ctrl + K to search everything, or ? for shortcuts.',
-    pos: 'right'
+    body: 'Groups hold tabs, notes, and to-dos; categories and workspaces keep separate spaces. Press ⌘/Ctrl + K to search everything, or ? for shortcuts.',
+    pos: 'below'
   }
 ];
 
@@ -9994,25 +9527,6 @@ function bindStatic() {
   document.getElementById('sidebar-toggle').onclick = () => { State.get().settings.sidebarCollapsed = !State.get().settings.sidebarCollapsed; applySettings(); State.persist(); };
   document.getElementById('add-cat-btn').onclick = () => openModal('new-cat');
 
-  // ── Sidebar smart views ──
-  document.getElementById('nav-home').onclick = goHome;
-  document.getElementById('nav-all').onclick = () => { goHome(); openSearchBar(''); };
-  document.getElementById('nav-inbox').onclick = openInboxView;
-  document.getElementById('nav-archive').onclick = () => {
-    document.querySelector('#drawer-tabs .dt[data-tab="archive"]')?.click();
-    const d = document.getElementById('settings-drawer');
-    rememberOpener(d); d.classList.remove('hidden'); renderArchiveList();
-  };
-
-  // ── Opened-tabs rail ──
-  const railToggle = document.getElementById('tabrail-toggle');
-  if (railToggle) railToggle.onclick = () => {
-    State.get().settings.railCollapsed = !State.get().settings.railCollapsed;
-    applySettings(); State.persist();
-  };
-  const railSaveAll = document.getElementById('rail-saveall');
-  if (railSaveAll) railSaveAll.onclick = saveAllTabs;
-
   const _debouncedApplyFilter = debounce(applyFilter, 80);
   document.getElementById('tab-filter').oninput = _debouncedApplyFilter;
   document.getElementById('tab-filter').onkeydown = e => { if (e.key === 'Escape') { e.target.value = ''; applyFilter(); e.target.blur(); } };
@@ -10036,8 +9550,6 @@ function bindStatic() {
   _drawer.addEventListener('keydown', e => trapTabKey(e, _drawer));
   document.getElementById('modal-overlay').addEventListener('keydown', e => trapTabKey(e, document.getElementById('modal-overlay')));
   document.getElementById('search-btn').onclick = () => toggleSearchBar();
-  const topSearch = document.getElementById('topbar-search');
-  if (topSearch) topSearch.onclick = () => openCommandPalette();
   document.getElementById('undo-btn').onclick = performUndo;
 
   document.getElementById('search-input').oninput = debounce(applySearchFilter, 90);
@@ -10083,7 +9595,8 @@ function bindStatic() {
     State.get().settings.language = next;
     applySettings();
     State.persist();
-    toast(tr('toast.language', { language: tr(next === 'zh-TW' ? 'settings.language.zhTW' : 'settings.language.en') }));
+    const nativeNames = { en:'English', 'zh-TW':'繁體中文', 'zh-CN':'简体中文', es:'Español', ja:'日本語', fr:'Français' };
+    toast(tr('toast.language', { language: nativeNames[next] || 'English' }));
   });
   document.querySelectorAll('#seg-size button').forEach(b => b.onclick = () => { State.get().settings.size = b.dataset.val; applySettings(); State.persist(); });
   document.querySelectorAll('#seg-width button').forEach(b => b.onclick = () => { State.get().settings.width = b.dataset.val; applySettings(); State.persist(); });

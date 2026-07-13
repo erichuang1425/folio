@@ -1,22 +1,4 @@
-<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <title>Folio</title>
-  <desc>Folio stacked-page mark in a blue to violet gradient.</desc>
-  <defs>
-    <linearGradient id="sheetTop" x1="72" y1="8" x2="40" y2="112" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0B7CFF"/>
-      <stop offset="1" stop-color="#7C4DFF"/>
-    </linearGradient>
-    <linearGradient id="sheetBottom" x1="84" y1="36" x2="46" y2="118" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#A9A1FF"/>
-      <stop offset="1" stop-color="#8E35F2"/>
-    </linearGradient>
-    <linearGradient id="fold" x1="26" y1="102" x2="104" y2="44" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#F7F4FF"/>
-      <stop offset="0.55" stop-color="#D8CAFF"/>
-      <stop offset="1" stop-color="#AFA5FF"/>
-    </linearGradient>
-  </defs>
-  <path d="M13 52c0-9 6-17 15-20L84 13c12-4 25 5 24 18l-3 40c-1 9-7 17-16 19l-76 20V52Z" fill="url(#sheetTop)"/>
-  <path d="M36 70c2-8 8-14 16-16l50-13c11-3 22 6 20 18l-10 39c-3 10-12 17-22 17H21l15-45Z" fill="url(#sheetBottom)"/>
-  <path d="M15 109 33 72c4-9 12-16 22-18l50-13c8-2 15 5 12 13l-5 16c-3 9-11 15-20 16l-44 4c-8 1-15 5-20 12l-13 17Z" fill="url(#fold)"/>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Tabento</title>
+  <image href="icon128.png" width="128" height="128" preserveAspectRatio="xMidYMid meet"/>
 </svg>

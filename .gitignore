@@ -1,2 +1,7 @@
 # Local screenshot / scratch Chrome profiles
 .tmp/
+
+dist/
+.DS_Store
+Thumbs.db
+*.log

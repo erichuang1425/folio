@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="folio">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <title>Folio</title>
+  <title>Tabento</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/icon32.png">
@@ -18,10 +18,10 @@
   <div id="popup">
     <div class="ph">
       <div class="logo">
-        <img class="brand-mark" src="icons/icon128.png" width="22" height="22" alt="" aria-hidden="true">
-        <span class="logo-name">Folio</span>
+        <img class="brand-mark" src="icons/icon128.png" width="20" height="20" alt="" aria-hidden="true">
+        Tabento
       </div>
-      <button id="open-full" class="ph-btn" title="Open full workspace" aria-label="Open full workspace">
+      <button id="open-full" class="ph-btn" title="Open full workspace" aria-label="Open full workspace" data-popup-i18n-title="openFull">
         <svg width="13" height="13" viewBox="0 0 12 12" fill="none"><path d="M4 2.5H2a1 1 0 00-1 1v6.5A1 1 0 002 11h6.5a1 1 0 001-1V8M7 1h4m0 0v4M11 1L5.5 6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
@@ -31,16 +31,16 @@
       <div class="pa-row">
         <button id="qs-current" class="pa-btn primary">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2.5h7l3 3v6H2v-9z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M4.5 2.5v3h4v-3M4.5 11.5V8h5v3.5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
-          <span>Save current</span>
+          <span data-popup-i18n="saveCurrent">Save current</span>
         </button>
         <button id="qs-all" class="pa-btn">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="3.5" width="8" height="8" rx="1.3" stroke="currentColor" stroke-width="1.2"/><path d="M4.5 3.5v-1a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1h-1" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
-          <span>Save all · <b id="qs-count">0</b></span>
+          <span data-popup-i18n="saveAll">Save all · <b id="qs-count">0</b></span>
         </button>
       </div>
       <button id="hib-open" class="pa-btn pa-wide">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11.5 8.2A4.6 4.6 0 015.8 2.5a4.6 4.6 0 105.7 5.7z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg>
-        <span>Hibernate tabs…</span>
+        <span data-popup-i18n="hibernateTabs">Hibernate tabs</span>
         <span class="pa-hint" id="hib-open-hint"></span>
       </button>
     </div>
@@ -48,8 +48,8 @@
     <!-- Save-to picker -->
     <div id="save-to-section" class="hidden">
       <div class="sect-hd">
-        <span>Save to</span>
-        <button id="stg-back" class="link-btn">← back</button>
+        <span data-popup-i18n="saveTo">Save to</span>
+        <button id="stg-back" class="link-btn" data-popup-i18n="back">← back</button>
       </div>
       <div id="stg-list"></div>
     </div>
@@ -57,26 +57,26 @@
     <!-- Hibernate options -->
     <div id="hibernate-section" class="hidden">
       <div class="sect-hd">
-        <span>Hibernate tabs</span>
-        <button id="hib-back" class="link-btn">← back</button>
+        <span data-popup-i18n="hibernateTabs">Hibernate tabs</span>
+        <button id="hib-back" class="link-btn" data-popup-i18n="back">← back</button>
       </div>
-      <p class="hib-note">Suspend tabs to free memory — they reload instantly the moment you open them. The tab you're viewing is kept awake.</p>
+      <p class="hib-note" data-popup-i18n="hibernateNote">Suspend tabs to free memory — they reload when opened. The tab you're viewing stays awake.</p>
       <div class="hib-opt">
-        <span class="hib-opt-lbl">Scope</span>
+        <span class="hib-opt-lbl" data-popup-i18n="scope">Scope</span>
         <div class="seg" id="hib-scope">
-          <button data-val="window" class="active">This window</button>
-          <button data-val="all">All windows</button>
+          <button data-val="window" class="active" data-popup-i18n="thisWindow">This window</button>
+          <button data-val="all" data-popup-i18n="allWindows">All windows</button>
         </div>
       </div>
       <label class="hib-toggle">
         <input type="checkbox" id="hib-keep-pinned" checked>
         <span class="hib-tog-box"></span>
-        <span class="hib-tog-lbl">Keep pinned tabs</span>
+        <span class="hib-tog-lbl" data-popup-i18n="keepPinned">Keep pinned tabs</span>
       </label>
       <label class="hib-toggle">
         <input type="checkbox" id="hib-keep-audio" checked>
         <span class="hib-tog-box"></span>
-        <span class="hib-tog-lbl">Keep tabs playing audio</span>
+        <span class="hib-tog-lbl" data-popup-i18n="keepAudio">Keep tabs playing audio</span>
       </label>
       <button id="hib-go" class="pa-btn primary hib-go">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11.5 8.2A4.6 4.6 0 015.8 2.5a4.6 4.6 0 105.7 5.7z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg>
@@ -91,20 +91,10 @@
           <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
           <path d="M10 10l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
-        <input id="ps" type="text" placeholder="Search open tabs…" autocomplete="off">
+        <input id="ps" type="text" placeholder="Search open tabs…" data-popup-i18n-placeholder="searchTabs" autocomplete="off">
       </div>
-      <div class="sect-hd"><span>Open tabs</span></div>
+      <div class="sect-hd"><span data-popup-i18n="openTabs">Open tabs</span></div>
       <div id="ptabs"></div>
-    </div>
-
-    <!-- Proof strip — every claim here is true of this build -->
-    <div class="pfoot">
-      <div class="proof-strip">
-        <span class="proof-item">No account</span>
-        <span class="proof-item">No Folio server</span>
-        <span class="proof-item">No host permissions</span>
-        <span class="proof-item">Export anytime</span>
-      </div>
     </div>
   </div>
   <script src="popup.js"></script>

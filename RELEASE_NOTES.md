@@ -1,41 +1,33 @@
-# Release Notes
+# Release notes
 
-## v3.1.0
+## Tabento v3.1.1 — Locus Legacy Edition
 
-- Introduced the official Folio app mark: stacked gradient pages in blue, violet, and
-  soft folded-paper highlights.
-- Added a Folio-first visual system while keeping the existing app themes, including light,
-  dark, Rice Paper, Lacquer, Aurora, Dracula, Nord, Rose Pine, Tokyo Night, Solarized,
-  Gruvbox, Catppuccin, Sepia, and Mono palettes.
-- Updated the extension popup header to use the official SVG mark instead of the older inline
-  monochrome symbol.
+The first maintained open-source legacy release restores the final intact Tabento product state before the Folio/Locus migration and identifies Tabento as the free, independent predecessor to Locus.
 
-- Renamed the product to Folio. Existing local data and exports are preserved: storage keys
-  are unchanged and old `stow`, `tabento`, `tabnest`, and `tabextend` exports still import.
-- New default Folio theme: a soft blue/violet signature palette. Folio Dark and the prior
-  themes (Rice Paper, Lacquer, Aurora, Dark, Light, and the rest) stay available.
-- Board columns restyled as bento "compartments": framed cells with a gradient top accent and a
-  faint sheen. Seed categories renamed from Quicklinks/Read later to Pinned/Later.
+### Highlights
 
-## v3.0.0
+- Restored Tabento name, bento-grid icon family, interface, themes, screenshot, and metadata.
+- Preserved workspace, popup, hibernation, reminder, search, import/export, layout, and tool features.
+- Added `en`, `zh-TW`, `zh-CN`, `es`, `ja`, and `fr` locale coverage with English fallback.
+- Replaced research-only terms with the MIT License.
+- Added community, security, privacy, translation, validation, and packaging documentation.
 
-Folio is a local-first visual workspace for browser tabs, notes, todos, stacks,
-reminders, and lightweight personal tracking.
+### Install or upgrade
 
-### What's Included
+Extract `tabento-3.1.1.zip`, enable Developer mode in `chrome://extensions/` or `edge://extensions/`, and choose **Load unpacked**. Existing data remains under the historical `te` storage key. Export a JSON backup before replacing an installed development copy.
 
-- New-tab workspace with board, list, group focus, and canvas views.
-- Workspaces, categories, groups, nested stacks, color coding, and drag-and-drop organization.
-- Saved tabs, notes, todos, reminders, archive search, undo/redo, and batch actions.
-- Advanced search operators for color, type, todo state, domain, URL, containing group or stack,
-  reminder presence/state, quoted phrases, and negative filters.
-- Hibernated tab opening through a lightweight suspended page to reduce memory use until activation.
-- Popup quick-save flow for the current tab or all open tabs.
-- Built-in Pomodoro, finance, subscriptions, habits, hydration, reading, goals, and workout tools.
-- Import/export support with a versioned data envelope and preview step.
-- Local-first privacy posture with no host permissions.
+### Known limitations
 
-### Compatibility
+- Distributed through GitHub rather than a browser store.
+- Firefox has no validated dedicated manifest.
+- Data does not sync between profiles or devices.
+- Favicon display may use Google’s public favicon endpoint.
 
-- Chrome and Microsoft Edge via Manifest V3.
-- No build step required.
+## Historical v3.1.0
+
+- Final historical Tabento brand and feature snapshot.
+- Added link details, reminder calendar, expanded layouts, search operators, and hibernation controls.
+
+## Historical v3.0.0
+
+- Initial local-first Tabento workspace release.

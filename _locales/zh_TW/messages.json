@@ -1,0 +1,7 @@
+{
+  "appName": { "message": "Tabento" },
+  "appDescription": { "message": "在本機整理分頁、筆記、堆疊與提醒的工作空間。" },
+  "actionTitle": { "message": "開啟 Tabento" },
+  "commandOpenPopup": { "message": "開啟 Tabento 彈出視窗" },
+  "commandSaveTab": { "message": "將目前分頁儲存至收件匣" }
+}

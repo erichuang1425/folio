@@ -1,0 +1,7 @@
+{
+  "appName": { "message": "Tabento" },
+  "appDescription": { "message": "在本地整理标签页、笔记、堆叠和提醒的工作空间。" },
+  "actionTitle": { "message": "打开 Tabento" },
+  "commandOpenPopup": { "message": "打开 Tabento 弹出窗口" },
+  "commandSaveTab": { "message": "将当前标签页保存到收件箱" }
+}

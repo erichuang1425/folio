@@ -1,29 +1,52 @@
-/* Folio popup.js */
+/* Tabento popup.js */
 const $ = id => document.getElementById(id);
 const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const favUrl = u => { try { return `https://www.google.com/s2/favicons?domain=${new URL(u).hostname}&sz=32`; } catch { return ''; } };
 const dispUrl = u => { try { return new URL(u).hostname; } catch { return u; } };
 const isProto = u => !u || u.startsWith('chrome') || u.startsWith('edge') || u.startsWith('about');
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const normalizeLanguage = value => /^zh(?:[-_]|$)/i.test(String(value || '').trim()) ? 'zh-TW' : 'en';
+const SUPPORTED_LOCALES = ['en','zh-TW','zh-CN','es','ja','fr'];
+const normalizeLanguage = value => {
+  const lang = String(value || 'en').trim();
+  if (/^zh(?:[-_](?:tw|hk|mo|hant))$/i.test(lang)) return 'zh-TW';
+  if (/^zh(?:[-_]|$)/i.test(lang)) return 'zh-CN';
+  return SUPPORTED_LOCALES.find(locale => locale.toLowerCase() === lang.toLowerCase()) || 'en';
+};
 const browserLanguage = () => {
   const lang = navigator.languages?.[0] || navigator.language || 'en';
   return normalizeLanguage(lang);
 };
 const appLocale = () => normalizeLanguage(state?.settings?.language || browserLanguage());
 
+const POPUP_I18N = {
+  en: { openFull:'Open full workspace',saveCurrent:'Save current',saveAll:'Save all ·',hibernateTabs:'Hibernate tabs',saveTo:'Save to',back:'← back',hibernateNote:'Suspend tabs to free memory — they reload when opened. The tab you are viewing stays awake.',scope:'Scope',thisWindow:'This window',allWindows:'All windows',keepPinned:'Keep pinned tabs',keepAudio:'Keep tabs playing audio',searchTabs:'Search open tabs…',openTabs:'Open tabs' },
+  'zh-TW': { openFull:'開啟完整工作空間',saveCurrent:'儲存目前分頁',saveAll:'全部儲存 ·',hibernateTabs:'休眠分頁',saveTo:'儲存至',back:'← 返回',hibernateNote:'休眠分頁以釋放記憶體；開啟時會重新載入。目前檢視的分頁會保持喚醒。',scope:'範圍',thisWindow:'此視窗',allWindows:'所有視窗',keepPinned:'保留固定分頁',keepAudio:'保留播放音訊的分頁',searchTabs:'搜尋開啟的分頁…',openTabs:'開啟的分頁' },
+  'zh-CN': { openFull:'打开完整工作区',saveCurrent:'保存当前标签页',saveAll:'全部保存 ·',hibernateTabs:'休眠标签页',saveTo:'保存到',back:'← 返回',hibernateNote:'休眠标签页以释放内存；打开时会重新加载。当前查看的标签页会保持唤醒。',scope:'范围',thisWindow:'此窗口',allWindows:'所有窗口',keepPinned:'保留固定标签页',keepAudio:'保留播放音频的标签页',searchTabs:'搜索已打开的标签页…',openTabs:'已打开的标签页' },
+  es: { openFull:'Abrir el espacio completo',saveCurrent:'Guardar actual',saveAll:'Guardar todo ·',hibernateTabs:'Poner pestañas en reposo',saveTo:'Guardar en',back:'← volver',hibernateNote:'Pon las pestañas en reposo para liberar memoria; se recargan al abrirlas. La pestaña visible permanece activa.',scope:'Ámbito',thisWindow:'Esta ventana',allWindows:'Todas las ventanas',keepPinned:'Conservar pestañas fijadas',keepAudio:'Conservar pestañas con audio',searchTabs:'Buscar pestañas abiertas…',openTabs:'Pestañas abiertas' },
+  ja: { openFull:'ワークスペース全体を開く',saveCurrent:'現在のタブを保存',saveAll:'すべて保存 ·',hibernateTabs:'タブを休止',saveTo:'保存先',back:'← 戻る',hibernateNote:'タブを休止してメモリを解放します。開くと再読み込みされ、表示中のタブは休止しません。',scope:'範囲',thisWindow:'このウィンドウ',allWindows:'すべてのウィンドウ',keepPinned:'固定タブを保持',keepAudio:'音声再生中のタブを保持',searchTabs:'開いているタブを検索…',openTabs:'開いているタブ' },
+  fr: { openFull:'Ouvrir tout l’espace',saveCurrent:'Enregistrer l’onglet',saveAll:'Tout enregistrer ·',hibernateTabs:'Mettre les onglets en veille',saveTo:'Enregistrer dans',back:'← retour',hibernateNote:'Mettez les onglets en veille pour libérer de la mémoire ; ils se rechargent à l’ouverture. L’onglet affiché reste actif.',scope:'Portée',thisWindow:'Cette fenêtre',allWindows:'Toutes les fenêtres',keepPinned:'Conserver les onglets épinglés',keepAudio:'Conserver les onglets avec audio',searchTabs:'Rechercher dans les onglets…',openTabs:'Onglets ouverts' }
+};
+
+function applyLocale() {
+  const locale = appLocale();
+  const table = POPUP_I18N[locale] || POPUP_I18N.en;
+  document.documentElement.lang = locale;
+  document.querySelectorAll('[data-popup-i18n]').forEach(el => {
+    const text = table[el.dataset.popupI18n] || POPUP_I18N.en[el.dataset.popupI18n];
+    if (el.dataset.popupI18n === 'saveAll' && el.querySelector('b')) el.firstChild.textContent = `${text} `;
+    else el.textContent = text;
+  });
+  document.querySelectorAll('[data-popup-i18n-placeholder]').forEach(el => { el.placeholder = table[el.dataset.popupI18nPlaceholder] || POPUP_I18N.en[el.dataset.popupI18nPlaceholder]; });
+  document.querySelectorAll('[data-popup-i18n-title]').forEach(el => { const text = table[el.dataset.popupI18nTitle] || POPUP_I18N.en[el.dataset.popupI18nTitle]; el.title = text; el.setAttribute('aria-label', text); });
+}
+
 // Every surface reads its palette from the shared themes.css, so applying the
 // same [data-theme] the workspace uses keeps the popup on-theme.
-const THEME_IDS = new Set(['folio','folio-dark','tabento','tabento-dark','dark','aurora','light','dracula','nord','rose-pine','tokyo-night','solarized-dark','solarized-light','gruvbox','catppuccin','sepia','mono']);
-const THEME_ALIASES = {
-  stow: 'folio',
-  'stow-dark': 'folio-dark'
-};
-const normalizeThemeId = theme => THEME_ALIASES[theme] || theme;
+const THEME_IDS = new Set(['tabento','tabento-dark','dark','aurora','light','dracula','nord','rose-pine','tokyo-night','solarized-dark','solarized-light','gruvbox','catppuccin','sepia','mono']);
 function applyTheme() {
-  let theme = normalizeThemeId(state?.settings?.theme || 'folio');
-  if (theme === 'auto') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'folio-dark' : 'folio';
-  if (!THEME_IDS.has(theme)) theme = 'folio';
+  let theme = state?.settings?.theme || 'light';
+  if (theme === 'auto') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  if (!THEME_IDS.has(theme)) theme = 'light';
   document.documentElement.dataset.theme = theme;
 }
 
@@ -47,6 +70,7 @@ async function loadState() {
 }
 async function load() {
   await loadState();
+  applyLocale();
   applyTheme();
   const [cur, tabs] = await Promise.all([
     chrome.tabs.query({ active: true, currentWindow: true }),
@@ -248,12 +272,8 @@ $('qs-all').onclick = async () => {
     const others = all.slice(1);
     for (const t of others) { try { await chrome.tabs.remove(t.id); } catch {} }
   }
-  const savedN = all.length;
-  const closed = state.settings?.closeTabOnSave !== false && savedN > 1;
-  toast(closed
-    ? `Saved ${savedN} tabs · load when opened`
-    : `Saved ${savedN} ${savedN === 1 ? 'tab' : 'tabs'}`);
-  setTimeout(() => window.close(), 900);
+  toast(`Saved ${all.length} tabs`);
+  setTimeout(() => window.close(), 650);
 };
 
 // ═══ Toast ═══

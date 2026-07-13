@@ -1,0 +1,7 @@
+{
+  "appName": { "message": "Tabento" },
+  "appDescription": { "message": "A local-first workspace for tabs, notes, stacks, and reminders." },
+  "actionTitle": { "message": "Open Tabento" },
+  "commandOpenPopup": { "message": "Open Tabento popup" },
+  "commandSaveTab": { "message": "Save current tab to Inbox" }
+}

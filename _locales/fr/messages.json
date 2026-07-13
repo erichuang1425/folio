@@ -1,0 +1,7 @@
+{
+  "appName": { "message": "Tabento" },
+  "appDescription": { "message": "Un espace local pour les onglets, notes, piles et rappels." },
+  "actionTitle": { "message": "Ouvrir Tabento" },
+  "commandOpenPopup": { "message": "Ouvrir la fenêtre Tabento" },
+  "commandSaveTab": { "message": "Enregistrer l’onglet actuel dans la boîte de réception" }
+}

@@ -1,203 +1,113 @@
-# Folio
+# Tabento
+
+<p align="center"><img src="./icons/icon128.png" alt="Tabento logo" width="112"></p>
+<p align="center"><strong>Locus Legacy Edition</strong></p>
 
 <p align="center">
-  <img src="./media/png/icon_with_name.png" alt="Folio" width="420">
-</p>
-
-<p>
-  <a href="./manifest.json"><img src="https://img.shields.io/badge/version-v3.1.0-4f46e5?style=flat-square" alt="version v3.1.0"></a>
+  <a href="./manifest.json"><img src="https://img.shields.io/badge/version-3.1.1-b45309?style=flat-square" alt="version 3.1.1"></a>
   <a href="./manifest.json"><img src="https://img.shields.io/badge/Manifest-MV3-0f766e?style=flat-square&logo=googlechrome&logoColor=white" alt="Manifest V3"></a>
-  <img src="https://img.shields.io/badge/local--first-2563eb?style=flat-square" alt="local-first">
-  <img src="https://img.shields.io/badge/host%20permissions-none-16a34a?style=flat-square" alt="no host permissions">
-  <img src="https://img.shields.io/badge/build-no%20build%20step-f97316?style=flat-square" alt="no build step">
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-2563eb?style=flat-square" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/data-local--only-16a34a?style=flat-square" alt="local-only data">
+  <img src="https://img.shields.io/badge/host_permissions-none-16a34a?style=flat-square" alt="no host permissions">
 </p>
 
-**A local-first new tab workspace for saved tabs, notes, todos, reminders, and small trackers, with one-click tab hibernation that keeps memory low.**
+Tabento is a free, open-source, local-first new-tab workspace for saved tabs, notes, todos, reminders, and lightweight personal trackers. It is the independent legacy predecessor to **Locus**, which is developed separately.
 
-Landing page: [docs/index.html](./docs/index.html), ready for GitHub Pages (Settings → Pages → deploy from `main`, `/docs` folder → publishes at <https://erichuang1425.github.io/tabento/>). Positioning notes live in [docs/landing-page-strategy.md](./docs/landing-page-strategy.md).
-
-Folio replaces the Chromium new tab page. It helps you save tabs, group them with notes and todos, search them later, and reopen pages without keeping every tab loaded. Data stays in `chrome.storage.local`; the extension has no account system, no server, no host permissions, and no page-content reading.
+This repository preserves Tabento as a stable, community-friendly extension. Maintenance may include browser compatibility, security fixes, translations, accessibility, and focused community contributions. “Locus Legacy Edition” describes this repository release; the application and interface remain **Tabento**.
 
 ## Screenshot
 
-![Folio workspace home screen](./docs/images/folio-workspace-screenshot.png)
+![Tabento workspace showing groups, saved tabs, and the opened-tabs rail](./docs/images/tabento-workspace-demo.png)
 
-Folio's home surface brings saved spaces, open tabs, search, privacy signals, and local storage status into one calm new-tab workspace.
+## Features
 
-<p align="center">
-  <samp>
-    <a href="#why-folio">Why</a> |
-    <a href="#what-it-does">What it does</a> |
-    <a href="#screenshot">Screenshot</a> |
-    <a href="#install">Install</a> |
-    <a href="#development">Development</a> |
-    <a href="#roadmap">Roadmap</a>
-  </samp>
-</p>
-
----
-
-### Hibernate tabs to save memory
-
-Reopen any saved page through a light placeholder that loads the real site only when you click it. A workspace of 50 tabs costs almost nothing until you need them, the browser stays fast, and it works without host permissions or background loading. This is the core trade Folio makes: keep your context without paying for it in RAM.
-
-## Why Folio
-
-Browser work is rarely just tabs. A session can include research links, half-written plans, reminders, reference pages, recurring routines, and things you want to reopen later without keeping them alive forever.
-
-Folio keeps that context in the new tab page:
-
-- Save the current tab, every tab in a window, bookmarks, links, selections, or images.
-- Organize saved context into workspaces, categories, groups, stacks, colors, and views.
-- Mix tabs with notes, todos, reminders, and personal trackers without leaving the new tab page.
-- Search by words, quoted phrases, color, item type, domain, URL, location, todo state, and reminders.
-- Reopen saved pages directly or through a hibernated placeholder so the browser stays lighter.
-
-## What it does
-
-| Area | What you can do |
-| --- | --- |
-| Workspaces | Create multiple workspaces, bind them to browser windows, switch categories, focus a group, archive context, and undo or redo changes. |
-| Saved items | Store tabs, notes, todos, stacks inside stacks, color labels, reminders, and selected batches of cards. |
-| Link details | Open any item's detail pane (details button or right-click → Details…) to add a rich-text annotation, tags, custom fields, a checklist, and a color/emoji cover — every field optional, deep-linkable, and reload-safe. |
-| Views | Move between board, list, focused group, and free-positioned canvas layouts depending on the kind of work. |
-| Search | Combine text search with `type:`, `color:`, `domain:`, `site:`, `url:`, `in:`, `tag:`, `is:`, `has:reminder`, and `reminder:` operators. Prefix terms with `-` to exclude matches. |
-| Hibernation | Open saved tabs through `suspended.html` and load the destination only when you activate it. |
-| Popup | Save the current tab, save every open tab, and inspect open tabs from the extension action. |
-| Tools | Use built-in Pomodoro, finance diary, subscriptions, habits, hydration, reading, goals, and workout trackers. |
-| Portability | Export and import data with a versioned envelope and preview step before restore. |
-| Privacy | Keep data in `chrome.storage.local`; Folio requests no host permissions and never reads page content on its own (only selections you explicitly save). |
-
-Example search:
-
-```text
-type:tab in:work domain:github.com "pull request" -is:done
-```
-
-## Tech stack
-
-- Platform: Chromium extension, Manifest V3
-- Languages: Vanilla JavaScript, HTML, CSS
-- Storage: `chrome.storage.local`
-- Background runtime: MV3 service worker
-- Browser APIs: tabs, storage, context menus, bookmarks, alarms, notifications
-- Build tooling: none required
-- CI: GitHub Actions syntax and manifest validation
+- Multiple local workspaces with categories, groups, nested stacks, colors, and layouts.
+- Saved tabs, notes, todos, reminders, archive, undo/redo, and batch actions.
+- Board, list, focused-group, canvas, explorer, timeline, gallery, and graph views.
+- Search operators for type, color, domain, URL, location, tags, todo state, and reminders.
+- Toolbar popup for saving a tab or complete window and hibernating background tabs.
+- Bookmark and pasted-link import plus versioned JSON backup, preview, replace, and merge.
+- Pomodoro, finance, subscription, habit, hydration, reading, goal, and workout tools.
+- English, Traditional Chinese, Simplified Chinese, Spanish, Japanese, and French locales.
+- Local-only storage, no account, no host permissions, and no autonomous page-content access.
 
 ## Install
 
-1. Clone or download this repository.
-2. Open `chrome://extensions/` or `edge://extensions/`.
+1. Download a release archive or clone this repository.
+2. Open `chrome://extensions/` in Chrome or `edge://extensions/` in Edge.
 3. Enable **Developer mode**.
-4. Choose **Load unpacked**.
-5. Select the repository folder.
-6. Open a new tab to launch Folio.
+4. Choose **Load unpacked** and select the repository directory.
+5. Open a new tab.
 
-After editing extension files, reload Folio from the browser extensions page.
+Release ZIPs contain the same unpacked source; they are not signed browser-store packages.
 
-## Usage
+### Supported browsers
 
-- Open a new tab to use the main workspace.
-- Use the extension popup to save the current tab or all open tabs.
-- Right-click supported browser content to save pages, links, selections, and images.
-- Use groups and stacks to shape a workspace around projects, reading queues, planning areas, or recurring routines.
-- Use search operators when plain text is not enough:
+Tabento targets current Chrome and Microsoft Edge through Manifest V3. Firefox is not supported by this release because there is no validated Firefox-specific manifest.
 
-```text
-color:red,blue type:todo -is:done
-site:github.com url:/issues in:research
-has:reminder reminder:overdue
-tag:rust,reading -tag:archived
+## Development and packaging
+
+Tabento is vanilla JavaScript, HTML, and CSS. There are no dependencies to install, no server, and no generated application bundle.
+
+```powershell
+git clone https://github.com/erichuang1425/folio.git
+cd folio
+node scripts/validate.mjs
+./scripts/package.ps1
 ```
+
+Reload the unpacked extension after edits. Packaging validates the source and creates `dist/tabento-3.1.1.zip`; `dist/` is ignored by Git.
+
+## Data, privacy, and backup
+
+Application data is stored under `te` in `chrome.storage.local`. Tabento has no account or project-operated server and requests no host permissions. Context-menu saves occur only after explicit user action.
+
+Use **Settings → Data → Export** to create a versioned JSON backup. Import previews a file before replace or merge. Exports can contain saved URLs, titles, notes, reminders, and tracker data, so keep them private. See [PRIVACY.md](./PRIVACY.md).
+
+## Languages
+
+| Code | Native name |
+| --- | --- |
+| `en` | English |
+| `zh-TW` | 繁體中文 |
+| `zh-CN` | 简体中文 |
+| `es` | Español |
+| `ja` | 日本語 |
+| `fr` | Français |
+
+English is the fallback for missing or invalid locale values. See [docs/TRANSLATING.md](./docs/TRANSLATING.md) to improve translations.
 
 ## Project structure
 
 ```text
-tabento/
-|-- manifest.json        # MV3 manifest, permissions, commands, icons
-|-- background.js        # Service worker for menus, alarms, notifications, saves
-|-- newtab.html          # Main workspace shell
-|-- newtab.css           # Themes, layout, components, tools, responsive styling
-|-- newtab.js            # App state, rendering, search, import/export, tools
-|-- popup.html           # Toolbar popup shell
-|-- popup.css            # Popup styling
-|-- popup.js             # Quick-save and popup tab-list behavior
-|-- suspended.html       # Hibernated-tab placeholder
-|-- suspended.js         # Resume logic for hibernated tabs
-|-- emoji-data.js        # Emoji picker data
-|-- icons/               # Extension icons
-|-- DESIGN.md            # Product and visual-design notes
-|-- RELEASE_NOTES.md     # Release history
-`-- .github/workflows/   # CI validation
+manifest.json          MV3 permissions, commands, icons, and new-tab override
+background.js          Context menus, local reminders, and saves
+newtab.html/.css/.js   Main Tabento application
+popup.html/.css/.js    Toolbar quick-save and hibernation popup
+suspended.html/.js     Local hibernated-tab placeholder
+themes.css             Shared theme tokens
+emoji-data.js          Local emoji picker data
+_locales/              Browser/manifest localization
+icons/                 Tabento brand and extension icons
+docs/                  Public documentation and current screenshot
+scripts/               Validation and reproducible packaging
+.github/                CI, issue forms, and pull-request template
 ```
 
-## Development
+## Contributing and security
 
-Folio has no package install and no build command.
+Bug fixes, compatibility improvements, translations, accessibility work, documentation, tests, and carefully scoped maintenance features are welcome. Read [CONTRIBUTING.md](./CONTRIBUTING.md) and the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
-Run the validation checks used by CI:
+Report vulnerabilities privately as described in [SECURITY.md](./SECURITY.md). Use the issue forms for ordinary bugs and feature ideas.
 
-```powershell
-node --check newtab.js
-node --check background.js
-node --check popup.js
-node --check suspended.js
-node --check emoji-data.js
-node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8'))"
-node -e "const m = JSON.parse(require('fs').readFileSync('manifest.json','utf8')); if (m.manifest_version !== 3) throw new Error('manifest_version must be 3')"
-```
+## Versioning and maintenance
 
-Manual validation checklist:
+Tabento uses semantic versioning for maintained legacy releases. Version `3.1.1` is the first **Locus Legacy Edition** release and is distinct from the historical `3.1.0` snapshot. See [CHANGELOG.md](./CHANGELOG.md) and [RELEASE_NOTES.md](./RELEASE_NOTES.md).
 
-- Load the unpacked extension in Chrome or Edge.
-- Open a new tab and confirm the workspace renders.
-- Save the current tab and all open tabs from the popup.
-- Create a note, todo, group, stack, reminder, and archived item.
-- Try board, list, focus, and canvas views.
-- Verify search operators and negative filters.
-- Export data, import it into a clean profile, and review the preview step before restore.
+The newer Locus product is maintained separately. A public repository link can be added after it is published.
 
-## Deployment
+## License and credits
 
-For local testing, load the repository folder as an unpacked extension.
+Copyright © 2026 I-Kai Huang and contributors. Tabento is available under the [MIT License](./LICENSE).
 
-For a packaged release:
-
-1. Run the validation checks.
-2. Confirm `manifest.json` has the intended version.
-3. Zip the extension source files, excluding `.git` and local-only files.
-4. Attach the zip to the GitHub release or submit it through the browser extension store workflow.
-
-The current product release is documented in [RELEASE_NOTES.md](./RELEASE_NOTES.md).
-
-## Privacy
-
-Folio keeps data local:
-
-- Stored URLs, titles, notes, todos, reminders, workspace state, and tool data live in `chrome.storage.local`.
-- The extension does not request host permissions.
-- The extension does not read page content on its own; the only page text it stores is a selection you explicitly right-click to save.
-- Browser permissions are limited to tab workflows, storage, context menus, bookmarks import, alarms, and notifications.
-
-| Permission | Why it is used |
-| --- | --- |
-| `tabs` | Save, reopen, focus, and close tabs for workspace flows. |
-| `storage` | Persist local workspace and tool data. |
-| `contextMenus` | Save pages, links, selections, and images from the browser context menu. |
-| `bookmarks` | Import bookmarks into workspaces. |
-| `alarms` | Schedule reminders and subscription alerts. |
-| `notifications` | Show reminder and storage notifications. |
-
-## Roadmap
-
-- Add polished product screenshots for the README and browser-store listing.
-- Add UI smoke tests for critical save, search, move, and restore flows.
-- Expand migration coverage for import/export.
-- Improve keyboard workflows, accessibility, and high-contrast support.
-- Explore optional encrypted sync while preserving local-first defaults.
-
-## License
-
-Folio is source-available under the [Folio Research and Contribution License 1.0](./LICENSE).
-
-Commercial use is not permitted in any kind or form. The source may be used only for noncommercial research, private study, informal personal experimentation, hobby use, and contributions back to the Folio project, unless a separate written license from the copyright holder says otherwise.
+Tabento was independently built with browser platform APIs and vanilla web technologies. The Tabento mark and application artwork are historical project assets. See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

@@ -1,7 +1,13 @@
-/* ═══ Folio background.js ═══ */
+/* ═══ Tabento background.js ═══ */
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const normalizeLanguage = value => /^zh(?:[-_]|$)/i.test(String(value || '').trim()) ? 'zh-TW' : 'en';
+const SUPPORTED_LOCALES = ['en','zh-TW','zh-CN','es','ja','fr'];
+const normalizeLanguage = value => {
+  const lang = String(value || 'en').trim();
+  if (/^zh(?:[-_](?:tw|hk|mo|hant))$/i.test(lang)) return 'zh-TW';
+  if (/^zh(?:[-_]|$)/i.test(lang)) return 'zh-CN';
+  return SUPPORTED_LOCALES.find(locale => locale.toLowerCase() === lang.toLowerCase()) || 'en';
+};
 const browserLanguage = () => {
   const nav = typeof navigator !== 'undefined' ? navigator : {};
   const lang = nav.languages?.[0] || nav.language || 'en';
@@ -17,14 +23,14 @@ async function setState(s) {
   try {
     await chrome.storage.local.set({ te: s });
   } catch (err) {
-    console.error('Folio storage write failed:', err);
+    console.error('Tabento storage write failed:', err);
     if (/quota/i.test(String(err?.message || err))) {
       try {
         chrome.notifications.create('te-storage-quota-' + Date.now(), {
           type: 'basic',
           iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-          title: 'Folio storage full',
-          message: 'A background save failed. Open Folio to free space.',
+          title: 'Tabento storage full',
+          message: 'A background save failed. Open Tabento to free space.',
           priority: 2
         });
       } catch {}
@@ -80,18 +86,28 @@ function flash(text = '✓', color = '#22c55e') {
 // "duplicate id" errors if onInstalled fires twice (profile sync, certain
 // upgrade paths). Also re-registering on onStartup is defense-in-depth for
 // rare cases where persisted menu state desyncs from the SW.
-const MENU_ITEMS = [
-  { id: 'te-save-page',      title: '💾 Save page to Folio',  contexts: ['page'] },
-  { id: 'te-save-link',      title: '🔗 Save link to Folio',  contexts: ['link'] },
-  { id: 'te-save-selection', title: '📝 Save selection as note',  contexts: ['selection'] },
-  { id: 'te-save-image',     title: '🖼️ Save image',              contexts: ['image'] },
-  { id: 'te-sep',            type: 'separator',                   contexts: ['page'] },
-  { id: 'te-save-all',       title: '📚 Save all tabs in window', contexts: ['page'] }
-];
+const MENU_TEXT = {
+  en:['Save page to Tabento','Save link to Tabento','Save selection as note','Save image','Save all tabs in window'],
+  'zh-TW':['將頁面儲存至 Tabento','將連結儲存至 Tabento','將選取內容儲存為筆記','儲存圖片','儲存視窗中的所有分頁'],
+  'zh-CN':['将页面保存到 Tabento','将链接保存到 Tabento','将所选内容保存为笔记','保存图片','保存窗口中的所有标签页'],
+  es:['Guardar página en Tabento','Guardar enlace en Tabento','Guardar selección como nota','Guardar imagen','Guardar todas las pestañas de la ventana'],
+  ja:['ページを Tabento に保存','リンクを Tabento に保存','選択範囲をメモとして保存','画像を保存','ウィンドウ内のすべてのタブを保存'],
+  fr:['Enregistrer la page dans Tabento','Enregistrer le lien dans Tabento','Enregistrer la sélection comme note','Enregistrer l’image','Enregistrer tous les onglets de la fenêtre']
+};
 
-function registerContextMenus() {
+async function registerContextMenus() {
+  const state = await getState().catch(() => null);
+  const text = MENU_TEXT[appLocale(state)] || MENU_TEXT.en;
+  const menuItems = [
+    { id:'te-save-page', title:`💾 ${text[0]}`, contexts:['page'] },
+    { id:'te-save-link', title:`🔗 ${text[1]}`, contexts:['link'] },
+    { id:'te-save-selection', title:`📝 ${text[2]}`, contexts:['selection'] },
+    { id:'te-save-image', title:`🖼️ ${text[3]}`, contexts:['image'] },
+    { id:'te-sep', type:'separator', contexts:['page'] },
+    { id:'te-save-all', title:`📚 ${text[4]}`, contexts:['page'] }
+  ];
   chrome.contextMenus.removeAll(() => {
-    for (const m of MENU_ITEMS) chrome.contextMenus.create(m);
+    for (const m of menuItems) chrome.contextMenus.create(m);
   });
 }
 
@@ -283,7 +299,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       });
     }
   } catch (err) {
-    console.error('Folio alarm failed:', alarm.name, err);
+    console.error('Tabento alarm failed:', alarm.name, err);
   }
 });
 
@@ -291,7 +307,7 @@ function stripHtml(html) {
   return String(html).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 }
 
-// Click notification → open Folio. Subscription and storage-quota
+// Click notification → open Tabento. Subscription and storage-quota
 // notifications previously did nothing on click — now they all open newtab.
 const NOTIF_OPEN_PREFIXES = ['te-notif-', 'te-gnotif-', 'te-cnotif-', 'te-sub-notif-', 'te-storage-quota-'];
 chrome.notifications.onClicked.addListener((notifId) => {

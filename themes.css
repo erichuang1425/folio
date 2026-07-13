@@ -1,52 +1,12 @@
 /* ═══════════════════════════════════════════════════════════════
-   Folio — themes.css
+   Tabento — themes.css
    Shared theme palettes for every extension surface (new tab + popup).
    Each block defines the core color tokens a surface reads
    (--bg…--bg5, --panel, --border/2, --text/2/3, --accent*, --green/red…).
    Loaded before newtab.css and popup.css so both stay in visual lockstep.
    ═══════════════════════════════════════════════════════════════ */
 
-/* Folio — signature light theme. A white canvas with a soft blue→purple
-   gradient identity and glassy cards; this is the first-launch default.
-   --brand-grad (defined in newtab.css) reads --accent → --accent2, so the
-   blue→violet through-line travels across every surface automatically. */
-[data-theme="folio"] {
-  /* Board is a faint cool lavender; panels/cards sit pure white so they lift. */
-  --bg: #f7f8fc; --bg2: #ffffff; --bg3: #f1f3fb; --bg4: #e8ecf8; --bg5: #d7def1;
-  --panel: #ffffff;
-  --border: rgba(35,45,86,0.075); --border2: rgba(35,45,86,0.14);
-  --text: #12172d; --text2: #5b647c; --text3: #98a0b5;
-  --accent: #4f66f0; --accent2: #8b5cf6; --accent-bg: #5566f2; --accent-hover: #4453e6; --accent-text: #ffffff;
-  --green: #16a34a; --red: #e5484d; --yellow: #c98a04; --orange: #ea6a1f; --blue: #2f6bff;
-  --note-bg: #eef1ff; --note-bd: rgba(91,110,245,0.24);
-  /* Cool, soft elevation so white cards float off the light-lavender board
-     instead of inheriting the base dark shadows. */
-  --shadow: 0 18px 48px rgba(43,54,116,0.10), 0 4px 14px rgba(43,54,116,0.06);
-  --shadow-sm: 0 2px 10px rgba(43,54,116,0.06);
-  --card-shadow: 0 1px 2px rgba(43,54,116,0.035), 0 2px 8px rgba(43,54,116,0.035);
-  --card-shadow-h: 0 14px 30px rgba(43,54,116,0.12), 0 2px 8px rgba(43,54,116,0.06);
-  --shadow-1: 0 2px 10px rgba(43,54,116,0.07);
-  --shadow-2: 0 10px 24px rgba(43,54,116,0.10), 0 0 0 1px rgba(43,54,116,0.035);
-  --shadow-3: 0 20px 48px rgba(43,54,116,0.14), 0 3px 10px rgba(43,54,116,0.07);
-}
-
-/* Folio Dark — deep indigo-ink variant of the signature theme. Same
-   blue→violet accent on a near-black cool base. */
-[data-theme="folio-dark"] {
-  --bg: #0c0e1a; --bg2: #141626; --bg3: #1b1e33; --bg4: #262a45; --bg5: #343a5c;
-  --panel: #121423;
-  --border: rgba(160,175,255,0.08); --border2: rgba(160,175,255,0.16);
-  --text: #eef0fb; --text2: #a3a9c8; --text3: #656d92;
-  --accent: #8b9bff; --accent2: #b78cff; --accent-bg: #5b6ef5; --accent-hover: #4a5ce8; --accent-text: #ffffff;
-  --green: #34d399; --red: #fb7185; --yellow: #fbbf24; --orange: #fb923c; --blue: #60a5fa;
-  --note-bg: #191c30; --note-bd: rgba(139,155,255,0.22);
-  --shadow: 0 20px 52px rgba(0,0,0,0.5), 0 4px 14px rgba(0,0,0,0.34);
-  --shadow-sm: 0 2px 10px rgba(0,0,0,0.34);
-  --card-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 0 0 1px rgba(160,175,255,0.03);
-  --card-shadow-h: 0 12px 28px rgba(0,0,0,0.46), 0 0 0 1px rgba(160,175,255,0.06);
-}
-
-/* Rice Paper: legacy warm "bento box" base with a gold/persimmon accent. */
+/* Tabento: warm rice-paper "bento box" base with a gold/persimmon accent. */
 [data-theme="tabento"] {
   /* Board is the deepest tone; panels/cards sit lighter so columns lift. */
   --bg: #f0e4cb; --bg2: #fdf9f1; --bg3: #eaddc4; --bg4: #ddceb0; --bg5: #c8b596;
@@ -67,7 +27,7 @@
   --shadow-3: 0 16px 44px rgba(74,52,20,0.18), 0 3px 10px rgba(74,52,20,0.10);
 }
 
-/* Lacquer: legacy dark variant. Same gold/persimmon
+/* Tabento Dark: lacquer variant of the signature theme. Same gold/persimmon
    accent on a warm near-black base. */
 [data-theme="tabento-dark"] {
   --bg: #17120d; --bg2: #1f1812; --bg3: #2a211a; --bg4: #392c22; --bg5: #4c3b2d;

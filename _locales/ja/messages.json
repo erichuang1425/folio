@@ -1,0 +1,7 @@
+{
+  "appName": { "message": "Tabento" },
+  "appDescription": { "message": "タブ、メモ、スタック、リマインダーを端末内で整理するワークスペース。" },
+  "actionTitle": { "message": "Tabento を開く" },
+  "commandOpenPopup": { "message": "Tabento ポップアップを開く" },
+  "commandSaveTab": { "message": "現在のタブを受信トレイに保存" }
+}

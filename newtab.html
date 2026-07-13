@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Folio</title>
+  <title>Tabento</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,400&family=Inter:wght@400..700&family=IBM+Plex+Sans:wght@400..600&family=JetBrains+Mono:wght@400..600&family=Lora:wght@400..600&family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
-  <!-- Extension-relative paths so the new-tab override resolves the Folio
-       logo from the extension root on every Chromium build. Chromium
+  <!-- Extension-relative paths so the new-tab override resolves the Tabento
+       bento logo from the extension root on every Chromium build. Chromium
        favours the 32×32 for the tab strip on modern (HiDPI) displays. -->
   <link rel="icon" type="image/png" sizes="32x32" href="icons/icon32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/icon16.png">
@@ -30,19 +30,17 @@
       try { m = JSON.parse(localStorage.getItem('te_settings_mirror') || '{}') || {}; } catch (e) {}
       function supportedLang(value) {
         var lang = String(value || 'en').trim();
-        return /^zh(?:[-_]|$)/i.test(lang) ? 'zh-TW' : 'en';
+        if (/^zh(?:[-_](?:tw|hk|mo|hant))$/i.test(lang)) return 'zh-TW';
+        if (/^zh(?:[-_]|$)/i.test(lang)) return 'zh-CN';
+        return /^(es|ja|fr)$/i.test(lang) ? lang.toLowerCase() : 'en';
       }
       var lang = supportedLang(m.language || (navigator.languages && navigator.languages[0]) || navigator.language || 'en');
       document.documentElement.lang = lang;
       var theme = m.theme;
       if (!theme) {
-        theme = 'folio';
-      } else if (theme === 'stow') {
-        theme = 'folio';
-      } else if (theme === 'stow-dark') {
-        theme = 'folio-dark';
+        theme = 'light';
       } else if (theme === 'auto') {
-        theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'folio-dark' : 'folio';
+        theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
       }
       b.dataset.theme = theme;
       b.dataset.size  = m.size  || 'normal';
@@ -62,13 +60,15 @@
 
     <!-- ══════ SIDEBAR ══════ -->
     <aside id="sidebar">
-      <div class="brand-lockup" id="brand-lockup" title="Folio">
-        <span class="brand-badge" aria-hidden="true"><img class="brand-img" src="media/png/icon.png" alt="Folio" decoding="async"></span>
-        <span class="brand-name">Folio</span>
-      </div>
       <div class="ws-bar">
         <div id="ws-chips-stack"></div>
         <div class="ws-bar-actions">
+          <button id="sidebar-toggle" class="icon-btn sm" title="Collapse sidebar" data-i18n-title="action.collapseSidebar">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="2" y="2.5" width="10" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+              <path d="M5.5 2.5v9" stroke="currentColor" stroke-width="1.2"/>
+            </svg>
+          </button>
           <button id="add-ws-btn" class="icon-btn sm" title="New workspace" data-i18n-title="action.newWorkspace">
             <svg width="13" height="13" viewBox="0 0 13 13"><path d="M6.5 2v9M2 6.5h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           </button>
@@ -80,57 +80,25 @@
 
       <div id="ws-list" class="hidden"></div>
 
-      <nav id="nav-views" aria-label="Views">
-        <button class="nav-item" id="nav-home">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2.5 6.5L7.5 2l5 4.5V12a1 1 0 01-1 1h-2.6V9.4H6.1V13H3.5a1 1 0 01-1-1V6.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
-          <span class="nav-lbl" data-i18n="nav.home">Home</span>
-        </button>
-        <button class="nav-item" id="nav-all">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M6.2 8.8a2.4 2.4 0 003.4 0l2.5-2.5a2.4 2.4 0 10-3.4-3.4l-1 1M8.8 6.2a2.4 2.4 0 00-3.4 0L2.9 8.7a2.4 2.4 0 103.4 3.4l1-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-          <span class="nav-lbl" data-i18n="nav.allLinks">All Links</span>
-          <span class="nav-count" id="nav-all-count"></span>
-        </button>
-        <button class="nav-item" id="nav-inbox">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8.5l1.4-5A1 1 0 014.4 2.7h6.2a1 1 0 011 .8l1.4 5v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M2 8.5h3.4a2.1 2.1 0 004.2 0H13" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
-          <span class="nav-lbl" data-i18n="nav.inbox">Inbox</span>
-          <span class="nav-count" id="nav-inbox-count"></span>
-        </button>
-        <button class="nav-item" id="nav-archive">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="2" y="2.5" width="11" height="3" rx="0.8" stroke="currentColor" stroke-width="1.4"/><path d="M3 5.5V12a1 1 0 001 1h7a1 1 0 001-1V5.5M6 8h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-          <span class="nav-lbl" data-i18n="nav.archive">Archive</span>
-          <span class="nav-count" id="nav-archive-count"></span>
-        </button>
-      </nav>
-
-      <div class="side-sec-row">
-        <span class="side-sec-lbl" data-i18n="nav.spaces">Spaces</span>
-        <button id="add-cat-btn" class="icon-btn sm" title="New category" data-i18n-title="action.newCategory">
-          <svg width="13" height="13" viewBox="0 0 13 13"><path d="M6.5 2v9M2 6.5h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        </button>
+      <div class="side-hd">
+        <div>
+          <span id="open-count">0</span>
+          <span class="muted" data-i18n="shell.openTabs">open tabs</span>
+        </div>
+        <span id="selected-badge" class="hidden">0 selected</span>
       </div>
-      <div id="space-nav"></div>
+
+      <div id="open-tabs"></div>
 
       <div class="side-footer">
-        <div class="side-storage" title="Local storage used by Folio">
-          <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><rect x="2" y="2" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 9.5h11M4.5 11.5h.01M6.8 11.5h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-          <div class="side-storage-bd">
-            <div id="side-storage-text" class="side-storage-text" data-i18n="nav.storage">Local storage</div>
-            <div class="storage-bar-track"><div id="side-storage-fill" class="storage-bar-fill"></div></div>
-          </div>
+        <div class="filter-box">
+          <svg width="12" height="12" viewBox="0 0 16 16">
+            <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M10 10l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <input id="tab-filter" type="text" placeholder="Filter tabs" data-i18n-placeholder="shell.filterTabs" autocomplete="off">
+          <kbd>S</kbd>
         </div>
-        <div class="priv-card">
-          <div class="priv-hd">
-            <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.8l4.7 1.8v3.6c0 3-2 5.2-4.7 6-2.7-.8-4.7-3-4.7-6V3.6l4.7-1.8z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M5.5 7.4l1.4 1.4 2.6-2.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span data-i18n="priv.title">Private by design</span>
-          </div>
-          <div class="priv-row"><span class="priv-check">✓</span><span data-i18n="priv.noAccount">No account</span></div>
-          <div class="priv-row"><span class="priv-check">✓</span><span data-i18n="priv.localOnly">Local-only</span></div>
-          <div class="priv-row"><span class="priv-check">✓</span><span data-i18n="priv.noHost">No host permissions</span></div>
-          <div class="priv-row"><span class="priv-check">✓</span><span data-i18n="priv.export">Export anytime</span></div>
-        </div>
-        <button id="sidebar-toggle" class="side-collapse" title="Collapse sidebar" data-i18n-title="action.collapseSidebar" aria-label="Collapse sidebar">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M9 3.5L5 7.5l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
       </div>
     </aside>
 
@@ -148,12 +116,10 @@
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M4 2l3.5 3.5L4 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
+          <button id="add-cat-btn" class="icon-btn sm" title="New category" data-i18n-title="action.newCategory">
+            <svg width="13" height="13" viewBox="0 0 13 13"><path d="M6.5 2v9M2 6.5h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
         </div>
-        <button id="topbar-search" class="topbar-search" title="Search (Ctrl/⌘ + K)" data-i18n-title="action.search">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5L13 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          <span class="topbar-search-ph" data-i18n="search.placeholder">Search your links…</span>
-          <kbd>⌘K</kbd>
-        </button>
         <div class="tb-right">
           <button id="undo-btn" class="icon-btn" title="Undo (Ctrl+Z)" data-i18n-title="action.undo">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4.5 4L2 6.5 4.5 9M2 6.5h7.5a3.5 3.5 0 010 7H6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -194,40 +160,6 @@
 
       <div id="board"></div>
     </main>
-
-    <!-- ══════ OPENED TABS RAIL ══════ -->
-    <aside id="tabrail">
-      <button id="tabrail-toggle" class="rail-toggle icon-btn sm" title="Collapse opened tabs" aria-label="Collapse opened tabs">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M8.5 3L5 7l3.5 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <div class="rail-hd">
-        <div class="rail-title-row">
-          <span class="rail-title" data-i18n="rail.openedTabs">Opened Tabs</span>
-          <span id="open-count" class="rail-count">0</span>
-        </div>
-        <span id="selected-badge" class="hidden">0 selected</span>
-        <div class="rail-sub" data-i18n="rail.dragHint">Drag into a space to save</div>
-      </div>
-      <div id="open-tabs"></div>
-      <div class="rail-footer">
-        <div class="filter-box">
-          <svg width="12" height="12" viewBox="0 0 16 16">
-            <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            <path d="M10 10l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          <input id="tab-filter" type="text" placeholder="Filter tabs" data-i18n-placeholder="shell.filterTabs" autocomplete="off">
-          <kbd>S</kbd>
-        </div>
-        <button id="rail-saveall" class="rail-saveall">
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5v6m0 0l2.4-2.4M6.5 7.5L4.1 5.1M2 9v1.5a1 1 0 001 1h7a1 1 0 001-1V9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span data-i18n="rail.saveAll">Save all tabs</span>
-        </button>
-        <div class="rail-tip">
-          <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.6a4.4 4.4 0 00-2.6 7.9c.4.3.6.6.6 1v.5h4v-.5c0-.4.2-.7.6-1a4.4 4.4 0 00-2.6-7.9z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5.8 13h3.4M6.3 11.5h2.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-          <span data-i18n="rail.tip">Drag a tab into any space to save it for later.</span>
-        </div>
-      </div>
-    </aside>
   </div>
 
   <!-- Workspace grid overlay -->
@@ -506,7 +438,7 @@
           <dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>K</kbd></dt><dd>Open the command palette</dd>
           <dt><kbd>/</kbd></dt><dd>Open search</dd>
           <dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></dt><dd>Save current tab to Inbox</dd>
-          <dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd></dt><dd>Open Folio popup</dd>
+          <dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd></dt><dd>Open Tabento popup</dd>
           <dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Z</kbd></dt><dd>Undo</dd>
           <dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></dt><dd>Redo</dd>
           <dt><kbd>S</kbd></dt><dd>Focus sidebar tab filter</dd>
@@ -558,6 +490,10 @@
           <div class="seg" id="seg-language">
             <button data-val="en" data-i18n="settings.language.en">English</button>
             <button data-val="zh-TW" data-i18n="settings.language.zhTW">Traditional Chinese</button>
+            <button data-val="zh-CN">简体中文</button>
+            <button data-val="es">Español</button>
+            <button data-val="ja">日本語</button>
+            <button data-val="fr">Français</button>
           </div>
           <small data-i18n="settings.language.hint">New users start with the closest supported browser language.</small>
         </div>
@@ -698,13 +634,7 @@
           </button>
         </div>
         <div class="drawer-sec">
-          <div class="proof-strip" style="margin-bottom:10px">
-            <span class="proof-item">No account</span>
-            <span class="proof-item">No Folio server</span>
-            <span class="proof-item">No host permissions</span>
-            <span class="proof-item">Export anytime</span>
-          </div>
-          <p class="sub">Folio · v3 · by Eric</p>
+          <p class="sub">Tabento · v3 · by Eric</p>
         </div>
       </div>
     </div>
